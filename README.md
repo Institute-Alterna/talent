@@ -1,2 +1,1 @@
-# talent
-Talent Management System
+# Alterna Talent Management System
