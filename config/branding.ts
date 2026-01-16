@@ -7,30 +7,30 @@
 
 export const branding = {
   // Organization name displayed throughout the application
-  organisationName: "Alterna",
+  organisationName: 'Alterna',
 
   // Primary brand color (used for headers, buttons, links)
-  primaryColor: "#2E5090",
+  primaryColor: '#2E5090',
 
   // Secondary brand color (used for accents, hover states)
-  secondaryColor: "#4472C4",
+  secondaryColor: '#4472C4',
 
   // Status colors
-  successColor: "#22C55E",
-  warningColor: "#F59E0B",
-  dangerColor: "#EF4444",
+  successColor: '#22C55E',
+  warningColor: '#F59E0B',
+  dangerColor: '#EF4444',
 
   // Logo paths (relative to /public directory)
-  logoPath: "/logos/alterna-logo.svg",
-  logoDarkPath: "/logos/alterna-logo-dark.svg",
-  faviconPath: "/logos/favicon.ico",
+  logoPath: '/logos/alterna-logo.svg',
+  logoDarkPath: '/logos/alterna-logo-dark.svg',
+  faviconPath: '/logos/favicon.ico',
 
   // Application metadata
-  appName: "Talent Management",
-  appDescription: "Candidate tracking and recruitment management system",
+  appName: 'Talent Management',
+  appDescription: 'Candidate tracking and recruitment management system',
 
   // Footer text
-  copyrightText: "Alterna",
+  copyrightText: 'Alterna',
 } as const;
 
 export type Branding = typeof branding;

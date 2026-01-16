@@ -1,0 +1,508 @@
+// =============================================================================
+// Prisma Schema for Alterna Talent Management System
+// =============================================================================
+//
+// This schema defines all database models for tracking candidates through
+// the recruitment pipeline, from initial application to onboarding.
+//
+// Key Models:
+// - Candidate: Job applicants from Tally.so forms
+// - User: Alterna personnel (synced from Okta)
+// - Assessment: Test scores (general & specialized competencies)
+// - Interview: Interview scheduling and outcomes
+// - Decision: Final hiring decisions (accept/reject)
+// - AuditLog: Complete activity trail for compliance
+// - EmailLog: Email send history and status
+//
+// Note: Dreamhost MySQL uses utf8mb3 charset (limited emoji support)
+// =============================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// =============================================================================
+// CANDIDATE MODEL
+// =============================================================================
+// Stores all candidate information from Tally.so application forms.
+// Each candidate has a unique 'who' identifier from Tally's respondentId.
+// =============================================================================
+
+model Candidate {
+  /// Unique identifier (UUID)
+  id String @id @default(uuid())
+
+  /// Tally respondentId - unique identifier for each candidate
+  who String @unique
+
+  /// Position the candidate applied for
+  position String
+
+  /// Candidate's first name
+  firstName String
+
+  /// Candidate's middle name (optional)
+  middleName String?
+
+  /// Candidate's last name
+  lastName String
+
+  /// Primary email address
+  email String
+
+  /// Secondary/backup email (optional)
+  secondaryEmail String?
+
+  /// Phone number with country code
+  phoneNumber String?
+
+  /// Country of residence
+  country String?
+
+  /// City of residence
+  city String?
+
+  /// State/province/region
+  state String?
+
+  /// ISO country code (e.g., "US", "MX")
+  countryCode String?
+
+  /// Link to portfolio website
+  portfolioLink String?
+
+  /// Highest education level completed
+  educationLevel String?
+
+  /// URL to resume file (hosted by Tally)
+  resumeUrl String?
+
+  /// Academic background description
+  academicBackground String? @db.Text
+
+  /// Previous work experience description
+  previousExperience String? @db.Text
+
+  /// Link to video introduction/presentation
+  videoLink String?
+
+  /// URL to additional files (hosted by Tally)
+  otherFileUrl String?
+
+  /// Current stage in the recruitment pipeline
+  currentStage Stage @default(APPLICATION)
+
+  /// Current status (active, accepted, rejected, withdrawn)
+  status Status @default(ACTIVE)
+
+  /// Tally form submission ID (for idempotency)
+  tallySubmissionId String @unique
+
+  /// Tally response ID (for reference)
+  tallyResponseId String?
+
+  /// Okta user ID (populated when candidate is hired and onboarded)
+  oktaUserId String?
+
+  /// Timestamp when application was received
+  createdAt DateTime @default(now())
+
+  /// Timestamp of last update
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  assessments Assessment[]
+  interviews  Interview[]
+  decisions   Decision[]
+  auditLogs   AuditLog[]
+  emailLogs   EmailLog[]
+
+  // Indexes for common queries
+  @@index([who])
+  @@index([status])
+  @@index([currentStage])
+  @@index([email])
+  @@index([createdAt])
+}
+
+/// Recruitment pipeline stages
+enum Stage {
+  APPLICATION
+  GENERAL_COMPETENCIES
+  SPECIALIZED_COMPETENCIES
+  INTERVIEW
+  AGREEMENT
+  SIGNED
+}
+
+/// Candidate status values
+enum Status {
+  ACTIVE
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+// =============================================================================
+// ASSESSMENT MODEL
+// =============================================================================
+// Stores assessment results for candidates.
+// Currently supports two types: general and specialized competencies.
+// =============================================================================
+
+model Assessment {
+  /// Unique identifier (UUID)
+  id String @id @default(uuid())
+
+  /// Reference to the candidate
+  candidateId String
+
+  /// Type of assessment
+  assessmentType AssessmentType
+
+  /// Score achieved (0-100)
+  score Decimal @db.Decimal(5, 2)
+
+  /// Whether the candidate passed (score >= threshold)
+  passed Boolean
+
+  /// Passing threshold for this assessment
+  threshold Decimal @db.Decimal(5, 2)
+
+  /// When the assessment was completed
+  completedAt DateTime
+
+  /// Raw assessment data/answers (JSON format)
+  rawData Json?
+
+  /// Record creation timestamp
+  createdAt DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId])
+  @@index([assessmentType])
+}
+
+/// Types of assessments
+enum AssessmentType {
+  GENERAL_COMPETENCIES
+  SPECIALIZED_COMPETENCIES
+}
+
+// =============================================================================
+// INTERVIEW MODEL
+// =============================================================================
+// Tracks interview scheduling and outcomes.
+// Interviewers provide their Cal.com/Calendly links for scheduling.
+// =============================================================================
+
+model Interview {
+  /// Unique identifier (UUID)
+  id String @id @default(uuid())
+
+  /// Reference to the candidate
+  candidateId String
+
+  /// Reference to the interviewer (User)
+  interviewerId String
+
+  /// Interviewer's scheduling link (Cal.com/Calendly)
+  schedulingLink String
+
+  /// When the interview is scheduled for
+  scheduledAt DateTime?
+
+  /// When the interview was completed
+  completedAt DateTime?
+
+  /// Interviewer's notes
+  notes String? @db.Text
+
+  /// Interview outcome
+  outcome InterviewOutcome @default(PENDING)
+
+  /// When the interview invitation email was sent
+  emailSentAt DateTime?
+
+  /// Record creation timestamp
+  createdAt DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  interviewer User      @relation(fields: [interviewerId], references: [id])
+
+  @@index([candidateId])
+  @@index([interviewerId])
+  @@index([scheduledAt])
+}
+
+/// Interview outcome values
+enum InterviewOutcome {
+  PENDING
+  ACCEPT
+  REJECT
+}
+
+// =============================================================================
+// USER MODEL
+// =============================================================================
+// Alterna personnel synced from Okta.
+// Includes administrators and hiring managers.
+// =============================================================================
+
+model User {
+  /// Unique identifier (UUID)
+  id String @id @default(uuid())
+
+  /// Okta user ID for SSO integration
+  oktaUserId String @unique
+
+  /// Alterna email address (primary identifier)
+  email String @unique
+
+  /// Secondary email address
+  secondaryEmail String?
+
+  /// First name
+  firstName String
+
+  /// Middle name
+  middleName String?
+
+  /// Last name
+  lastName String
+
+  /// Display name (shown in UI)
+  displayName String
+
+  /// Job title
+  title String?
+
+  /// City
+  city String?
+
+  /// State/province
+  state String?
+
+  /// ISO country code
+  countryCode String?
+
+  /// Preferred language (ISO code)
+  preferredLanguage String @default("en")
+
+  /// Timezone (IANA format)
+  timezone String @default("America/New_York")
+
+  /// Organization name
+  organisation String @default("Alterna")
+
+  /// Operational clearance level
+  operationalClearance Clearance @default(A)
+
+  /// Whether user has admin privileges
+  isAdmin Boolean @default(false)
+
+  /// Personal scheduling link (Cal.com/Calendly)
+  schedulingLink String?
+
+  /// Record creation timestamp
+  createdAt DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt DateTime @updatedAt
+
+  /// When user data was last synced from Okta
+  lastSyncedAt DateTime?
+
+  // Relations
+  interviews Interview[]
+  decisions  Decision[]
+  auditLogs  AuditLog[]
+  sentEmails EmailLog[]
+
+  @@index([oktaUserId])
+  @@index([email])
+}
+
+/// Operational clearance levels
+enum Clearance {
+  A
+  B
+  C
+}
+
+// =============================================================================
+// DECISION MODEL
+// =============================================================================
+// Records final hiring decisions.
+// Reason is required for rejections (GDPR compliance).
+// =============================================================================
+
+model Decision {
+  /// Unique identifier (UUID)
+  id String @id @default(uuid())
+
+  /// Reference to the candidate
+  candidateId String
+
+  /// The decision (accept or reject)
+  decision DecisionType
+
+  /// Reason for the decision (required for rejections)
+  reason String @db.Text
+
+  /// User who made the decision
+  decidedBy String
+
+  /// When the decision was made
+  decidedAt DateTime @default(now())
+
+  /// Additional notes
+  notes String? @db.Text
+
+  /// Record creation timestamp
+  createdAt DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [decidedBy], references: [id])
+
+  @@index([candidateId])
+  @@index([decidedBy])
+}
+
+/// Decision types
+enum DecisionType {
+  ACCEPT
+  REJECT
+}
+
+// =============================================================================
+// AUDIT LOG MODEL
+// =============================================================================
+// Comprehensive activity logging for compliance and debugging.
+// Records all significant actions in the system.
+// =============================================================================
+
+model AuditLog {
+  /// Unique identifier (UUID)
+  id String @id @default(uuid())
+
+  /// Reference to related candidate (optional)
+  candidateId String?
+
+  /// Reference to user who performed action (optional)
+  userId String?
+
+  /// Human-readable action description
+  action String @db.VarChar(100)
+
+  /// Type of action for filtering
+  actionType ActionType
+
+  /// Additional details (JSON format)
+  details Json?
+
+  /// IP address of the request
+  ipAddress String?
+
+  /// User agent string
+  userAgent String? @db.Text
+
+  /// When the action occurred
+  createdAt DateTime @default(now())
+
+  // Relations
+  candidate Candidate? @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([candidateId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([actionType])
+}
+
+/// Types of logged actions
+enum ActionType {
+  CREATE
+  UPDATE
+  DELETE
+  VIEW
+  EMAIL_SENT
+  STATUS_CHANGE
+  STAGE_CHANGE
+}
+
+// =============================================================================
+// EMAIL LOG MODEL
+// =============================================================================
+// Tracks all emails sent through the system.
+// Used for debugging, compliance, and preventing duplicate sends.
+// =============================================================================
+
+model EmailLog {
+  /// Unique identifier (UUID)
+  id String @id @default(uuid())
+
+  /// Reference to the candidate
+  candidateId String
+
+  /// Email address the email was sent to
+  recipientEmail String
+
+  /// Name of the email template used
+  templateName String
+
+  /// Email subject line
+  subject String
+
+  /// When the email was actually sent
+  sentAt DateTime?
+
+  /// Current status of the email
+  status EmailStatus @default(PENDING)
+
+  /// Error message if send failed
+  errorMessage String? @db.Text
+
+  /// User who triggered the email (optional for automated emails)
+  sentBy String?
+
+  /// Record creation timestamp
+  createdAt DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [sentBy], references: [id], onDelete: SetNull)
+
+  @@index([candidateId])
+  @@index([status])
+  @@index([sentAt])
+}
+
+/// Email delivery status
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+  BOUNCED
+}

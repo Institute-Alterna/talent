@@ -137,3 +137,17 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# macOS
+.DS_Store
+
+# Vercel
+.vercel
+
+# Production build
+/build
+
+# PEM files
+*.pem
+
+/lib/generated/prisma

@@ -8,12 +8,12 @@
 export const recruitment = {
   // Pipeline stages in order
   stages: [
-    { id: "APPLICATION", name: "Application", order: 1 },
-    { id: "GENERAL_COMPETENCIES", name: "General Competencies", order: 2 },
-    { id: "SPECIALIZED_COMPETENCIES", name: "Specialized Competencies", order: 3 },
-    { id: "INTERVIEW", name: "Interview", order: 4 },
-    { id: "AGREEMENT", name: "Agreement", order: 5 },
-    { id: "SIGNED", name: "Signed", order: 6 },
+    { id: 'APPLICATION', name: 'Application', order: 1 },
+    { id: 'GENERAL_COMPETENCIES', name: 'General Competencies', order: 2 },
+    { id: 'SPECIALIZED_COMPETENCIES', name: 'Specialized Competencies', order: 3 },
+    { id: 'INTERVIEW', name: 'Interview', order: 4 },
+    { id: 'AGREEMENT', name: 'Agreement', order: 5 },
+    { id: 'SIGNED', name: 'Signed', order: 6 },
   ],
 
   // Minimum passing scores for assessments (out of 100)
@@ -25,7 +25,7 @@ export const recruitment = {
   // Interview settings
   interview: {
     // Default duration shown in email templates
-    duration: "25-30 minutes",
+    duration: '25-30 minutes',
 
     // Days to wait before sending reminder (0 = no reminder)
     reminderDays: 3,
@@ -41,53 +41,53 @@ export const recruitment = {
 
   // Available positions (customize as needed)
   positions: [
-    "Software Developer",
-    "Instructional Designer",
-    "Course Facilitator",
-    "Teaching Assistant",
-    "Content Writer",
-    "Graphic Designer",
-    "Video Editor",
-    "Project Coordinator",
+    'Software Developer',
+    'Instructional Designer',
+    'Course Facilitator',
+    'Teaching Assistant',
+    'Content Writer',
+    'Graphic Designer',
+    'Video Editor',
+    'Project Coordinator',
   ],
 
   // Education levels for dropdown
   educationLevels: [
-    "High School",
-    "Some College",
-    "Associate Degree",
+    'High School',
+    'Some College',
+    'Associate Degree',
     "Bachelor's Degree",
     "Master's Degree",
-    "Doctorate",
-    "Other",
+    'Doctorate',
+    'Other',
   ],
 
   // Countries (add more as needed)
   countries: [
-    { code: "US", name: "United States" },
-    { code: "CA", name: "Canada" },
-    { code: "MX", name: "Mexico" },
-    { code: "GT", name: "Guatemala" },
-    { code: "SV", name: "El Salvador" },
-    { code: "HN", name: "Honduras" },
-    { code: "NI", name: "Nicaragua" },
-    { code: "CR", name: "Costa Rica" },
-    { code: "PA", name: "Panama" },
-    { code: "CO", name: "Colombia" },
-    { code: "VE", name: "Venezuela" },
-    { code: "EC", name: "Ecuador" },
-    { code: "PE", name: "Peru" },
-    { code: "BR", name: "Brazil" },
-    { code: "AR", name: "Argentina" },
-    { code: "CL", name: "Chile" },
-    { code: "ES", name: "Spain" },
+    { code: 'US', name: 'United States' },
+    { code: 'CA', name: 'Canada' },
+    { code: 'MX', name: 'Mexico' },
+    { code: 'GT', name: 'Guatemala' },
+    { code: 'SV', name: 'El Salvador' },
+    { code: 'HN', name: 'Honduras' },
+    { code: 'NI', name: 'Nicaragua' },
+    { code: 'CR', name: 'Costa Rica' },
+    { code: 'PA', name: 'Panama' },
+    { code: 'CO', name: 'Colombia' },
+    { code: 'VE', name: 'Venezuela' },
+    { code: 'EC', name: 'Ecuador' },
+    { code: 'PE', name: 'Peru' },
+    { code: 'BR', name: 'Brazil' },
+    { code: 'AR', name: 'Argentina' },
+    { code: 'CL', name: 'Chile' },
+    { code: 'ES', name: 'Spain' },
   ],
 
   // Operational clearance levels
   clearanceLevels: [
-    { id: "A", name: "Level A", description: "Basic access" },
-    { id: "B", name: "Level B", description: "Standard access" },
-    { id: "C", name: "Level C", description: "Full access" },
+    { id: 'A', name: 'Level A', description: 'Basic access' },
+    { id: 'B', name: 'Level B', description: 'Standard access' },
+    { id: 'C', name: 'Level C', description: 'Full access' },
   ],
 
   // Data retention (GDPR compliance)

@@ -7,6 +7,7 @@ Build a complete talent management application for Institute Alterna, a non-prof
 ## Core Requirements
 
 ### Technology Stack
+
 - **Framework**: Next.js 14+ (App Router)
 - **Language**: TypeScript 5+
 - **Database**: MySQL 8.0 (Dreamhost shared hosting)
@@ -17,6 +18,7 @@ Build a complete talent management application for Institute Alterna, a non-prof
 - **Deployment**: Vercel (hobby plan)
 
 ### Infrastructure Constraints
+
 - **Database**: Dreamhost shared MySQL (utf8mb3 charset, no SSH access)
 - **Email Limits**: 100 recipients/hour, 1,000/day per account
 - **Deployment**: Vercel serverless functions (10s timeout, 1024MB memory)
@@ -26,9 +28,11 @@ Build a complete talent management application for Institute Alterna, a non-prof
 ## System Functionality
 
 ### 1. Webhook Integration
+
 Create endpoint `POST /api/webhooks/tally` to receive candidate applications from Tally.so forms.
 
 **Webhook Payload Structure** (from Tally):
+
 ```json
 {
   "eventId": "...",
@@ -52,7 +56,7 @@ Create endpoint `POST /api/webhooks/tally` to receive candidate applications fro
         "label": "First Name",
         "type": "INPUT_TEXT",
         "value": "..."
-      },
+      }
       // ... more fields
     ]
   }
@@ -60,12 +64,14 @@ Create endpoint `POST /api/webhooks/tally` to receive candidate applications fro
 ```
 
 **Webhook Security**:
+
 - Signature verification using `WEBHOOK_SECRET` env var
 - IP whitelist validation
 - Rate limiting (100 req/min)
 - Idempotency checks using `tallySubmissionId`
 
 **Field Mapping** (Tally → Database):
+
 - `respondentId` → `who` (unique candidate identifier)
 - `question_KVavqX_*` (position) → `position`
 - `question_qRkkYd` → `firstName`
@@ -86,6 +92,7 @@ Create endpoint `POST /api/webhooks/tally` to receive candidate applications fro
 ### 2. Database Schema (Prisma)
 
 **candidates table**:
+
 ```prisma
 model Candidate {
   id                  String    @id @default(uuid())
@@ -145,6 +152,7 @@ enum Status {
 ```
 
 **assessments table**:
+
 ```prisma
 model Assessment {
   id              String    @id @default(uuid())
@@ -170,6 +178,7 @@ enum AssessmentType {
 ```
 
 **interviews table**:
+
 ```prisma
 model Interview {
   id              String    @id @default(uuid())
@@ -199,6 +208,7 @@ enum InterviewOutcome {
 ```
 
 **users table** (Alterna personnel):
+
 ```prisma
 model User {
   id                    String    @id @default(uuid())
@@ -241,6 +251,7 @@ enum Clearance {
 ```
 
 **audit_logs table**:
+
 ```prisma
 model AuditLog {
   id            String      @id @default(uuid())
@@ -273,6 +284,7 @@ enum ActionType {
 ```
 
 **email_logs table**:
+
 ```prisma
 model EmailLog {
   id              String      @id @default(uuid())
@@ -303,6 +315,7 @@ enum EmailStatus {
 ```
 
 **decisions table**:
+
 ```prisma
 model Decision {
   id            String    @id @default(uuid())
@@ -330,12 +343,14 @@ enum DecisionType {
 ### 3. Authentication & Authorization
 
 **Okta OAuth Integration**:
+
 - Use next-auth with Okta provider
 - Session-based authentication
 - JWT tokens stored in HTTP-only cookies
 - Auto-sync user data from Okta on login
 
 **Permission Levels**:
+
 1. **Administrators** (`isAdmin = true`):
    - Determined by Okta group membership (env: `ADMIN_OKTA_GROUP_ID`)
    - Full system access
@@ -358,6 +373,7 @@ enum DecisionType {
 **Okta Bidirectional Sync**:
 
 Fields to sync:
+
 - `email` (username in Okta)
 - `firstName`, `middleName`, `lastName`
 - `displayName`
@@ -370,12 +386,14 @@ Fields to sync:
 - `operationalClearance` (custom Okta attribute)
 
 Sync triggers:
+
 - **From Okta → Local**: On user login, manual sync button (admin), optional nightly cron
 - **From Local → Okta**: When admin updates user profile, when candidate is hired
 
 ### 4. Email System
 
 **SMTP Configuration**:
+
 - Dreamhost SMTP
 - Limits: 100 recipients/hour, 1,000/day per account
 - Implement rate limiting queue
@@ -383,6 +401,7 @@ Sync triggers:
 
 **Email Templates**:
 Store as HTML files in `/emails/` directory:
+
 - `application-received.html`
 - `general-competencies-passed.html`
 - `general-competencies-failed.html`
@@ -394,6 +413,7 @@ Store as HTML files in `/emails/` directory:
 - `account-created.html`
 
 **Template Variables** (use `{{VARIABLE_NAME}}` syntax):
+
 - Common: `{{CANDIDATE_FIRST_NAME}}`, `{{CANDIDATE_FULL_NAME}}`, `{{POSITION}}`, `{{APPLICATION_DATE}}`, `{{CURRENT_YEAR}}`
 - Interview: `{{INTERVIEWER_NAME}}`, `{{SCHEDULING_LINK}}`, `{{INTERVIEW_DURATION}}`
 - Onboarding: `{{ALTERNA_EMAIL}}`, `{{TEMPORARY_PASSWORD}}`, `{{START_DATE}}`
@@ -401,6 +421,7 @@ Store as HTML files in `/emails/` directory:
 ### 5. Dashboard UI
 
 **Design Requirements**:
+
 - Modern, clean aesthetic
 - Mobile-responsive
 - Accessible (WCAG 2.1 AA)
@@ -409,6 +430,7 @@ Store as HTML files in `/emails/` directory:
 **Dashboard Layout**:
 
 **Overview Section**:
+
 - Total active candidates (card)
 - Candidates by stage (chart - pie or bar)
 - Candidates awaiting action (card)
@@ -416,6 +438,7 @@ Store as HTML files in `/emails/` directory:
 
 **Pipeline Visualization** (Kanban-style board):
 Columns for each stage:
+
 1. Application
 2. General Competencies
 3. Specialized Competencies
@@ -424,6 +447,7 @@ Columns for each stage:
 6. Signed
 
 Each candidate card shows:
+
 - Name
 - Position applied for
 - Application date
@@ -433,6 +457,7 @@ Each candidate card shows:
 **Candidate Detail View** (Modal or separate page):
 
 Tabs:
+
 1. **Application**:
    - Personal info
    - Education level
@@ -476,38 +501,41 @@ Tabs:
 **Centralized Configuration Files**:
 
 `/config/branding.ts`:
+
 ```typescript
 export const branding = {
-  organisationName: "Institute Alterna",
-  primaryColor: "#2E5090",
-  secondaryColor: "#4472C4",
-  successColor: "#22C55E",
-  warningColor: "#F59E0B",
-  dangerColor: "#EF4444",
-  logoPath: "/logos/alterna-logo.svg",
-  logoDarkPath: "/logos/alterna-logo-dark.svg",
-  faviconPath: "/logos/favicon.ico",
-}
+  organisationName: 'Institute Alterna',
+  primaryColor: '#2E5090',
+  secondaryColor: '#4472C4',
+  successColor: '#22C55E',
+  warningColor: '#F59E0B',
+  dangerColor: '#EF4444',
+  logoPath: '/logos/alterna-logo.svg',
+  logoDarkPath: '/logos/alterna-logo-dark.svg',
+  faviconPath: '/logos/favicon.ico',
+};
 ```
 
 `/config/strings.ts`:
+
 ```typescript
 export const strings = {
   dashboard: {
-    title: "Talent Dashboard",
-    welcome: "Welcome back",
+    title: 'Talent Dashboard',
+    welcome: 'Welcome back',
     // ... all UI strings
   },
   stages: {
-    application: "Application",
-    generalCompetencies: "General Competencies",
+    application: 'Application',
+    generalCompetencies: 'General Competencies',
     // ... all stage names
   },
   // ... all UI text organized by feature
-}
+};
 ```
 
 `/config/recruitment.ts`:
+
 ```typescript
 export const recruitment = {
   stages: [
@@ -519,13 +547,14 @@ export const recruitment = {
     generalCompetencies: 70, // Pass score out of 100
     specializedCompetencies: 75,
   },
-  interviewDuration: "25-30 minutes",
-}
+  interviewDuration: '25-30 minutes',
+};
 ```
 
 ### 7. API Integration Framework
 
 **Standardized API Client** (`/lib/api-client.ts`):
+
 ```typescript
 class ApiClient {
   constructor(baseUrl: string, apiKey?: string) {}
@@ -537,6 +566,7 @@ class ApiClient {
 ```
 
 Features:
+
 - Automatic retry with exponential backoff
 - Request/response logging
 - Error handling
@@ -544,6 +574,7 @@ Features:
 - Timeout configuration
 
 **Okta Integration** (`/lib/integrations/okta.ts`):
+
 - User creation
 - User updates
 - User retrieval
@@ -551,6 +582,7 @@ Features:
 
 **Extensible Design**:
 Make it easy to add new integrations by:
+
 1. Creating new file in `/lib/integrations/`
 2. Extending ApiClient base class
 3. Adding environment variables
@@ -559,10 +591,12 @@ Make it easy to add new integrations by:
 ### 8. PDF Export
 
 Use `@react-pdf/renderer` or `puppeteer` to generate PDFs of:
+
 - Individual candidate profiles (all data)
 - Audit logs for a specific candidate (full timeline)
 
 PDF should include:
+
 - Alterna branding
 - Candidate photo (if available)
 - All application data
@@ -579,6 +613,7 @@ Create placeholder endpoint `POST /api/webhooks/assessment` for receiving assess
 Include TODO comment: "Assessment integration to be finalized. Update this endpoint once assessment system details are confirmed."
 
 Expected payload structure (customize as needed):
+
 ```typescript
 {
   candidateId: string; // 'who' field
@@ -593,6 +628,7 @@ Expected payload structure (customize as needed):
 
 **Automatic Logging**:
 Create middleware/utility that logs:
+
 - All database writes (create, update, delete)
 - Email sends
 - Status/stage transitions
@@ -601,6 +637,7 @@ Create middleware/utility that logs:
 - API calls to external services
 
 **Log Details**:
+
 - Action description
 - Before/after values (for updates)
 - User who performed action
@@ -611,12 +648,14 @@ Create middleware/utility that logs:
 ### 11. User Settings
 
 Create settings page where users can:
+
 - Set their scheduling link (Cal.com/Calendly)
 - View their Okta profile
 - Update notification preferences (future)
 - View their activity history
 
 **Validation**:
+
 - Prevent users from booking interviews if they haven't set scheduling link
 - Show warning banner on dashboard if scheduling link is missing
 
@@ -667,12 +706,14 @@ CUSTOM_API_ENDPOINT_2=
 ## Code Quality Standards
 
 ### TypeScript
+
 - Strict mode enabled
 - No `any` types without justification
 - Comprehensive type definitions in `/types`
 - Zod schemas for runtime validation
 
 ### Documentation
+
 - JSDoc comments on all functions
 - Explanatory comments for complex logic
 - README files:
@@ -683,6 +724,7 @@ CUSTOM_API_ENDPOINT_2=
   - `/docs/API.md` - API documentation
 
 ### Code Organization
+
 ```
 /app
   /(dashboard)         # Protected routes
@@ -720,7 +762,9 @@ CUSTOM_API_ENDPOINT_2=
 ```
 
 ### Testing Requirements (Future)
+
 Set up project structure to support:
+
 - Unit tests (Jest)
 - Integration tests (webhook endpoints)
 - E2E tests (Playwright)
@@ -757,6 +801,7 @@ Include in `/docs/DEPLOYMENT.md`:
 ## Success Criteria
 
 The application should:
+
 1. ✅ Receive and process Tally webhooks correctly
 2. ✅ Store candidate data in MySQL database
 3. ✅ Authenticate users via Okta SSO
