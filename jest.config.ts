@@ -48,6 +48,11 @@ const config: Config = {
     '.*\\.integration\\.test\\.(ts|tsx|js|jsx)$',
   ],
 
+  // Transform ESM packages that Jest can't handle
+  transformIgnorePatterns: [
+    '/node_modules/(?!(next-auth|@auth/core)/)',
+  ],
+
   // Module path aliases - must match tsconfig.json paths
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
