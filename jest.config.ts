@@ -8,6 +8,12 @@
  * - moduleNameMapper: Maps path aliases (@/) to actual paths
  * - setupFilesAfterEnv: Runs setup code after Jest is initialized
  * - transform: Tells Jest how to process TypeScript files
+ *
+ * Note: Integration tests that use Prisma directly are separated from unit tests.
+ * Run with different commands:
+ * - npm test              : Runs unit tests only (fast, no DB required)
+ * - npm run test:integration : Runs integration tests (requires DB)
+ * - npm run test:all      : Runs all tests
  */
 
 import type { Config } from 'jest';
@@ -34,10 +40,12 @@ const config: Config = {
   ],
 
   // Files to ignore when running tests
+  // Exclude integration tests by default (they require database)
   testPathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '<rootDir>/.next/',
     '<rootDir>/coverage/',
+    '.*\\.integration\\.test\\.(ts|tsx|js|jsx)$',
   ],
 
   // Module path aliases - must match tsconfig.json paths

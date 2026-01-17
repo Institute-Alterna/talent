@@ -1,107 +1,114 @@
 /**
  * Home Page Tests
  *
- * This is our first test file! Here's what's happening:
+ * Tests for the login page functionality.
  *
- * 1. We import testing utilities from @testing-library/react
- * 2. We import the component we want to test
- * 3. We use describe() to group related tests
- * 4. We use it() or test() to define individual test cases
- * 5. We use render() to render the component in a virtual DOM
- * 6. We use screen queries to find elements
- * 7. We use expect() with matchers to make assertions
- *
- * Common screen queries:
- * - getByText: Find element by text content (throws if not found)
- * - getByRole: Find element by accessibility role
- * - queryByText: Find element by text (returns null if not found)
- * - findByText: Find element by text (async, waits for element)
+ * Note: Since the home page now uses server-side authentication (auth()),
+ * we need to mock the auth module for testing. These tests verify the
+ * UI renders correctly for unauthenticated users.
  */
 
 import { render, screen } from '@testing-library/react';
+
+// Mock the auth module before importing the page
+jest.mock('@/lib/auth', () => ({
+  auth: jest.fn(() => Promise.resolve(null)), // Simulate no session
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+}));
+
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+  redirect: jest.fn(),
+}));
+
+// Import after mocking
 import Home from '@/app/page';
 import { branding, strings } from '@/config';
 
-describe('Home Page', () => {
+describe('Home Page (Login)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   /**
    * Test: Page renders without crashing
-   *
-   * This is a "smoke test" - it just verifies the component can render
-   * without throwing an error. It's a good starting point for any component.
    */
-  it('renders without crashing', () => {
-    // render() mounts the component in a virtual DOM
-    render(<Home />);
-
-    // If we get here without an error, the test passes
-    // But let's also verify something is on the page
-    expect(document.body).toBeInTheDocument();
+  it('renders without crashing', async () => {
+    const HomeComponent = await Home();
+    render(HomeComponent);
+    // CardTitle renders as a div, not a heading, so we check for the text
+    expect(screen.getByText(branding.appName)).toBeInTheDocument();
   });
 
   /**
    * Test: Displays the app name from branding config
-   *
-   * This verifies that:
-   * 1. The config files are being imported correctly
-   * 2. The branding values are being rendered
    */
-  it('displays the app name from branding config', () => {
-    render(<Home />);
-
-    // getByText throws an error if the text is not found
-    // This ensures the app name from our config is displayed
-    const appName = screen.getByText(branding.appName);
-    expect(appName).toBeInTheDocument();
+  it('displays the app name from branding config', async () => {
+    const HomeComponent = await Home();
+    render(HomeComponent);
+    expect(screen.getByText(branding.appName)).toBeInTheDocument();
   });
 
   /**
    * Test: Displays the organization name
    */
-  it('displays the organization name', () => {
-    render(<Home />);
-
-    const orgName = screen.getByText(branding.organisationName);
-    expect(orgName).toBeInTheDocument();
+  it('displays the organization name', async () => {
+    const HomeComponent = await Home();
+    render(HomeComponent);
+    expect(screen.getByText(branding.organisationName)).toBeInTheDocument();
   });
 
   /**
-   * Test: Displays the welcome message from strings config
+   * Test: Shows the welcome message from strings config
    */
-  it('displays the welcome message', () => {
-    render(<Home />);
-
-    // The welcome message includes an exclamation and additional text
-    // We use a regex to match partial text
-    const welcomeText = screen.getByText(new RegExp(strings.dashboard.welcome));
-    expect(welcomeText).toBeInTheDocument();
+  it('shows the welcome message', async () => {
+    const HomeComponent = await Home();
+    render(HomeComponent);
+    // The welcome message is part of a longer string
+    const welcomeText = `${strings.dashboard.welcome} to the talent management system.`;
+    expect(screen.getByText(welcomeText)).toBeInTheDocument();
   });
 
   /**
-   * Test: Renders the Sign In button
-   *
-   * Using getByRole is preferred for accessibility - it finds elements
-   * by their ARIA role, which is how screen readers see them.
+   * Test: Renders a Sign In button
    */
-  it('renders a Sign In button', () => {
-    render(<Home />);
-
-    // Find button by its role and name (text content)
-    const signInButton = screen.getByRole('button', { name: /sign in/i });
-    expect(signInButton).toBeInTheDocument();
+  it('renders a Sign In button', async () => {
+    const HomeComponent = await Home();
+    render(HomeComponent);
+    expect(screen.getByRole('button', { name: /sign in with okta/i })).toBeInTheDocument();
   });
 
   /**
-   * Test: Shows the setup status checklist
+   * Test: Shows Okta redirect message
    */
-  it('shows the setup status section', () => {
-    render(<Home />);
+  it('shows Okta redirect information', async () => {
+    const HomeComponent = await Home();
+    render(HomeComponent);
+    expect(
+      screen.getByText(/you will be redirected to okta/i)
+    ).toBeInTheDocument();
+  });
+});
 
-    const setupStatus = screen.getByText('Setup Status');
-    expect(setupStatus).toBeInTheDocument();
+describe('Home Page (Authenticated redirect)', () => {
+  it('redirects authenticated users to dashboard', async () => {
+    // Override the mock for this test
+    const { auth } = require('@/lib/auth');
+    auth.mockResolvedValueOnce({
+      user: {
+        name: 'Test User',
+        email: 'test@example.com',
+        isAdmin: false,
+      },
+    });
 
-    // Verify at least some checklist items are present
-    expect(screen.getByText(/Next.js 14/)).toBeInTheDocument();
-    expect(screen.getByText(/TypeScript/)).toBeInTheDocument();
-    expect(screen.getByText(/shadcn\/ui/)).toBeInTheDocument();
+    const { redirect } = require('next/navigation');
+
+    // Call the page component
+    await Home();
+
+    // Verify redirect was called
+    expect(redirect).toHaveBeenCalledWith('/dashboard');
   });
 });

@@ -17,20 +17,12 @@
  * ```
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from './generated/prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
+import { parseDbUrl } from './db-utils';
 
-// Parse DATABASE_URL for connection parameters
-function parseDbUrl(url: string) {
-  const parsed = new URL(url);
-  return {
-    host: parsed.hostname,
-    port: parseInt(parsed.port || '3306', 10),
-    user: parsed.username,
-    password: parsed.password,
-    database: parsed.pathname.slice(1), // Remove leading slash
-  };
-}
+// Re-export parseDbUrl for convenience
+export { parseDbUrl } from './db-utils';
 
 // Declare a global variable to store the Prisma client in development
 // This prevents creating multiple instances during hot reloading
