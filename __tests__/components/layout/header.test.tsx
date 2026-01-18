@@ -39,13 +39,13 @@ import { Header } from '@/components/layout/header';
 
 const mockUser = {
   name: 'John Doe',
-  email: 'john@alterna.org',
+  email: 'john@alterna.dev',
   isAdmin: false,
 };
 
 const mockAdminUser = {
   name: 'Admin User',
-  email: 'admin@alterna.org',
+  email: 'admin@alterna.dev',
   isAdmin: true,
 };
 

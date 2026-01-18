@@ -681,12 +681,12 @@ NEXTAUTH_SECRET=random_secret_string
 # Email
 SMTP_HOST=smtp.dreamhost.com
 SMTP_PORT=587
-SMTP_USER=talent@alterna.org
+SMTP_USER=talent@alterna.dev
 SMTP_PASSWORD=smtp_password
-SMTP_FROM_EMAIL=talent@alterna.org
+SMTP_FROM_EMAIL=talent@alterna.dev
 
 # Application
-NEXTAUTH_URL=https://talent.alterna.org
+NEXTAUTH_URL=https://talent.alterna.dev
 NODE_ENV=production
 APP_NAME=Alterna Talent Management
 WEBHOOK_SECRET=tally_webhook_secret

@@ -138,6 +138,11 @@ export const strings = {
     lastSynced: 'Last synced',
     admin: 'Administrator',
     hiringManager: 'Hiring Manager',
+    noAccess: 'No Access',
+    grantAccess: 'Grant App Access',
+    makeAdmin: 'Make Admin',
+    removeAdmin: 'Remove Admin',
+    schedulingLinkNoAccess: 'This user needs to have access to this app in order for you to set a scheduling link.',
   },
 
   // Errors
@@ -164,6 +169,8 @@ export const strings = {
     reject: 'Are you sure you want to reject this candidate?',
     sendEmail: 'Send this email?',
     unsavedChanges: 'You have unsaved changes. Are you sure you want to leave?',
+    makeAdmin: 'Are you sure you want to make this user an administrator? This will grant them full access to manage users, candidates, and system settings.',
+    grantAccess: 'Are you sure you want to grant this user access to this application? They will be added to the talent-access group and be able to view and manage candidates.',
   },
 
   // Success messages

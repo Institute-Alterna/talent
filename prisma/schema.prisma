@@ -313,11 +313,17 @@ model User {
   /// Operational clearance level
   operationalClearance Clearance @default(A)
 
-  /// Whether user has admin privileges
+  /// Whether user is admin (in talent-administration group)
   isAdmin Boolean @default(false)
+
+  /// Whether user has app access (in talent-access OR talent-administration group)
+  hasAppAccess Boolean @default(false)
 
   /// Personal scheduling link (Cal.com/Calendly)
   schedulingLink String?
+
+  /// User status in Okta (ACTIVE, SUSPENDED, DEPROVISIONED, etc.)
+  oktaStatus OktaStatus @default(ACTIVE)
 
   /// Record creation timestamp
   createdAt DateTime @default(now())
@@ -343,6 +349,18 @@ enum Clearance {
   A
   B
   C
+}
+
+/// Okta user status values
+enum OktaStatus {
+  STAGED
+  PROVISIONED
+  ACTIVE
+  RECOVERY
+  LOCKED_OUT
+  PASSWORD_EXPIRED
+  SUSPENDED
+  DEPROVISIONED
 }
 
 // =============================================================================

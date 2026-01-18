@@ -45,7 +45,7 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout';
 
 const mockUser = {
   name: 'Test User',
-  email: 'test@alterna.org',
+  email: 'test@alterna.dev',
   isAdmin: false,
 };
 

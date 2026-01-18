@@ -13,7 +13,7 @@
  * (for resolving conflicting Tailwind classes).
  */
 
-import { cn } from '@/lib/utils';
+import { cn, isValidUUID } from '@/lib/utils';
 
 describe('cn (className utility)', () => {
   /**
@@ -112,5 +112,54 @@ describe('cn (className utility)', () => {
 
     // text-sm should still be there (not conflicting)
     expect(result).toContain('text-sm');
+  });
+});
+
+describe('isValidUUID', () => {
+  /**
+   * Test: Validates correct UUID v4 format
+   */
+  it('returns true for valid UUID v4', () => {
+    expect(isValidUUID('123e4567-e89b-42d3-a456-426614174000')).toBe(true);
+    expect(isValidUUID('f47ac10b-58cc-4372-a567-0e02b2c3d479')).toBe(true);
+    expect(isValidUUID('550e8400-e29b-41d4-a716-446655440000')).toBe(true);
+  });
+
+  /**
+   * Test: Handles uppercase UUIDs
+   */
+  it('returns true for uppercase UUID v4', () => {
+    expect(isValidUUID('123E4567-E89B-42D3-A456-426614174000')).toBe(true);
+    expect(isValidUUID('F47AC10B-58CC-4372-A567-0E02B2C3D479')).toBe(true);
+  });
+
+  /**
+   * Test: Rejects invalid UUIDs
+   */
+  it('returns false for invalid UUID formats', () => {
+    expect(isValidUUID('')).toBe(false);
+    expect(isValidUUID('not-a-uuid')).toBe(false);
+    expect(isValidUUID('123')).toBe(false);
+    expect(isValidUUID('123e4567-e89b-42d3-a456')).toBe(false); // too short
+    expect(isValidUUID('123e4567-e89b-42d3-a456-426614174000-extra')).toBe(false); // too long
+  });
+
+  /**
+   * Test: Rejects UUIDs without version 4 identifier
+   */
+  it('returns false for non-v4 UUIDs', () => {
+    // UUID v1 (time-based) - first digit of third segment is 1, not 4
+    expect(isValidUUID('6fa459ea-ee8a-1a98-acdc-0242ac120002')).toBe(false);
+    // UUID v3 (MD5 hash) - first digit of third segment is 3, not 4
+    expect(isValidUUID('6fa459ea-ee8a-3a98-acdc-0242ac120002')).toBe(false);
+  });
+
+  /**
+   * Test: Rejects malformed UUIDs
+   */
+  it('returns false for malformed UUIDs', () => {
+    expect(isValidUUID('123e4567e89b42d3a456426614174000')).toBe(false); // missing hyphens
+    expect(isValidUUID('123e4567-e89b-42d3-a456-42661417400g')).toBe(false); // invalid char 'g'
+    expect(isValidUUID('   ')).toBe(false); // whitespace
   });
 });

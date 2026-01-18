@@ -60,7 +60,7 @@ async function main() {
   const adminUser = await prisma.user.create({
     data: {
       oktaUserId: 'okta-admin-001',
-      email: 'admin@alterna.org',
+      email: 'admin@alterna.dev',
       firstName: 'Ana',
       lastName: 'Martinez',
       displayName: 'Ana Martinez',
@@ -78,7 +78,7 @@ async function main() {
   const hiringManager = await prisma.user.create({
     data: {
       oktaUserId: 'okta-manager-001',
-      email: 'carlos@alterna.org',
+      email: 'carlos@alterna.dev',
       firstName: 'Carlos',
       lastName: 'Rodriguez',
       displayName: 'Carlos Rodriguez',
