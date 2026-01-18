@@ -51,7 +51,7 @@ const navItems: NavItem[] = [
   },
   {
     href: '/users',
-    label: strings.nav.users,
+    label: strings.nav.personnel,
     icon: Users,
     adminOnly: true,
   },

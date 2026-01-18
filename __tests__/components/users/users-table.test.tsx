@@ -9,7 +9,7 @@ import { render, screen } from '@testing-library/react';
 // Mock the config
 jest.mock('@/config', () => ({
   strings: {
-    users: {
+    personnel: {
       admin: 'Administrator',
       hiringManager: 'Hiring Manager',
       noAccess: 'No Access',
@@ -148,7 +148,7 @@ describe('UsersTable', () => {
 
   it('displays empty state when no users', () => {
     render(<UsersTable users={[]} />);
-    expect(screen.getByText('No users found')).toBeInTheDocument();
+    expect(screen.getByText('No personnel found')).toBeInTheDocument();
   });
 
   it('renders table headers', () => {

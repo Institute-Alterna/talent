@@ -11,9 +11,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, LogOut, Settings, User } from 'lucide-react';
+import { Menu, LogOut, Settings, User, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +36,9 @@ interface HeaderProps {
   user: {
     name?: string | null;
     email?: string | null;
+    title?: string | null;
+    firstName?: string | null;
+    displayName?: string | null;
     isAdmin?: boolean;
   };
   onSignOut: () => void;
@@ -45,15 +47,8 @@ interface HeaderProps {
 export function Header({ user, onSignOut }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Generate initials for avatar
-  const initials = user.name
-    ? user.name
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : user.email?.charAt(0).toUpperCase() || '?';
+  // Get display name: prefer firstName, then displayName, then name, then email
+  const displayName = user.firstName || user.displayName || user.name || user.email || 'User';
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
@@ -98,16 +93,11 @@ export function Header({ user, onSignOut }: HeaderProps) {
             className="flex items-center gap-2 px-2"
             aria-label="User menu"
           >
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="hidden flex-col items-start text-left md:flex">
-              <span className="text-sm font-medium">{user.name || user.email}</span>
-              <div className="flex items-center gap-1">
+            <div className="flex flex-col items-start text-left">
+              <span className="text-sm font-medium">{displayName}</span>
+              <div className="hidden items-center gap-1 md:flex">
                 <span className="text-xs text-muted-foreground">
-                  {user.isAdmin ? strings.users.admin : strings.users.hiringManager}
+                  {user.title}
                 </span>
                 {user.isAdmin && (
                   <Badge variant="secondary" className="h-4 px-1 text-[10px]">
@@ -116,12 +106,13 @@ export function Header({ user, onSignOut }: HeaderProps) {
                 )}
               </div>
             </div>
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium">{user.name}</p>
+              <p className="text-sm font-medium">{displayName}</p>
               <p className="text-xs text-muted-foreground">{user.email}</p>
             </div>
           </DropdownMenuLabel>

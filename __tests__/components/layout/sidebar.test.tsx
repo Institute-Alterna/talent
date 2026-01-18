@@ -17,7 +17,7 @@ jest.mock('@/config', () => ({
     nav: {
       dashboard: 'Dashboard',
       candidates: 'Candidates',
-      users: 'Users',
+      personnel: 'Personnel',
       settings: 'Settings',
     },
   },
@@ -56,14 +56,14 @@ describe('Sidebar', () => {
   });
 
   describe('Admin visibility', () => {
-    it('hides Users link for non-admin users', () => {
+    it('hides Personnel link for non-admin users', () => {
       render(<Sidebar isAdmin={false} />);
-      expect(screen.queryByRole('link', { name: /users/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /personnel/i })).not.toBeInTheDocument();
     });
 
-    it('shows Users link for admin users', () => {
+    it('shows Personnel link for admin users', () => {
       render(<Sidebar isAdmin={true} />);
-      expect(screen.getByRole('link', { name: /users/i })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /personnel/i })).toBeInTheDocument();
     });
   });
 
@@ -100,12 +100,12 @@ describe('MobileNav', () => {
 
   it('hides admin links for non-admin users', () => {
     render(<MobileNav isAdmin={false} />);
-    expect(screen.queryByRole('link', { name: /users/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /personnel/i })).not.toBeInTheDocument();
   });
 
   it('shows admin links for admin users', () => {
     render(<MobileNav isAdmin={true} />);
-    expect(screen.getByRole('link', { name: /users/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /personnel/i })).toBeInTheDocument();
   });
 
   it('calls onNavigate callback when link is clicked', () => {

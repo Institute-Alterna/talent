@@ -228,7 +228,7 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
   if (users.length === 0) {
     return (
       <div className="flex h-[200px] items-center justify-center text-muted-foreground">
-        <p>No users found</p>
+        <p>No personnel found</p>
       </div>
     );
   }
@@ -264,11 +264,11 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
                       Dismissed
                     </Badge>
                   ) : user.isAdmin ? (
-                    <Badge variant="default">{strings.users.admin}</Badge>
+                    <Badge variant="default">{strings.personnel.admin}</Badge>
                   ) : user.hasAppAccess ? (
-                    <Badge variant="secondary">{strings.users.hiringManager}</Badge>
+                    <Badge variant="secondary">{strings.personnel.hiringManager}</Badge>
                   ) : (
-                    <Badge variant="outline" className="text-muted-foreground">{strings.users.noAccess}</Badge>
+                    <Badge variant="outline" className="text-muted-foreground">{strings.personnel.noAccess}</Badge>
                   )}
                 </TableCell>
                 <TableCell>
@@ -346,7 +346,7 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
                               onClick={() => handleDeleteClick(user)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
-                              Delete User
+                              Delete
                             </DropdownMenuItem>
                           </>
                         )}
@@ -365,11 +365,11 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
         </TableBody>
       </Table>
 
-      {/* Delete User Confirmation Dialog */}
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={confirmDialogType === 'delete'} onOpenChange={(open) => !open && handleDialogClose()}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogTitle>Delete Person</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete {selectedUser ? getFullName(selectedUser) : ''}? This action
               cannot be undone.
@@ -391,10 +391,10 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
       <AlertDialog open={confirmDialogType === 'makeAdmin'} onOpenChange={(open) => !open && handleDialogClose()}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Make User an Administrator</AlertDialogTitle>
+            <AlertDialogTitle>Make Person an Administrator</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to make {selectedUser ? getFullName(selectedUser) : ''} an administrator?
-              This will add them to the talent-administration group and grant them full access to manage users, candidates, and system settings.
+              This will add them to the talent-administration group and grant them full access to manage personnel, candidates, and system settings.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

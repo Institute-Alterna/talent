@@ -1,7 +1,7 @@
 /**
- * Users Page (Admin Only)
+ * Personnel Page (Admin Only)
  *
- * Page for managing system users (Alterna personnel).
+ * Page for managing system personnel (Alterna staff).
  * Only accessible to administrators.
  */
 
@@ -12,7 +12,7 @@ import { getUsers, getUserStats } from '@/lib/services/users';
 import { UsersPageClient } from './page-client';
 
 export const metadata = {
-  title: 'Users',
+  title: 'Personnel',
 };
 
 export default async function UsersPage() {
@@ -33,9 +33,9 @@ export default async function UsersPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{strings.users.title}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{strings.personnel.title}</h1>
         <p className="text-muted-foreground">
-          Manage system users and permissions
+          Manage personnel and permissions
         </p>
       </div>
 

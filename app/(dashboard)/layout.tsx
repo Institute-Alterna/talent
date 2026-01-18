@@ -42,6 +42,9 @@ export default async function ProtectedLayout({
   const user = {
     name: session.user.name,
     email: session.user.email,
+    firstName: session.user.firstName,
+    displayName: session.user.displayName,
+    title: session.user.title,
     isAdmin: session.user.isAdmin,
   };
 

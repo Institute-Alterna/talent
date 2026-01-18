@@ -24,7 +24,7 @@ import type {
  */
 export async function getUsers(options?: {
   isAdmin?: boolean;
-  oktaStatus?: OktaStatus | 'ALL' | 'DISMISSED';
+  oktaStatus?: OktaStatus | 'ALL' | 'DISMISSED' | 'INACTIVE';
   search?: string;
   limit?: number;
   offset?: number;
@@ -40,8 +40,11 @@ export async function getUsers(options?: {
   // Filter by Okta status
   // 'ALL' excludes DEPROVISIONED users (dismissed employees)
   // 'DISMISSED' shows only DEPROVISIONED users
+  // 'INACTIVE' shows non-active, non-dismissed users (SUSPENDED, STAGED, PROVISIONED, etc.)
   if (oktaStatus === 'DISMISSED') {
     where.oktaStatus = 'DEPROVISIONED';
+  } else if (oktaStatus === 'INACTIVE') {
+    where.oktaStatus = { in: ['SUSPENDED', 'STAGED', 'PROVISIONED', 'RECOVERY', 'PASSWORD_EXPIRED', 'LOCKED_OUT'] };
   } else if (oktaStatus && oktaStatus !== 'ALL') {
     where.oktaStatus = oktaStatus;
   } else {

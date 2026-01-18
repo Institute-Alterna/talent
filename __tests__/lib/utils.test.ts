@@ -13,7 +13,7 @@
  * (for resolving conflicting Tailwind classes).
  */
 
-import { cn, isValidUUID } from '@/lib/utils';
+import { cn, isValidUUID, isValidURL, formatDate, formatDateTime } from '@/lib/utils';
 
 describe('cn (className utility)', () => {
   /**
@@ -161,5 +161,141 @@ describe('isValidUUID', () => {
     expect(isValidUUID('123e4567e89b42d3a456426614174000')).toBe(false); // missing hyphens
     expect(isValidUUID('123e4567-e89b-42d3-a456-42661417400g')).toBe(false); // invalid char 'g'
     expect(isValidUUID('   ')).toBe(false); // whitespace
+  });
+});
+
+describe('isValidURL', () => {
+  /**
+   * Test: Validates HTTP URLs
+   */
+  it('returns true for valid HTTP URLs', () => {
+    expect(isValidURL('http://example.com')).toBe(true);
+    expect(isValidURL('http://example.com/path')).toBe(true);
+    expect(isValidURL('http://example.com/path?query=1')).toBe(true);
+    expect(isValidURL('http://localhost:3000')).toBe(true);
+  });
+
+  /**
+   * Test: Validates HTTPS URLs
+   */
+  it('returns true for valid HTTPS URLs', () => {
+    expect(isValidURL('https://example.com')).toBe(true);
+    expect(isValidURL('https://calendly.com/my-link')).toBe(true);
+    expect(isValidURL('https://cal.com/user/meeting')).toBe(true);
+    expect(isValidURL('https://www.example.com/path?query=value#hash')).toBe(true);
+  });
+
+  /**
+   * Test: Rejects invalid URLs
+   */
+  it('returns false for invalid URLs', () => {
+    expect(isValidURL('')).toBe(false);
+    expect(isValidURL('not-a-url')).toBe(false);
+    expect(isValidURL('example.com')).toBe(false); // missing protocol
+    expect(isValidURL('www.example.com')).toBe(false); // missing protocol
+  });
+
+  /**
+   * Test: Rejects non-HTTP protocols for security
+   */
+  it('returns false for non-HTTP protocols', () => {
+    expect(isValidURL('ftp://example.com')).toBe(false);
+    expect(isValidURL('file:///path/to/file')).toBe(false);
+    expect(isValidURL('mailto:test@example.com')).toBe(false);
+    expect(isValidURL('javascript:alert(1)')).toBe(false);
+  });
+});
+
+describe('formatDate', () => {
+  /**
+   * Test: Formats Date objects
+   */
+  it('formats a valid Date object', () => {
+    const date = new Date('2024-01-15T10:30:00Z');
+    const result = formatDate(date);
+    expect(result).toMatch(/Jan 15, 2024/);
+  });
+
+  /**
+   * Test: Formats ISO date strings
+   */
+  it('formats a valid ISO date string', () => {
+    const result = formatDate('2024-03-20T15:45:00Z');
+    expect(result).toMatch(/Mar 20, 2024/);
+  });
+
+  /**
+   * Test: Handles null values
+   */
+  it('returns empty string for null', () => {
+    expect(formatDate(null)).toBe('');
+  });
+
+  /**
+   * Test: Handles undefined values
+   */
+  it('returns empty string for undefined', () => {
+    expect(formatDate(undefined)).toBe('');
+  });
+
+  /**
+   * Test: Handles invalid date strings
+   */
+  it('returns empty string for invalid date string', () => {
+    expect(formatDate('not-a-date')).toBe('');
+    expect(formatDate('invalid')).toBe('');
+  });
+
+  /**
+   * Test: Accepts custom formatting options
+   */
+  it('accepts custom formatting options', () => {
+    const date = new Date('2024-01-15T10:30:00Z');
+    const result = formatDate(date, { month: 'long' });
+    expect(result).toMatch(/January 15, 2024/);
+  });
+});
+
+describe('formatDateTime', () => {
+  /**
+   * Test: Formats Date objects with time
+   */
+  it('formats a valid Date object with time', () => {
+    const date = new Date('2024-01-15T10:30:00Z');
+    const result = formatDateTime(date);
+    // Result includes date and time
+    expect(result).toMatch(/Jan 15, 2024/);
+    // Time format depends on locale, just check it's not empty
+    expect(result.length).toBeGreaterThan(12);
+  });
+
+  /**
+   * Test: Formats ISO date strings with time
+   */
+  it('formats a valid ISO date string with time', () => {
+    const result = formatDateTime('2024-03-20T15:45:00Z');
+    expect(result).toMatch(/Mar 20, 2024/);
+    expect(result.length).toBeGreaterThan(12);
+  });
+
+  /**
+   * Test: Handles null values
+   */
+  it('returns empty string for null', () => {
+    expect(formatDateTime(null)).toBe('');
+  });
+
+  /**
+   * Test: Handles undefined values
+   */
+  it('returns empty string for undefined', () => {
+    expect(formatDateTime(undefined)).toBe('');
+  });
+
+  /**
+   * Test: Handles invalid date strings
+   */
+  it('returns empty string for invalid date string', () => {
+    expect(formatDateTime('not-a-date')).toBe('');
   });
 });

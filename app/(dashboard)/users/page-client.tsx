@@ -11,7 +11,6 @@ import { useState, useTransition } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { RefreshCw, Search, Users, Shield, Calendar, CheckCircle2, XCircle, Ban } from 'lucide-react';
 import { strings } from '@/config';
 import { UsersTable, UserDetailDialog } from '@/components/users';
@@ -19,7 +18,7 @@ import { syncFromOktaAction, fetchUsers } from './actions';
 import type { UserListItem, UserStats } from '@/types/user';
 import type { OktaStatus } from '@/lib/generated/prisma/client';
 
-type StatusFilter = OktaStatus | 'ALL' | 'DISMISSED';
+type StatusFilter = OktaStatus | 'ALL' | 'DISMISSED' | 'INACTIVE';
 
 interface UsersPageClientProps {
   initialUsers: UserListItem[];
@@ -115,7 +114,7 @@ export function UsersPageClient({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">In Okta directory</p>
+            <p className="text-xs text-muted-foreground">{strings.personnel.inUADirectory}</p>
           </CardContent>
         </Card>
 
@@ -126,7 +125,7 @@ export function UsersPageClient({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-            <p className="text-xs text-muted-foreground">Currently active</p>
+            <p className="text-xs text-muted-foreground">currently active</p>
           </CardContent>
         </Card>
 
@@ -137,7 +136,7 @@ export function UsersPageClient({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-muted-foreground">{stats.inactive}</div>
-            <p className="text-xs text-muted-foreground">Suspended/deprovisioned</p>
+            <p className="text-xs text-muted-foreground">pending or suspended</p>
           </CardContent>
         </Card>
 
@@ -148,9 +147,7 @@ export function UsersPageClient({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.admins}</div>
-            <Badge variant="secondary" className="mt-1">
-              Full access
-            </Badge>
+            <p className="text-xs text-muted-foreground">with full access</p>
           </CardContent>
         </Card>
 
@@ -161,7 +158,7 @@ export function UsersPageClient({
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.withSchedulingLink}</div>
-            <p className="text-xs text-muted-foreground">Have scheduling link</p>
+            <p className="text-xs text-muted-foreground">with scheduling link</p>
           </CardContent>
         </Card>
       </div>
@@ -187,13 +184,13 @@ export function UsersPageClient({
           Active ({stats.active})
         </Button>
         <Button
-          variant={statusFilter === 'SUSPENDED' ? 'destructive' : 'outline'}
+          variant={statusFilter === 'INACTIVE' ? 'destructive' : 'outline'}
           size="sm"
-          onClick={() => handleStatusFilterChange('SUSPENDED')}
+          onClick={() => handleStatusFilterChange('INACTIVE')}
           disabled={isPending}
         >
           <XCircle className="mr-1 h-3 w-3" />
-          Suspended
+          Inactive ({stats.inactive})
         </Button>
         <Button
           variant={statusFilter === 'DISMISSED' ? 'secondary' : 'outline'}
@@ -231,7 +228,7 @@ export function UsersPageClient({
         <div className="flex items-center gap-3">
           {stats.lastSyncedAt && (
             <span className="text-sm text-muted-foreground">
-              Last synced: {new Date(stats.lastSyncedAt).toLocaleDateString('en-US', {
+              Last synced: {new Date(stats.lastSyncedAt).toLocaleDateString('en-GB', {
                 month: 'short',
                 day: 'numeric',
                 hour: '2-digit',
@@ -241,17 +238,17 @@ export function UsersPageClient({
           )}
           <Button onClick={handleSync} disabled={isSyncing || isPending}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-            {isSyncing ? 'Syncing...' : strings.users.syncFromOkta}
+            {isSyncing ? 'Syncing...' : strings.personnel.syncFromUA}
           </Button>
         </div>
       </div>
 
-      {/* Users Table */}
+      {/* Personnel Table */}
       <Card>
         <CardHeader>
           <CardTitle>Personnel Roster</CardTitle>
           <CardDescription>
-            Complete list of Alterna personnel synced from Okta directory
+            {strings.personnel.syncedFromUA}
           </CardDescription>
         </CardHeader>
         <CardContent>

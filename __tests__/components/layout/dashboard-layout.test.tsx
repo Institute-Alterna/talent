@@ -22,11 +22,11 @@ jest.mock('@/config', () => ({
     nav: {
       dashboard: 'Dashboard',
       candidates: 'Candidates',
-      users: 'Users',
+      personnel: 'Personnel',
       settings: 'Settings',
       logout: 'Log out',
     },
-    users: {
+    personnel: {
       admin: 'Administrator',
       hiringManager: 'Hiring Manager',
     },
@@ -46,6 +46,8 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout';
 const mockUser = {
   name: 'Test User',
   email: 'test@alterna.dev',
+  firstName: 'Test',
+  displayName: 'Test User',
   isAdmin: false,
 };
 
@@ -94,7 +96,7 @@ describe('DashboardLayout', () => {
         <div>Test Content</div>
       </DashboardLayout>
     );
-    expect(screen.getByText('Test User')).toBeInTheDocument();
+    expect(screen.getByText('Test')).toBeInTheDocument();
   });
 
   it('passes isAdmin to child components', () => {
@@ -104,8 +106,8 @@ describe('DashboardLayout', () => {
         <div>Test Content</div>
       </DashboardLayout>
     );
-    // Admin users should see Users link in sidebar
-    expect(screen.getByRole('link', { name: /users/i })).toBeInTheDocument();
+    // Admin users should see Personnel link in sidebar
+    expect(screen.getByRole('link', { name: /personnel/i })).toBeInTheDocument();
   });
 
   it('hides admin-only nav for non-admin users', () => {
@@ -114,7 +116,7 @@ describe('DashboardLayout', () => {
         <div>Test Content</div>
       </DashboardLayout>
     );
-    // Non-admin users should not see Users link
-    expect(screen.queryByRole('link', { name: /users/i })).not.toBeInTheDocument();
+    // Non-admin users should not see Personnel link
+    expect(screen.queryByRole('link', { name: /personnel/i })).not.toBeInTheDocument();
   });
 });

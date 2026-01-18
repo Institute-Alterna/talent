@@ -44,7 +44,7 @@ interface ActionResult<T> {
 export async function fetchUsers(options?: {
   search?: string;
   isAdmin?: boolean;
-  oktaStatus?: OktaStatus | 'ALL' | 'DISMISSED';
+  oktaStatus?: OktaStatus | 'ALL' | 'DISMISSED' | 'INACTIVE';
 }): Promise<ActionResult<{ users: UserListItem[]; stats: UserStats }>> {
   try {
     const session = await auth();

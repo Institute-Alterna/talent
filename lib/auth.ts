@@ -31,6 +31,9 @@ declare module 'next-auth' {
       id: string;
       email: string;
       name: string;
+      firstName?: string;
+      displayName?: string;
+      title?: string;
       image?: string;
       isAdmin: boolean;
       hasAccess: boolean;
@@ -42,6 +45,9 @@ declare module 'next-auth' {
     isAdmin?: boolean;
     hasAccess?: boolean;
     dbUserId?: string;
+    firstName?: string;
+    displayName?: string;
+    title?: string;
   }
 }
 
@@ -51,6 +57,9 @@ declare module '@auth/core/jwt' {
     hasAccess?: boolean;
     dbUserId?: string;
     oktaUserId?: string;
+    firstName?: string;
+    displayName?: string;
+    title?: string;
   }
 }
 
@@ -256,6 +265,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.isAdmin = dbUser.isAdmin;
           token.hasAccess = true;
           token.oktaUserId = oktaProfile.sub;
+          token.firstName = dbUser.firstName;
+          token.displayName = dbUser.displayName;
           console.log('[Auth JWT] User synced to DB, dbUserId:', dbUser.id, 'isAdmin:', dbUser.isAdmin);
         } catch (error) {
           console.error('[Auth JWT] Failed to sync user:', error);
@@ -278,6 +289,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.dbUserId = token.dbUserId as string | undefined;
         session.user.id = (token.oktaUserId as string) || token.sub || '';
+        session.user.firstName = token.firstName as string | undefined;
+        session.user.displayName = token.displayName as string | undefined;
 
         // Fetch latest admin status from database (in case it changed)
         // If user exists in DB, they have access (they're in an access group)
@@ -285,11 +298,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           try {
             const dbUser = await db.user.findUnique({
               where: { id: token.dbUserId as string },
-              select: { isAdmin: true },
+              select: { isAdmin: true, firstName: true, displayName: true, title: true },
             });
             if (dbUser) {
               session.user.isAdmin = dbUser.isAdmin;
               session.user.hasAccess = true;
+              session.user.firstName = dbUser.firstName;
+              session.user.displayName = dbUser.displayName;
+              session.user.title = dbUser.title ?? undefined;
             } else {
               // User was removed from DB (no longer in access groups)
               session.user.isAdmin = false;

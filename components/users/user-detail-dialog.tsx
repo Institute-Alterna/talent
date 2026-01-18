@@ -106,12 +106,12 @@ export function UserDetailDialog({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>
-            {isEditing ? 'Edit User' : 'User Details'}
+            {isEditing ? 'Edit Details' : 'Personnel Details'}
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? 'Update user information below.'
-              : 'View user profile information.'}
+              ? 'Update profile information below.'
+              : 'View profile information.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -158,7 +158,7 @@ export function UserDetailDialog({
                 />
               ) : (
                 <p className="text-sm text-muted-foreground rounded-md border border-dashed p-3">
-                  {strings.users.schedulingLinkNoAccess}
+                  {strings.personnel.schedulingLinkNoAccess}
                 </p>
               )}
             </div>
@@ -189,11 +189,11 @@ export function UserDetailDialog({
                 <p className="text-sm text-muted-foreground">{fullUser?.email || user.email}</p>
               </div>
               {(fullUser?.isAdmin ?? user.isAdmin) ? (
-                <Badge>{strings.users.admin}</Badge>
+                <Badge>{strings.personnel.admin}</Badge>
               ) : user.hasAppAccess ? (
-                <Badge variant="secondary">{strings.users.hiringManager}</Badge>
+                <Badge variant="secondary">{strings.personnel.hiringManager}</Badge>
               ) : (
-                <Badge variant="outline" className="text-muted-foreground">{strings.users.noAccess}</Badge>
+                <Badge variant="outline" className="text-muted-foreground">{strings.personnel.noAccess}</Badge>
               )}
             </div>
 

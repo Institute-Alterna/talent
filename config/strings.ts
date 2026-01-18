@@ -2,7 +2,8 @@
  * UI Strings Configuration
  *
  * All user-facing text in the application.
- * Centralized here for easy customization and future localization.
+ * Centralised here for easy customisation and future localisation.
+ * Uses British English spelling throughout.
  */
 
 export const strings = {
@@ -20,7 +21,7 @@ export const strings = {
   nav: {
     dashboard: 'Dashboard',
     candidates: 'Candidates',
-    users: 'Users',
+    personnel: 'Personnel',
     settings: 'Settings',
     logout: 'Log out',
   },
@@ -123,6 +124,8 @@ export const strings = {
   settings: {
     title: 'Settings',
     profile: 'Profile',
+    profileDescription: 'Your profile information from Universal Access',
+    profileNote: 'Profile information is managed in Universal Access. Changes sync on next login.',
     schedulingLink: 'Scheduling Link',
     schedulingLinkHelp: 'Your Cal.com or Calendly link for candidate interviews',
     schedulingLinkMissing: 'Please set your scheduling link to conduct interviews',
@@ -130,11 +133,11 @@ export const strings = {
     activityHistory: 'Activity History',
   },
 
-  // Users (admin)
-  users: {
-    title: 'Users',
-    addUser: 'Add User',
-    syncFromOkta: 'Sync from Okta',
+  // Personnel (admin)
+  personnel: {
+    title: 'Personnel',
+    addPerson: 'Add Person',
+    syncFromUA: 'Sync from UA',
     lastSynced: 'Last synced',
     admin: 'Administrator',
     hiringManager: 'Hiring Manager',
@@ -142,7 +145,9 @@ export const strings = {
     grantAccess: 'Grant App Access',
     makeAdmin: 'Make Admin',
     removeAdmin: 'Remove Admin',
-    schedulingLinkNoAccess: 'This user needs to have access to this app in order for you to set a scheduling link.',
+    schedulingLinkNoAccess: 'This person needs to have access to this app in order for you to set a scheduling link.',
+    inUADirectory: 'In UA directory',
+    syncedFromUA: 'Complete list of Alterna personnel synced from UA directory',
   },
 
   // Errors
@@ -169,8 +174,8 @@ export const strings = {
     reject: 'Are you sure you want to reject this candidate?',
     sendEmail: 'Send this email?',
     unsavedChanges: 'You have unsaved changes. Are you sure you want to leave?',
-    makeAdmin: 'Are you sure you want to make this user an administrator? This will grant them full access to manage users, candidates, and system settings.',
-    grantAccess: 'Are you sure you want to grant this user access to this application? They will be added to the talent-access group and be able to view and manage candidates.',
+    makeAdmin: 'Are you sure you want to make this person an administrator? This will grant them full access to manage personnel, candidates, and system settings.',
+    grantAccess: 'Are you sure you want to grant this person access to this application? They will be added to the talent-access group and be able to view and manage candidates.',
   },
 
   // Success messages

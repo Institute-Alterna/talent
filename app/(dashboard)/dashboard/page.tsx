@@ -17,13 +17,16 @@ export default async function DashboardPage() {
   const session = await auth();
   const user = session?.user;
 
+  // Get display name: prefer firstName, then displayName, then name
+  const displayName = user?.firstName || user?.displayName || user?.name || 'there';
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{strings.dashboard.title}</h1>
         <p className="text-muted-foreground">
-          {strings.dashboard.welcome}, {user?.name || user?.email}
+          {strings.dashboard.welcome}, {displayName}
         </p>
       </div>
 
@@ -129,18 +132,18 @@ export default async function DashboardPage() {
             </li>
             <li className="flex items-center gap-2">
               <span className="text-green-500">&#10003;</span>
-              Phase 3: Authentication with Okta
+              Phase 3: Authentication with Universal Access
             </li>
             <li className="flex items-center gap-2">
               <span className="text-green-500">&#10003;</span>
               Phase 4: Core Layout &amp; Navigation
             </li>
             <li className="flex items-center gap-2">
-              <span className="text-yellow-500">&#9679;</span>
-              Phase 5: User Management
+              <span className="text-green-500">&#10003;</span>
+              Phase 5: Personnel Management
             </li>
             <li className="flex items-center gap-2">
-              <span className="text-zinc-400">&#9675;</span>
+              <span className="text-yellow-500">&#9679;</span>
               Phase 6: Candidate Pipeline
             </li>
           </ul>
