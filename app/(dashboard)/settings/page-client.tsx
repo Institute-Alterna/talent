@@ -371,9 +371,15 @@ export function SettingsClient({ initialUser }: SettingsClientProps) {
                           </Badge>
                           <span className="text-sm font-medium">{activity.action}</span>
                         </div>
-                        {activity.candidate && (
+                        {(activity.person || activity.application) && (
                           <p className="text-xs text-muted-foreground">
-                            Candidate: {activity.candidate.firstName} {activity.candidate.lastName}
+                            {activity.person && (
+                              <>Person: {activity.person.firstName} {activity.person.lastName}</>
+                            )}
+                            {activity.person && activity.application && ' • '}
+                            {activity.application && (
+                              <>Position: {activity.application.position}</>
+                            )}
                           </p>
                         )}
                       </div>

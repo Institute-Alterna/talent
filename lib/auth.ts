@@ -137,8 +137,10 @@ async function checkAppAccess(accessToken: string, oktaUserId?: string): Promise
  * Sync user data from Okta to local database
  *
  * Creates a new user record if one doesn't exist, or updates the existing one.
+ * If the OIDC profile doesn't include name claims (given_name, family_name),
+ * it fetches the full profile from the Okta Admin API.
  *
- * @param oktaProfile - The user profile from Okta
+ * @param oktaProfile - The user profile from Okta OIDC
  * @param isAdmin - Whether the user is an administrator
  * @returns The database user record
  */
@@ -157,9 +159,44 @@ async function syncUserToDatabase(
 ): Promise<DbUser> {
   const oktaUserId = oktaProfile.sub;
   const email = oktaProfile.email;
-  const firstName = oktaProfile.given_name || oktaProfile.name?.split(' ')[0] || 'Unknown';
-  const lastName = oktaProfile.family_name || oktaProfile.name?.split(' ').slice(1).join(' ') || '';
-  const displayName = oktaProfile.name || oktaProfile.preferred_username || email;
+
+  // Start with OIDC claims if available
+  let firstName = oktaProfile.given_name || oktaProfile.name?.split(' ')[0] || '';
+  let lastName = oktaProfile.family_name || oktaProfile.name?.split(' ').slice(1).join(' ') || '';
+  let displayName = oktaProfile.name || oktaProfile.preferred_username || email;
+  let middleName: string | undefined;
+  let title: string | undefined;
+  let city: string | undefined;
+  let state: string | undefined;
+  let countryCode: string | undefined;
+  let preferredLanguage = oktaProfile.locale || 'en';
+  let timezone = oktaProfile.zoneinfo || 'America/New_York';
+
+  // If OIDC claims don't have name info, fetch full profile from Okta Admin API
+  if (!firstName || firstName === 'Unknown') {
+    try {
+      console.log('[Auth] OIDC profile missing name claims, fetching from Okta Admin API');
+      const { getOktaUser } = await import('@/lib/integrations/okta');
+      const fullProfile = await getOktaUser(oktaUserId);
+
+      firstName = fullProfile.profile.firstName || 'Unknown';
+      lastName = fullProfile.profile.lastName || '';
+      middleName = fullProfile.profile.middleName;
+      displayName = fullProfile.profile.displayName || `${firstName} ${lastName}`.trim() || email;
+      title = fullProfile.profile.title;
+      city = fullProfile.profile.city;
+      state = fullProfile.profile.state;
+      countryCode = fullProfile.profile.countryCode;
+      preferredLanguage = fullProfile.profile.preferredLanguage || preferredLanguage;
+      timezone = fullProfile.profile.timezone || timezone;
+
+      console.log('[Auth] Fetched full profile from Okta API:', { firstName, lastName, displayName });
+    } catch (error) {
+      console.error('[Auth] Failed to fetch full profile from Okta API:', error);
+      // Keep firstName as 'Unknown' if API call fails
+      firstName = 'Unknown';
+    }
+  }
 
   try {
     // Try to find existing user
@@ -168,34 +205,46 @@ async function syncUserToDatabase(
     });
 
     if (existingUser) {
-      // Update existing user
+      // Update existing user with all profile fields
       const updatedUser = await db.user.update({
         where: { oktaUserId },
         data: {
           email,
           firstName,
+          middleName: middleName ?? existingUser.middleName,
           lastName,
           displayName,
-          preferredLanguage: oktaProfile.locale || 'en',
-          timezone: oktaProfile.zoneinfo || 'America/New_York',
+          title: title ?? existingUser.title,
+          city: city ?? existingUser.city,
+          state: state ?? existingUser.state,
+          countryCode: countryCode ?? existingUser.countryCode,
+          preferredLanguage,
+          timezone,
           isAdmin,
+          hasAppAccess: true, // User has access if we're syncing them
           lastSyncedAt: new Date(),
         },
       });
       return updatedUser;
     } else {
-      // Create new user
+      // Create new user with all profile fields
       const newUser = await db.user.create({
         data: {
           oktaUserId,
           email,
           firstName,
+          middleName,
           lastName,
           displayName,
-          preferredLanguage: oktaProfile.locale || 'en',
-          timezone: oktaProfile.zoneinfo || 'America/New_York',
+          title,
+          city,
+          state,
+          countryCode,
+          preferredLanguage,
+          timezone,
           organisation: 'Institute Alterna',
           isAdmin,
+          hasAppAccess: true, // User has access if we're syncing them
           lastSyncedAt: new Date(),
         },
       });

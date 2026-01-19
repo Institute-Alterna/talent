@@ -7,7 +7,12 @@
 
 export const branding = {
   // Organization name displayed throughout the application
-  organisationName: 'Alterna',
+  organisationName: 'Institute Alterna',
+  organisationShortName: 'Alterna',
+
+  // Auth mechanism name (e.g., Okta, Azure AD)
+  authProviderName: 'Universal Access',
+  authProviderShortName: 'UA',
 
   // Primary brand color (used for headers, buttons, links)
   primaryColor: '#2E5090',

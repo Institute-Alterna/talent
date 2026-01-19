@@ -15,7 +15,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { cn, copyrightRandomText } from '@/lib/utils';
 import { strings, branding } from '@/config';
 import {
   LayoutDashboard,
@@ -93,7 +93,7 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
             className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold"
             aria-hidden="true"
           >
-            {branding.organisationName.charAt(0)}
+            {branding.organisationShortName.charAt(0)}
           </div>
           {!collapsed && (
             <span className="font-semibold text-foreground">
@@ -149,9 +149,16 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
           )}
         >
           {collapsed ? (
+            /* Uncomment this if you want to add dynamic year and organisation name,
+            but Alterna uses a random quote instead!
             <span>&copy;</span>
+            */
+           <span>{copyrightRandomText()}</span>
           ) : (
+            <span>{copyrightRandomText()}</span>
+            /*
             <span>&copy; {new Date().getFullYear()} {branding.copyrightText}</span>
+            */
           )}
         </div>
       </aside>

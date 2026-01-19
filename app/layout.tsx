@@ -32,7 +32,7 @@ const geistMono = Geist_Mono({
 // Page metadata using branding config
 export const metadata: Metadata = {
   title: {
-    default: `${branding.appName} | ${branding.organisationName}`,
+    default: `${branding.appName} | ${branding.organisationShortName}`,
     template: `%s | ${branding.appName}`,
   },
   description: branding.appDescription,

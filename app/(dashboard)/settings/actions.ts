@@ -33,10 +33,14 @@ export interface ActivityLogItem {
   actionType: ActionType;
   details: Record<string, unknown> | null;
   createdAt: Date;
-  candidate?: {
+  person?: {
     id: string;
     firstName: string;
     lastName: string;
+  } | null;
+  application?: {
+    id: string;
+    position: string;
   } | null;
 }
 
@@ -161,11 +165,17 @@ export async function fetchUserActivityHistory(options?: {
           actionType: true,
           details: true,
           createdAt: true,
-          candidate: {
+          person: {
             select: {
               id: true,
               firstName: true,
               lastName: true,
+            },
+          },
+          application: {
+            select: {
+              id: true,
+              position: true,
             },
           },
         },

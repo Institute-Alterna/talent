@@ -8,6 +8,11 @@
 
 export const strings = {
   // Dashboard
+  login: {
+    action: 'Authenticate with',
+    subtitle: "Only authorised personnel may access this system.",
+  },
+  
   dashboard: {
     title: 'Talent Dashboard',
     welcome: 'Welcome back',

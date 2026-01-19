@@ -83,14 +83,18 @@ const mockUserWithSchedulingLink = {
 const mockActivities = [
   {
     id: 'activity-1',
-    action: 'Viewed candidate profile',
+    action: 'Viewed application',
     actionType: 'VIEW',
     details: null,
     createdAt: new Date('2024-01-15T10:30:00Z'),
-    candidate: {
-      id: 'candidate-1',
+    person: {
+      id: 'person-1',
       firstName: 'John',
       lastName: 'Doe',
+    },
+    application: {
+      id: 'application-1',
+      position: 'Software Developer',
     },
   },
 ];
@@ -219,7 +223,7 @@ describe('SettingsClient', () => {
     render(<SettingsClient {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText('Viewed candidate profile')).toBeInTheDocument();
+      expect(screen.getByText('Viewed application')).toBeInTheDocument();
       expect(screen.getByText(/John Doe/)).toBeInTheDocument();
     });
   });
@@ -336,11 +340,12 @@ describe('SettingsClient', () => {
           activities: [
             {
               id: 'activity-2',
-              action: 'Updated candidate',
+              action: 'Updated application',
               actionType: 'UPDATE',
               details: null,
               createdAt: new Date('2024-01-14T09:00:00Z'),
-              candidate: null,
+              person: null,
+              application: null,
             },
           ],
           total: 15,

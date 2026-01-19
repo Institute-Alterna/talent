@@ -31,6 +31,7 @@ jest.mock('@/config', () => ({
   },
   branding: {
     organisationName: 'Alterna',
+    organisationShortName: 'Alterna',
     appName: 'Talent Management',
   },
 }));

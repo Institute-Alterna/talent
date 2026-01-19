@@ -26,7 +26,7 @@ export default async function Home() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">{branding.appName}</CardTitle>
-          <CardDescription>{branding.organisationName}</CardDescription>
+          <CardDescription>{branding.organisationShortName}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <p className="text-center text-sm text-muted-foreground">
@@ -35,12 +35,12 @@ export default async function Home() {
 
           <form action={signInWithOkta}>
             <Button type="submit" className="w-full" size="lg">
-              Sign In with Okta
+              {strings.login.action} {branding.authProviderName}
             </Button>
           </form>
 
           <p className="text-center text-xs text-muted-foreground">
-            You will be redirected to Okta for secure authentication.
+            {strings.login.subtitle}
           </p>
         </CardContent>
       </Card>

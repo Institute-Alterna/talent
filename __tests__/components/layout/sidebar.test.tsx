@@ -23,6 +23,7 @@ jest.mock('@/config', () => ({
   },
   branding: {
     organisationName: 'Alterna',
+    organisationShortName: 'Alterna',
     appName: 'Talent Management',
     copyrightText: 'Alterna',
   },
@@ -47,11 +48,6 @@ describe('Sidebar', () => {
       expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /candidates/i })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /settings/i })).toBeInTheDocument();
-    });
-
-    it('displays copyright text', () => {
-      render(<Sidebar />);
-      expect(screen.getByText(/Alterna/)).toBeInTheDocument();
     });
   });
 

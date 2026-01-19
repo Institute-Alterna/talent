@@ -56,7 +56,7 @@ describe('Home Page (Login)', () => {
   it('displays the organization name', async () => {
     const HomeComponent = await Home();
     render(HomeComponent);
-    expect(screen.getByText(branding.organisationName)).toBeInTheDocument();
+    expect(screen.getByText(branding.organisationShortName)).toBeInTheDocument();
   });
 
   /**
@@ -71,22 +71,22 @@ describe('Home Page (Login)', () => {
   });
 
   /**
-   * Test: Renders a Sign In button
+   * Test: Renders an Authenticate button
    */
-  it('renders a Sign In button', async () => {
+  it('renders an Authenticate button', async () => {
     const HomeComponent = await Home();
     render(HomeComponent);
-    expect(screen.getByRole('button', { name: /sign in with okta/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /authenticate with/i })).toBeInTheDocument();
   });
 
   /**
-   * Test: Shows Okta redirect message
+   * Test: Shows authorization message
    */
-  it('shows Okta redirect information', async () => {
+  it('shows authorization information', async () => {
     const HomeComponent = await Home();
     render(HomeComponent);
     expect(
-      screen.getByText(/you will be redirected to okta/i)
+      screen.getByText(/only authorised personnel may access/i)
     ).toBeInTheDocument();
   });
 });

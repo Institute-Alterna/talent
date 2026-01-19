@@ -6,13 +6,21 @@
 // the recruitment pipeline, from initial application to onboarding.
 //
 // Key Models:
-// - Candidate: Job applicants from Tally.so forms
+// - Person: Unique individuals identified by email (personal info, GC results)
+// - Application: Job applications linked to a Person (position, stage, docs)
 // - User: Alterna personnel (synced from Okta)
-// - Assessment: Test scores (general & specialized competencies)
-// - Interview: Interview scheduling and outcomes
-// - Decision: Final hiring decisions (accept/reject)
+// - Assessment: Test scores (general on Person, specialized on Application)
+// - Interview: Interview scheduling and outcomes (linked to Application)
+// - Decision: Final hiring decisions (linked to Application)
 // - AuditLog: Complete activity trail for compliance
 // - EmailLog: Email send history and status
+//
+// Architecture Decision:
+// Person + Application model allows:
+// - Same person applying to multiple roles
+// - One general competencies assessment per person across all applications
+// - Different stages for different role applications
+// - Email-based deduplication prevents duplicate persons
 //
 // Note: Dreamhost MySQL uses utf8mb3 charset (limited emoji support)
 // =============================================================================
@@ -28,33 +36,28 @@ datasource db {
 }
 
 // =============================================================================
-// CANDIDATE MODEL
+// PERSON MODEL
 // =============================================================================
-// Stores all candidate information from Tally.so application forms.
-// Each candidate has a unique 'who' identifier from Tally's respondentId.
+// Represents a unique individual in the system, identified by email.
+// Stores personal information and general competencies assessment results.
+// A person can have multiple applications for different positions.
 // =============================================================================
 
-model Candidate {
+model Person {
   /// Unique identifier (UUID)
   id String @id @default(uuid())
 
-  /// Tally respondentId - unique identifier for each candidate
-  who String @unique
+  /// Primary email address - unique identifier for deduplication
+  email String @unique
 
-  /// Position the candidate applied for
-  position String
-
-  /// Candidate's first name
+  /// Person's first name
   firstName String
 
-  /// Candidate's middle name (optional)
+  /// Person's middle name (optional)
   middleName String?
 
-  /// Candidate's last name
+  /// Person's last name
   lastName String
-
-  /// Primary email address
-  email String
 
   /// Secondary/backup email (optional)
   secondaryEmail String?
@@ -80,6 +83,97 @@ model Candidate {
   /// Highest education level completed
   educationLevel String?
 
+  // =========================================================================
+  // General Competencies Assessment (tracked once per person)
+  // =========================================================================
+
+  /// Whether the person has completed the general competencies assessment
+  generalCompetenciesCompleted Boolean @default(false)
+
+  /// Score achieved on general competencies (0-100)
+  generalCompetenciesScore Decimal? @db.Decimal(5, 2)
+
+  /// When general competencies assessment was passed (null if not passed)
+  generalCompetenciesPassedAt DateTime?
+
+  // =========================================================================
+  // Tally Integration
+  // =========================================================================
+
+  /// Tally respondentId - stored for reference but NOT used for deduplication
+  /// Email is the primary deduplication key
+  tallyRespondentId String?
+
+  // =========================================================================
+  // Okta Integration (for hired candidates)
+  // =========================================================================
+
+  /// Okta user ID (populated when person is hired and onboarded)
+  oktaUserId String?
+
+  // =========================================================================
+  // Timestamps
+  // =========================================================================
+
+  /// When the person record was created
+  createdAt DateTime @default(now())
+
+  /// When the person record was last updated
+  updatedAt DateTime @updatedAt
+
+  // =========================================================================
+  // Relations
+  // =========================================================================
+
+  /// All applications submitted by this person
+  applications Application[]
+
+  /// General competencies assessment (one per person)
+  assessments Assessment[]
+
+  /// Audit logs related to this person
+  auditLogs AuditLog[]
+
+  /// Emails sent to this person (not application-specific)
+  emailLogs EmailLog[]
+
+  // =========================================================================
+  // Indexes
+  // =========================================================================
+
+  @@index([email])
+  @@index([tallyRespondentId])
+  @@index([createdAt])
+}
+
+// =============================================================================
+// APPLICATION MODEL
+// =============================================================================
+// Represents a job application for a specific position.
+// A person can have multiple applications (one per position).
+// Each application tracks its own stage, status, and role-specific documents.
+// =============================================================================
+
+model Application {
+  /// Unique identifier (UUID)
+  id String @id @default(uuid())
+
+  /// Reference to the person who submitted this application
+  personId String
+
+  /// Position the person applied for
+  position String
+
+  /// Current stage in the recruitment pipeline
+  currentStage Stage @default(APPLICATION)
+
+  /// Current status (active, accepted, rejected, withdrawn)
+  status Status @default(ACTIVE)
+
+  // =========================================================================
+  // Application-specific Documents
+  // =========================================================================
+
   /// URL to resume file (hosted by Tally)
   resumeUrl String?
 
@@ -95,39 +189,80 @@ model Candidate {
   /// URL to additional files (hosted by Tally)
   otherFileUrl String?
 
-  /// Current stage in the recruitment pipeline
-  currentStage Stage @default(APPLICATION)
+  // =========================================================================
+  // Package Contents Flags
+  // What the applicant indicated they would submit in the form
+  // Used to detect missing files (claimed to submit but file is missing)
+  // =========================================================================
 
-  /// Current status (active, accepted, rejected, withdrawn)
-  status Status @default(ACTIVE)
+  /// Applicant indicated they have a resume
+  hasResume Boolean @default(false)
 
-  /// Tally form submission ID (for idempotency)
+  /// Applicant indicated they have academic background info
+  hasAcademicBg Boolean @default(false)
+
+  /// Applicant indicated they have a video introduction
+  hasVideoIntro Boolean @default(false)
+
+  /// Applicant indicated they have previous experience info
+  hasPreviousExp Boolean @default(false)
+
+  /// Applicant indicated they have other files
+  hasOtherFile Boolean @default(false)
+
+  // =========================================================================
+  // Tally Integration
+  // =========================================================================
+
+  /// Tally form submission ID (unique, for idempotency)
   tallySubmissionId String @unique
 
   /// Tally response ID (for reference)
   tallyResponseId String?
 
-  /// Okta user ID (populated when candidate is hired and onboarded)
-  oktaUserId String?
+  /// Tally form ID (to identify which form was used)
+  tallyFormId String?
 
-  /// Timestamp when application was received
+  // =========================================================================
+  // Timestamps
+  // =========================================================================
+
+  /// When the application was submitted
   createdAt DateTime @default(now())
 
-  /// Timestamp of last update
+  /// When the application was last updated
   updatedAt DateTime @updatedAt
 
+  // =========================================================================
   // Relations
-  assessments Assessment[]
-  interviews  Interview[]
-  decisions   Decision[]
-  auditLogs   AuditLog[]
-  emailLogs   EmailLog[]
+  // =========================================================================
 
-  // Indexes for common queries
-  @@index([who])
+  /// The person who submitted this application
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  /// Specialized competencies assessments for this application
+  assessments Assessment[]
+
+  /// Interviews scheduled for this application
+  interviews Interview[]
+
+  /// Hiring decisions for this application
+  decisions Decision[]
+
+  /// Audit logs for this application
+  auditLogs AuditLog[]
+
+  /// Emails sent regarding this application
+  emailLogs EmailLog[]
+
+  // =========================================================================
+  // Indexes
+  // =========================================================================
+
+  @@index([personId])
   @@index([status])
   @@index([currentStage])
-  @@index([email])
+  @@index([position])
   @@index([createdAt])
 }
 
@@ -141,7 +276,7 @@ enum Stage {
   SIGNED
 }
 
-/// Candidate status values
+/// Application status values
 enum Status {
   ACTIVE
   ACCEPTED
@@ -152,16 +287,14 @@ enum Status {
 // =============================================================================
 // ASSESSMENT MODEL
 // =============================================================================
-// Stores assessment results for candidates.
-// Currently supports two types: general and specialized competencies.
+// Stores assessment results.
+// - General competencies: Linked to Person (one per person across all apps)
+// - Specialized competencies: Linked to Application (one per application)
 // =============================================================================
 
 model Assessment {
   /// Unique identifier (UUID)
   id String @id @default(uuid())
-
-  /// Reference to the candidate
-  candidateId String
 
   /// Type of assessment
   assessmentType AssessmentType
@@ -169,7 +302,7 @@ model Assessment {
   /// Score achieved (0-100)
   score Decimal @db.Decimal(5, 2)
 
-  /// Whether the candidate passed (score >= threshold)
+  /// Whether the assessment was passed (score >= threshold)
   passed Boolean
 
   /// Passing threshold for this assessment
@@ -181,16 +314,49 @@ model Assessment {
   /// Raw assessment data/answers (JSON format)
   rawData Json?
 
+  // =========================================================================
+  // Linkage (one of these must be set based on assessment type)
+  // =========================================================================
+
+  /// Reference to Person (for GENERAL_COMPETENCIES)
+  personId String?
+
+  /// Reference to Application (for SPECIALIZED_COMPETENCIES)
+  applicationId String?
+
+  // =========================================================================
+  // Tally Integration
+  // =========================================================================
+
+  /// Tally submission ID for this assessment (for idempotency)
+  tallySubmissionId String? @unique
+
+  // =========================================================================
+  // Timestamps
+  // =========================================================================
+
   /// Record creation timestamp
   createdAt DateTime @default(now())
 
   /// Last update timestamp
   updatedAt DateTime @updatedAt
 
+  // =========================================================================
   // Relations
-  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  // =========================================================================
 
-  @@index([candidateId])
+  /// The person who took this assessment (general competencies)
+  person Person? @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  /// The application this assessment is for (specialized competencies)
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  // =========================================================================
+  // Indexes
+  // =========================================================================
+
+  @@index([personId])
+  @@index([applicationId])
   @@index([assessmentType])
 }
 
@@ -204,6 +370,7 @@ enum AssessmentType {
 // INTERVIEW MODEL
 // =============================================================================
 // Tracks interview scheduling and outcomes.
+// Linked to Application (not Person) since interviews are position-specific.
 // Interviewers provide their Cal.com/Calendly links for scheduling.
 // =============================================================================
 
@@ -211,8 +378,8 @@ model Interview {
   /// Unique identifier (UUID)
   id String @id @default(uuid())
 
-  /// Reference to the candidate
-  candidateId String
+  /// Reference to the application
+  applicationId String
 
   /// Reference to the interviewer (User)
   interviewerId String
@@ -242,10 +409,10 @@ model Interview {
   updatedAt DateTime @updatedAt
 
   // Relations
-  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  interviewer User      @relation(fields: [interviewerId], references: [id])
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewer User        @relation(fields: [interviewerId], references: [id])
 
-  @@index([candidateId])
+  @@index([applicationId])
   @@index([interviewerId])
   @@index([scheduledAt])
 }
@@ -366,7 +533,7 @@ enum OktaStatus {
 // =============================================================================
 // DECISION MODEL
 // =============================================================================
-// Records final hiring decisions.
+// Records final hiring decisions for applications.
 // Reason is required for rejections (GDPR compliance).
 // =============================================================================
 
@@ -374,8 +541,8 @@ model Decision {
   /// Unique identifier (UUID)
   id String @id @default(uuid())
 
-  /// Reference to the candidate
-  candidateId String
+  /// Reference to the application
+  applicationId String
 
   /// The decision (accept or reject)
   decision DecisionType
@@ -399,10 +566,10 @@ model Decision {
   updatedAt DateTime @updatedAt
 
   // Relations
-  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [decidedBy], references: [id])
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [decidedBy], references: [id])
 
-  @@index([candidateId])
+  @@index([applicationId])
   @@index([decidedBy])
 }
 
@@ -416,15 +583,18 @@ enum DecisionType {
 // AUDIT LOG MODEL
 // =============================================================================
 // Comprehensive activity logging for compliance and debugging.
-// Records all significant actions in the system.
+// Can be linked to Person, Application, or both for context.
 // =============================================================================
 
 model AuditLog {
   /// Unique identifier (UUID)
   id String @id @default(uuid())
 
-  /// Reference to related candidate (optional)
-  candidateId String?
+  /// Reference to related person (optional)
+  personId String?
+
+  /// Reference to related application (optional)
+  applicationId String?
 
   /// Reference to user who performed action (optional)
   userId String?
@@ -448,10 +618,12 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   // Relations
-  candidate Candidate? @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  person      Person?      @relation(fields: [personId], references: [id], onDelete: Cascade)
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
 
-  @@index([candidateId])
+  @@index([personId])
+  @@index([applicationId])
   @@index([userId])
   @@index([createdAt])
   @@index([actionType])
@@ -472,15 +644,18 @@ enum ActionType {
 // EMAIL LOG MODEL
 // =============================================================================
 // Tracks all emails sent through the system.
-// Used for debugging, compliance, and preventing duplicate sends.
+// Can be linked to Person, Application, or both depending on email type.
 // =============================================================================
 
 model EmailLog {
   /// Unique identifier (UUID)
   id String @id @default(uuid())
 
-  /// Reference to the candidate
-  candidateId String
+  /// Reference to the person (optional - for person-level emails)
+  personId String?
+
+  /// Reference to the application (optional - for application-specific emails)
+  applicationId String?
 
   /// Email address the email was sent to
   recipientEmail String
@@ -510,10 +685,12 @@ model EmailLog {
   updatedAt DateTime @updatedAt
 
   // Relations
-  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  user      User?     @relation(fields: [sentBy], references: [id], onDelete: SetNull)
+  person      Person?      @relation(fields: [personId], references: [id], onDelete: Cascade)
+  application Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [sentBy], references: [id], onDelete: SetNull)
 
-  @@index([candidateId])
+  @@index([personId])
+  @@index([applicationId])
   @@index([status])
   @@index([sentAt])
 }

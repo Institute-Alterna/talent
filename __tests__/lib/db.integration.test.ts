@@ -55,8 +55,14 @@ describe('Database Integration', () => {
       assert.strictEqual(typeof result[0].version, 'string');
     });
 
-    it('has access to Candidate model', async () => {
-      const count = await db.candidate.count();
+    it('has access to Person model', async () => {
+      const count = await db.person.count();
+      assert.strictEqual(typeof count, 'number');
+      assert.ok(count >= 0);
+    });
+
+    it('has access to Application model', async () => {
+      const count = await db.application.count();
       assert.strictEqual(typeof count, 'number');
       assert.ok(count >= 0);
     });
@@ -75,12 +81,14 @@ describe('Database Integration', () => {
 
     it('supports transactions', async () => {
       const result = await db.$transaction(async (tx) => {
-        const candidateCount = await tx.candidate.count();
+        const personCount = await tx.person.count();
+        const applicationCount = await tx.application.count();
         const userCount = await tx.user.count();
-        return { candidateCount, userCount };
+        return { personCount, applicationCount, userCount };
       });
 
-      assert.strictEqual(typeof result.candidateCount, 'number');
+      assert.strictEqual(typeof result.personCount, 'number');
+      assert.strictEqual(typeof result.applicationCount, 'number');
       assert.strictEqual(typeof result.userCount, 'number');
     });
   });
@@ -90,7 +98,8 @@ describe('Database Integration', () => {
       // Verify we can access all the Prisma models (which confirms tables exist)
       // This is more reliable than querying information_schema with raw SQL
       const models = [
-        { name: 'candidate', fn: () => db.candidate.count() },
+        { name: 'person', fn: () => db.person.count() },
+        { name: 'application', fn: () => db.application.count() },
         { name: 'user', fn: () => db.user.count() },
         { name: 'assessment', fn: () => db.assessment.count() },
         { name: 'interview', fn: () => db.interview.count() },

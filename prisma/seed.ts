@@ -6,13 +6,26 @@
  *
  * What this creates:
  * - 2 sample users (1 admin, 1 hiring manager)
- * - 5 sample candidates at different pipeline stages
- * - Sample assessments, interviews, and decisions
- * - Sample audit logs
+ * - 5 sample persons (unique individuals)
+ * - 6 sample applications (including one person with 2 applications)
+ * - Sample assessments (general on Person, specialized on Application)
+ * - Sample interviews and decisions
+ * - Sample audit logs and email logs
  */
 
 import 'dotenv/config';
-import { PrismaClient, Stage, Status, Clearance, AssessmentType, InterviewOutcome, DecisionType, ActionType, EmailStatus } from '../node_modules/.prisma/client/client';
+import {
+  PrismaClient,
+  Stage,
+  Status,
+  Clearance,
+  AssessmentType,
+  InterviewOutcome,
+  DecisionType,
+  ActionType,
+  EmailStatus,
+  OktaStatus,
+} from '../lib/generated/prisma/client';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
 // Parse DATABASE_URL for connection parameters
@@ -51,11 +64,12 @@ async function main() {
   await prisma.decision.deleteMany();
   await prisma.interview.deleteMany();
   await prisma.assessment.deleteMany();
-  await prisma.candidate.deleteMany();
+  await prisma.application.deleteMany();
+  await prisma.person.deleteMany();
   await prisma.user.deleteMany();
   console.log('✓ Existing data cleared\n');
 
-  // Create Users
+  // Create Users (Alterna personnel)
   console.log('Creating users...');
   const adminUser = await prisma.user.create({
     data: {
@@ -70,6 +84,7 @@ async function main() {
       countryCode: 'US',
       operationalClearance: Clearance.C,
       isAdmin: true,
+      hasAppAccess: true,
       schedulingLink: 'https://cal.com/ana-martinez/interview',
       lastSyncedAt: new Date(),
     },
@@ -87,193 +102,324 @@ async function main() {
       countryCode: 'MX',
       operationalClearance: Clearance.B,
       isAdmin: false,
+      hasAppAccess: true,
       schedulingLink: 'https://calendly.com/carlos-rodriguez/30min',
       lastSyncedAt: new Date(),
     },
   });
-  console.log(`✓ Created ${2} users\n`);
+  console.log(`✓ Created 2 users\n`);
 
-  // Create Candidates at different stages
-  console.log('Creating candidates...');
+  // Create Persons (unique individuals identified by email)
+  console.log('Creating persons...');
 
-  // Candidate 1: Just applied
-  const candidate1 = await prisma.candidate.create({
+  // Person 1: Maria Garcia - Just applied, hasn't taken GC yet
+  const person1 = await prisma.person.create({
     data: {
-      who: 'tally-resp-001',
-      position: 'Software Developer',
+      email: 'maria.garcia@email.com',
       firstName: 'Maria',
       lastName: 'Garcia',
-      email: 'maria.garcia@email.com',
       phoneNumber: '+1-555-0101',
       country: 'United States',
       countryCode: 'US',
       city: 'San Francisco',
       state: 'CA',
       educationLevel: "Bachelor's Degree",
-      academicBackground: 'Computer Science from UC Berkeley',
-      previousExperience: '3 years as a frontend developer at a startup',
       portfolioLink: 'https://mariagarcia.dev',
-      resumeUrl: 'https://tally.so/r/resume-001.pdf',
-      videoLink: 'https://youtube.com/watch?v=intro001',
-      currentStage: Stage.APPLICATION,
-      status: Status.ACTIVE,
-      tallySubmissionId: 'tally-sub-001',
-      tallyResponseId: 'tally-res-001',
+      generalCompetenciesCompleted: false,
+      tallyRespondentId: 'tally-resp-001',
     },
   });
 
-  // Candidate 2: Passed general competencies
-  const candidate2 = await prisma.candidate.create({
+  // Person 2: Juan Lopez - Passed GC, taking specialized
+  const person2 = await prisma.person.create({
     data: {
-      who: 'tally-resp-002',
-      position: 'Instructional Designer',
+      email: 'juan.lopez@email.com',
       firstName: 'Juan',
       lastName: 'Lopez',
-      email: 'juan.lopez@email.com',
       phoneNumber: '+52-555-0102',
       country: 'Mexico',
       countryCode: 'MX',
       city: 'Guadalajara',
       educationLevel: "Master's Degree",
-      academicBackground: 'Educational Technology from ITESM',
-      previousExperience: '5 years designing e-learning courses',
-      currentStage: Stage.SPECIALIZED_COMPETENCIES,
-      status: Status.ACTIVE,
-      tallySubmissionId: 'tally-sub-002',
-      tallyResponseId: 'tally-res-002',
+      generalCompetenciesCompleted: true,
+      generalCompetenciesScore: 82.5,
+      generalCompetenciesPassedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      tallyRespondentId: 'tally-resp-002',
     },
   });
 
-  // Candidate 3: In interview stage
-  const candidate3 = await prisma.candidate.create({
+  // Person 3: Sofia Hernandez - Passed both assessments, in interview
+  const person3 = await prisma.person.create({
     data: {
-      who: 'tally-resp-003',
-      position: 'Course Facilitator',
+      email: 'sofia.h@email.com',
       firstName: 'Sofia',
       lastName: 'Hernandez',
-      email: 'sofia.h@email.com',
       phoneNumber: '+1-555-0103',
       country: 'United States',
       countryCode: 'US',
       city: 'Miami',
       state: 'FL',
       educationLevel: "Bachelor's Degree",
-      academicBackground: 'Education from FIU',
-      previousExperience: '2 years as teaching assistant',
-      currentStage: Stage.INTERVIEW,
-      status: Status.ACTIVE,
-      tallySubmissionId: 'tally-sub-003',
-      tallyResponseId: 'tally-res-003',
+      generalCompetenciesCompleted: true,
+      generalCompetenciesScore: 88.0,
+      generalCompetenciesPassedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+      tallyRespondentId: 'tally-resp-003',
     },
   });
 
-  // Candidate 4: Accepted, in agreement stage
-  const candidate4 = await prisma.candidate.create({
+  // Person 4: Diego Ramirez - Accepted, in agreement stage
+  const person4 = await prisma.person.create({
     data: {
-      who: 'tally-resp-004',
-      position: 'Video Editor',
+      email: 'diego.r@email.com',
       firstName: 'Diego',
       lastName: 'Ramirez',
-      email: 'diego.r@email.com',
       phoneNumber: '+503-555-0104',
       country: 'El Salvador',
       countryCode: 'SV',
       city: 'San Salvador',
       educationLevel: "Bachelor's Degree",
-      academicBackground: 'Film Production',
-      previousExperience: '4 years editing educational content',
       portfolioLink: 'https://vimeo.com/diegoramirez',
-      currentStage: Stage.AGREEMENT,
-      status: Status.ACTIVE,
-      tallySubmissionId: 'tally-sub-004',
-      tallyResponseId: 'tally-res-004',
+      generalCompetenciesCompleted: true,
+      generalCompetenciesScore: 91.0,
+      generalCompetenciesPassedAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+      tallyRespondentId: 'tally-resp-004',
     },
   });
 
-  // Candidate 5: Rejected
-  const candidate5 = await prisma.candidate.create({
+  // Person 5: Pedro Santos - Failed GC, rejected
+  const person5 = await prisma.person.create({
     data: {
-      who: 'tally-resp-005',
-      position: 'Software Developer',
+      email: 'pedro.s@email.com',
       firstName: 'Pedro',
       lastName: 'Santos',
-      email: 'pedro.s@email.com',
       country: 'Brazil',
       countryCode: 'BR',
       educationLevel: 'Some College',
+      generalCompetenciesCompleted: true,
+      generalCompetenciesScore: 55.0,
+      // No generalCompetenciesPassedAt because they failed
+      tallyRespondentId: 'tally-resp-005',
+    },
+  });
+  console.log(`✓ Created 5 persons\n`);
+
+  // Create Applications (one or more per person)
+  console.log('Creating applications...');
+
+  // Application 1: Maria's Software Developer application
+  const app1 = await prisma.application.create({
+    data: {
+      personId: person1.id,
+      position: 'Software Developer',
+      currentStage: Stage.APPLICATION,
+      status: Status.ACTIVE,
+      academicBackground: 'Computer Science from UC Berkeley',
+      previousExperience: '3 years as a frontend developer at a startup',
+      resumeUrl: 'https://tally.so/r/resume-001.pdf',
+      videoLink: 'https://youtube.com/watch?v=intro001',
+      hasResume: true,
+      hasAcademicBg: true,
+      hasVideoIntro: true,
+      hasPreviousExp: true,
+      tallySubmissionId: 'tally-sub-001',
+      tallyResponseId: 'tally-res-001',
+      tallyFormId: 'form-application-001',
+    },
+  });
+
+  // Application 2: Juan's Instructional Designer application
+  const app2 = await prisma.application.create({
+    data: {
+      personId: person2.id,
+      position: 'Instructional Designer',
+      currentStage: Stage.SPECIALIZED_COMPETENCIES,
+      status: Status.ACTIVE,
+      academicBackground: 'Educational Technology from ITESM',
+      previousExperience: '5 years designing e-learning courses',
+      hasAcademicBg: true,
+      hasPreviousExp: true,
+      tallySubmissionId: 'tally-sub-002',
+      tallyResponseId: 'tally-res-002',
+      tallyFormId: 'form-application-001',
+    },
+  });
+
+  // Application 3: Sofia's Course Facilitator application
+  const app3 = await prisma.application.create({
+    data: {
+      personId: person3.id,
+      position: 'Course Facilitator',
+      currentStage: Stage.INTERVIEW,
+      status: Status.ACTIVE,
+      academicBackground: 'Education from FIU',
+      previousExperience: '2 years as teaching assistant',
+      hasAcademicBg: true,
+      hasPreviousExp: true,
+      tallySubmissionId: 'tally-sub-003',
+      tallyResponseId: 'tally-res-003',
+      tallyFormId: 'form-application-001',
+    },
+  });
+
+  // Application 4: Diego's Video Editor application
+  const app4 = await prisma.application.create({
+    data: {
+      personId: person4.id,
+      position: 'Video Editor',
+      currentStage: Stage.AGREEMENT,
+      status: Status.ACTIVE,
+      academicBackground: 'Film Production',
+      previousExperience: '4 years editing educational content',
+      hasAcademicBg: true,
+      hasPreviousExp: true,
+      tallySubmissionId: 'tally-sub-004',
+      tallyResponseId: 'tally-res-004',
+      tallyFormId: 'form-application-001',
+    },
+  });
+
+  // Application 5: Pedro's Software Developer application (rejected)
+  const app5 = await prisma.application.create({
+    data: {
+      personId: person5.id,
+      position: 'Software Developer',
       currentStage: Stage.GENERAL_COMPETENCIES,
       status: Status.REJECTED,
       tallySubmissionId: 'tally-sub-005',
       tallyResponseId: 'tally-res-005',
+      tallyFormId: 'form-application-001',
     },
   });
-  console.log(`✓ Created ${5} candidates\n`);
+
+  // Application 6: Maria also applied for Content Writer (demonstrating multi-application)
+  const app6 = await prisma.application.create({
+    data: {
+      personId: person1.id,
+      position: 'Content Writer',
+      currentStage: Stage.APPLICATION,
+      status: Status.ACTIVE,
+      academicBackground: 'English Literature minor at UC Berkeley',
+      previousExperience: 'Technical writing for documentation',
+      hasAcademicBg: true,
+      hasPreviousExp: true,
+      // Missing resume intentionally to test missing fields feature
+      hasResume: true, // Claimed but not provided
+      tallySubmissionId: 'tally-sub-006',
+      tallyResponseId: 'tally-res-006',
+      tallyFormId: 'form-application-001',
+    },
+  });
+  console.log(`✓ Created 6 applications\n`);
 
   // Create Assessments
   console.log('Creating assessments...');
+
+  // General Competencies assessments (linked to Person)
   await prisma.assessment.createMany({
     data: [
-      // Candidate 2: Passed general, taking specialized
+      // Person 2 (Juan): Passed GC
       {
-        candidateId: candidate2.id,
+        personId: person2.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
         score: 82.5,
         passed: true,
         threshold: 70,
-        completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+        completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-gc-002',
+        rawData: {
+          environmentScore: 85,
+          communicationsScore: 80,
+          collaborationScore: 82,
+          learnScore: 84,
+          behaviourScore: 81,
+        },
       },
-      // Candidate 3: Passed both
+      // Person 3 (Sofia): Passed GC
       {
-        candidateId: candidate3.id,
+        personId: person3.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
         score: 88.0,
         passed: true,
         threshold: 70,
-        completedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000), // 14 days ago
+        completedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-gc-003',
+        rawData: {
+          environmentScore: 90,
+          communicationsScore: 88,
+          collaborationScore: 87,
+          learnScore: 89,
+          behaviourScore: 86,
+        },
       },
+      // Person 4 (Diego): Passed GC
       {
-        candidateId: candidate3.id,
-        assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
-        score: 79.5,
-        passed: true,
-        threshold: 75,
-        completedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
-      },
-      // Candidate 4: Passed both
-      {
-        candidateId: candidate4.id,
+        personId: person4.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
         score: 91.0,
         passed: true,
         threshold: 70,
-        completedAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000), // 21 days ago
+        completedAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-gc-004',
+        rawData: {
+          environmentScore: 92,
+          communicationsScore: 90,
+          collaborationScore: 91,
+          learnScore: 93,
+          behaviourScore: 89,
+        },
       },
+      // Person 5 (Pedro): Failed GC
       {
-        candidateId: candidate4.id,
-        assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
-        score: 85.0,
-        passed: true,
-        threshold: 75,
-        completedAt: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000), // 17 days ago
-      },
-      // Candidate 5: Failed general
-      {
-        candidateId: candidate5.id,
+        personId: person5.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
         score: 55.0,
         passed: false,
         threshold: 70,
-        completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+        completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-gc-005',
+        rawData: {
+          environmentScore: 52,
+          communicationsScore: 58,
+          collaborationScore: 55,
+          learnScore: 54,
+          behaviourScore: 56,
+        },
       },
     ],
   });
-  console.log(`✓ Created ${6} assessments\n`);
 
-  // Create Interviews
+  // Specialized Competencies assessments (linked to Application)
+  await prisma.assessment.createMany({
+    data: [
+      // Application 3 (Sofia's Course Facilitator): Passed SC
+      {
+        applicationId: app3.id,
+        assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
+        score: 79.5,
+        passed: true,
+        threshold: 75,
+        completedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-sc-003',
+      },
+      // Application 4 (Diego's Video Editor): Passed SC
+      {
+        applicationId: app4.id,
+        assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
+        score: 85.0,
+        passed: true,
+        threshold: 75,
+        completedAt: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-sc-004',
+      },
+    ],
+  });
+  console.log(`✓ Created 6 assessments\n`);
+
+  // Create Interviews (linked to Application)
   console.log('Creating interviews...');
   await prisma.interview.create({
     data: {
-      candidateId: candidate3.id,
+      applicationId: app3.id,
       interviewerId: hiringManager.id,
       schedulingLink: hiringManager.schedulingLink!,
       scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days from now
@@ -284,7 +430,7 @@ async function main() {
 
   await prisma.interview.create({
     data: {
-      candidateId: candidate4.id,
+      applicationId: app4.id,
       interviewerId: adminUser.id,
       schedulingLink: adminUser.schedulingLink!,
       scheduledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
@@ -294,13 +440,13 @@ async function main() {
       emailSentAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
     },
   });
-  console.log(`✓ Created ${2} interviews\n`);
+  console.log(`✓ Created 2 interviews\n`);
 
-  // Create Decisions
+  // Create Decisions (linked to Application)
   console.log('Creating decisions...');
   await prisma.decision.create({
     data: {
-      candidateId: candidate4.id,
+      applicationId: app4.id,
       decision: DecisionType.ACCEPT,
       reason: 'Strong technical skills, excellent cultural fit, and impressive portfolio.',
       decidedBy: adminUser.id,
@@ -310,87 +456,121 @@ async function main() {
 
   await prisma.decision.create({
     data: {
-      candidateId: candidate5.id,
+      applicationId: app5.id,
       decision: DecisionType.REJECT,
       reason: 'Did not meet minimum threshold for general competencies assessment.',
       decidedBy: adminUser.id,
       decidedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), // 4 days ago
     },
   });
-  console.log(`✓ Created ${2} decisions\n`);
+  console.log(`✓ Created 2 decisions\n`);
 
-  // Create Audit Logs
+  // Create Audit Logs (can link to Person, Application, or both)
   console.log('Creating audit logs...');
   await prisma.auditLog.createMany({
     data: [
+      // Application received
       {
-        candidateId: candidate1.id,
+        personId: person1.id,
+        applicationId: app1.id,
         action: 'Application received via Tally webhook',
         actionType: ActionType.CREATE,
-        details: { source: 'tally_webhook', formId: 'form-001' },
-        createdAt: candidate1.createdAt,
+        details: { source: 'tally_webhook', formId: 'form-application-001' },
+        createdAt: app1.createdAt,
       },
+      // Second application from same person
       {
-        candidateId: candidate2.id,
+        personId: person1.id,
+        applicationId: app6.id,
+        action: 'Application received via Tally webhook',
+        actionType: ActionType.CREATE,
+        details: { source: 'tally_webhook', formId: 'form-application-001', note: 'Existing person, new application' },
+        createdAt: app6.createdAt,
+      },
+      // Stage change
+      {
+        personId: person2.id,
+        applicationId: app2.id,
         userId: adminUser.id,
         action: 'Stage changed to Specialized Competencies',
         actionType: ActionType.STAGE_CHANGE,
         details: { from: 'GENERAL_COMPETENCIES', to: 'SPECIALIZED_COMPETENCIES' },
         createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
       },
+      // Acceptance
       {
-        candidateId: candidate4.id,
+        personId: person4.id,
+        applicationId: app4.id,
         userId: adminUser.id,
-        action: 'Candidate accepted',
+        action: 'Application accepted',
         actionType: ActionType.STATUS_CHANGE,
         details: { decision: 'ACCEPT' },
         createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
       },
+      // Rejection
       {
-        candidateId: candidate5.id,
+        personId: person5.id,
+        applicationId: app5.id,
         userId: adminUser.id,
-        action: 'Candidate rejected',
+        action: 'Application rejected',
         actionType: ActionType.STATUS_CHANGE,
         details: { decision: 'REJECT', reason: 'Failed assessment' },
         createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
       },
     ],
   });
-  console.log(`✓ Created ${4} audit logs\n`);
+  console.log(`✓ Created 5 audit logs\n`);
 
-  // Create Email Logs
+  // Create Email Logs (can link to Person, Application, or both)
   console.log('Creating email logs...');
   await prisma.emailLog.createMany({
     data: [
+      // Application confirmation
       {
-        candidateId: candidate1.id,
-        recipientEmail: candidate1.email,
+        personId: person1.id,
+        applicationId: app1.id,
+        recipientEmail: person1.email,
         templateName: 'application-received',
         subject: 'Application Received - Alterna',
         status: EmailStatus.SENT,
-        sentAt: candidate1.createdAt,
+        sentAt: app1.createdAt,
       },
+      // GC invitation (person-level email, not application-specific)
       {
-        candidateId: candidate3.id,
-        recipientEmail: candidate3.email,
+        personId: person1.id,
+        recipientEmail: person1.email,
+        templateName: 'general-competencies-invitation',
+        subject: 'Complete Your Assessment - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(app1.createdAt.getTime() + 1000), // 1 second after application
+      },
+      // Interview invitation
+      {
+        personId: person3.id,
+        applicationId: app3.id,
+        recipientEmail: person3.email,
         templateName: 'interview-invitation',
         subject: 'Interview Invitation - Alterna',
         status: EmailStatus.SENT,
         sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
         sentBy: hiringManager.id,
       },
+      // Offer letter
       {
-        candidateId: candidate4.id,
-        recipientEmail: candidate4.email,
+        personId: person4.id,
+        applicationId: app4.id,
+        recipientEmail: person4.email,
         templateName: 'offer-letter',
         subject: 'Offer Letter - Alterna',
         status: EmailStatus.SENT,
         sentAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         sentBy: adminUser.id,
       },
+      // Rejection
       {
-        candidateId: candidate5.id,
-        recipientEmail: candidate5.email,
+        personId: person5.id,
+        applicationId: app5.id,
+        recipientEmail: person5.email,
         templateName: 'rejection',
         subject: 'Application Update - Alterna',
         status: EmailStatus.SENT,
@@ -399,17 +579,18 @@ async function main() {
       },
     ],
   });
-  console.log(`✓ Created ${4} email logs\n`);
+  console.log(`✓ Created 5 email logs\n`);
 
   console.log('✅ Database seeded successfully!\n');
   console.log('Summary:');
   console.log('  - 2 users (1 admin, 1 hiring manager)');
-  console.log('  - 5 candidates at various stages');
-  console.log('  - 6 assessments');
+  console.log('  - 5 persons (unique individuals)');
+  console.log('  - 6 applications (including 2 from same person)');
+  console.log('  - 6 assessments (4 GC on Persons, 2 SC on Applications)');
   console.log('  - 2 interviews');
   console.log('  - 2 decisions');
-  console.log('  - 4 audit logs');
-  console.log('  - 4 email logs');
+  console.log('  - 5 audit logs');
+  console.log('  - 5 email logs');
 }
 
 main()

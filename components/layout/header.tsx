@@ -68,7 +68,7 @@ export function Header({ user, onSignOut }: HeaderProps) {
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-                {branding.organisationName.charAt(0)}
+                {branding.organisationShortName.charAt(0)}
               </div>
               {branding.appName}
             </SheetTitle>
