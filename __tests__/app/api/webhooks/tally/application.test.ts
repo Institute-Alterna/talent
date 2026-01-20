@@ -92,14 +92,14 @@ describe('POST /api/webhooks/tally/application', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  function createRequest(payload: unknown, signature?: string): NextRequest {
+  function createRequest(payload: unknown, secret?: string): NextRequest {
     const body = JSON.stringify(payload);
     const headers = new Headers({
       'content-type': 'application/json',
       'x-forwarded-for': '192.168.1.1',
     });
-    if (signature) {
-      headers.set('tally-signature', signature);
+    if (secret) {
+      headers.set('x-webhook-secret', secret);
     }
     return new NextRequest('http://localhost/api/webhooks/tally/application', {
       method: 'POST',
@@ -327,7 +327,7 @@ describe('POST /api/webhooks/tally/application', () => {
       const headers = new Headers({
         'content-type': 'application/json',
         'x-forwarded-for': '192.168.1.1',
-        'tally-signature': signature,
+        'x-webhook-secret': signature,
       });
       const request = new NextRequest('http://localhost/api/webhooks/tally/application', {
         method: 'POST',
@@ -356,21 +356,21 @@ describe('POST /api/webhooks/tally/application', () => {
   });
 
   describe('Authentication', () => {
-    it('returns 401 for invalid signature in production', async () => {
+    it('returns 401 for invalid secret in production', async () => {
       setNodeEnv('production');
       process.env.TALLY_WEBHOOK_IP_WHITELIST = '0.0.0.0/0'; // Allow all IPs for this test
 
       const payload = createApplicationPayload();
-      const request = createRequest(payload, 'wrong-signature');
+      const request = createRequest(payload, 'wrong-secret');
 
       const response = await POST(request);
       const data = await response.json();
 
       expect(response.status).toBe(401);
-      expect(data.error).toContain('Invalid signature');
+      expect(data.error).toContain('Invalid webhook secret');
     });
 
-    it('returns 401 for missing signature in production', async () => {
+    it('returns 401 for missing secret header in production', async () => {
       setNodeEnv('production');
       process.env.TALLY_WEBHOOK_IP_WHITELIST = '0.0.0.0/0';
 
@@ -381,7 +381,7 @@ describe('POST /api/webhooks/tally/application', () => {
       const data = await response.json();
 
       expect(response.status).toBe(401);
-      expect(data.error).toContain('Missing tally-signature');
+      expect(data.error).toContain('Missing x-webhook-secret header');
     });
   });
 
@@ -479,6 +479,6 @@ describe('OPTIONS /api/webhooks/tally/application', () => {
     expect(response.status).toBe(204);
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
     expect(response.headers.get('Access-Control-Allow-Methods')).toContain('POST');
-    expect(response.headers.get('Access-Control-Allow-Headers')).toContain('tally-signature');
+    expect(response.headers.get('Access-Control-Allow-Headers')).toContain('x-webhook-secret');
   });
 });

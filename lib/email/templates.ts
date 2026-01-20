@@ -12,6 +12,7 @@ import {
   EMAIL_TEMPLATE_META,
   type EmailTemplateName,
 } from './config';
+import { sanitizeForLog } from '@/lib/security';
 
 /**
  * Template cache to avoid repeated file reads
@@ -43,7 +44,7 @@ export function loadTemplate(templateName: string, format: 'html' | 'txt' = 'htm
   const templatePath = join(getTemplatesDir(), `${templateName}.${format}`);
 
   if (!existsSync(templatePath)) {
-    console.warn(`[Email] Template not found: ${templatePath}`);
+    console.warn(`[Email] Template not found: ${sanitizeForLog(templatePath)}`);
     return null;
   }
 
@@ -52,7 +53,7 @@ export function loadTemplate(templateName: string, format: 'html' | 'txt' = 'htm
     templateCache.set(cacheKey, content);
     return content;
   } catch (error) {
-    console.error(`[Email] Failed to load template ${templatePath}:`, error);
+    console.error(`[Email] Failed to load template ${sanitizeForLog(templatePath)}:`, error);
     return null;
   }
 }
@@ -127,7 +128,7 @@ export function renderTemplate(
     const missing = findMissingVariables(contentToCheck, allVariables);
     if (missing.length > 0) {
       console.warn(
-        `[Email] Template "${templateName}" has unreplaced variables: ${missing.join(', ')}`
+        `[Email] Template "${sanitizeForLog(templateName)}" has unreplaced variables: ${sanitizeForLog(missing.join(', '))}`
       );
     }
   }
@@ -145,7 +146,7 @@ export function renderTemplate(
  * @returns Plain text version
  */
 export function htmlToPlainText(html: string): string {
-  return html
+  let result = html
     // Replace line breaks with newlines
     .replace(/<br\s*\/?>/gi, '\n')
     // Replace paragraphs with double newlines
@@ -156,19 +157,28 @@ export function htmlToPlainText(html: string): string {
     .replace(/<\/li>/gi, '\n')
     // Replace headings with newlines
     .replace(/<\/h[1-6]>/gi, '\n\n')
-    .replace(/<h[1-6][^>]*>/gi, '')
-    // Remove all other HTML tags
-    .replace(/<[^>]+>/g, '')
-    // Decode common HTML entities
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    // Normalize whitespace
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+    .replace(/<h[1-6][^>]*>/gi, '');
+
+  // Remove all HTML tags using loop to prevent bypasses like <scr<script>ipt>
+  let prev;
+  do {
+    prev = result;
+    result = result.replace(/<[^>]*>/g, '');
+  } while (result !== prev);
+
+  return (
+    result
+      // Decode common HTML entities (decode &amp; LAST to prevent double-unescaping)
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&')
+      // Normalize whitespace
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  );
 }
 
 /**

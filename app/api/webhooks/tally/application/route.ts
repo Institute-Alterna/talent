@@ -41,6 +41,7 @@ import {
   logStageChange,
   logStatusChange,
 } from '@/lib/audit';
+import { sanitizeForLog } from '@/lib/security';
 import { recruitment } from '@/config/recruitment';
 
 /**
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
   // Idempotency check - don't process duplicate submissions
   const existingApplication = await getApplicationByTallySubmissionId(submissionId);
   if (existingApplication) {
-    console.log(`[Webhook] Duplicate submission ignored: ${submissionId}`);
+    console.log(`[Webhook] Duplicate submission ignored: ${sanitizeForLog(submissionId)}`);
     return NextResponse.json(
       {
         success: true,
@@ -237,7 +238,7 @@ export async function POST(request: NextRequest) {
   if (application.hasOtherFile && !application.otherFileUrl) missingFields.push('Other File');
 
   console.log(
-    `[Webhook] Application processed: ${application.id} for ${person.email} - ${nextStep}`
+    `[Webhook] Application processed: ${sanitizeForLog(application.id)} for ${sanitizeForLog(person.email)} - ${nextStep}`
   );
 
   return NextResponse.json(
@@ -268,7 +269,7 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, tally-signature',
+      'Access-Control-Allow-Headers': 'Content-Type, x-webhook-secret, Authorization',
     },
   });
 }

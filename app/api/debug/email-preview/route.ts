@@ -16,6 +16,7 @@ import {
   htmlToPlainText,
   EMAIL_TEMPLATES,
   EMAIL_TEMPLATE_META,
+  escapeHtml,
   type EmailTemplateName,
 } from '@/lib/email';
 
@@ -48,7 +49,7 @@ const SAMPLE_VARIABLES: Record<string, string> = {
 
   // Account credentials
   ALTERNA_EMAIL: 'alex.johnson@alterna.dev',
-  TEMPORARY_PASSWORD: 'Temp$ecure123!',
+  TEMPORARY_PASSWORD: '*******',
   LOGIN_URL: 'https://talent.alterna.dev/auth/signin',
 
   // Optional content
@@ -183,7 +184,7 @@ export async function GET(request: NextRequest) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Preview: ${templateName}</title>
+  <title>Preview: ${escapeHtml(templateName)}</title>
   <style>
     body { margin: 0; padding: 0; }
     .preview-bar { 
@@ -207,11 +208,11 @@ export async function GET(request: NextRequest) {
 </head>
 <body>
   <div class="preview-bar">
-    <div class="subject"><strong>Subject:</strong> ${subject}</div>
+    <div class="subject"><strong>Subject:</strong> ${escapeHtml(subject)}</div>
     <div>
       <a href="/api/debug/email-preview">← All Templates</a>
       &nbsp;|&nbsp;
-      <a href="?template=${templateName}&format=text">View as Text</a>
+      <a href="?template=${encodeURIComponent(templateName)}&format=text">View as Text</a>
     </div>
   </div>
   ${html}

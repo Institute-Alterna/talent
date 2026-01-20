@@ -2,41 +2,37 @@
  * Webhook Verification Utilities
  *
  * Provides security functions for verifying incoming webhooks:
- * - HMAC-SHA256 signature verification
+ * - Secret token verification (header or query param)
  * - IP whitelist validation
  * - Idempotency checking
  */
 
-import { createHmac, timingSafeEqual } from 'crypto';
+import { timingSafeEqual } from 'crypto';
 
 /**
- * Verify Tally webhook signature using HMAC-SHA256
+ * Verify webhook secret token
  *
- * Tally signs webhooks using a shared secret. The signature is sent
- * in the 'tally-signature' header as a hex-encoded HMAC-SHA256 hash.
+ * Checks if the provided token matches WEBHOOK_SECRET.
+ * Uses timing-safe comparison to prevent timing attacks.
  *
- * @param payload - The raw request body as a string
- * @param signature - The signature from the request header
+ * @param token - The token from request header or query param
  * @param secret - The webhook secret (from env var)
- * @returns Boolean indicating if signature is valid
+ * @returns Boolean indicating if token is valid
  */
-export function verifyTallySignature(payload: string, signature: string, secret: string): boolean {
-  if (!signature || !secret) {
+export function verifyWebhookSecret(token: string, secret: string): boolean {
+  if (!token || !secret) {
     return false;
   }
 
   try {
-    const expectedSignature = createHmac('sha256', secret).update(payload).digest('hex');
+    const tokenBuffer = Buffer.from(token);
+    const secretBuffer = Buffer.from(secret);
 
-    // Use timing-safe comparison to prevent timing attacks
-    const signatureBuffer = Buffer.from(signature, 'hex');
-    const expectedBuffer = Buffer.from(expectedSignature, 'hex');
-
-    if (signatureBuffer.length !== expectedBuffer.length) {
+    if (tokenBuffer.length !== secretBuffer.length) {
       return false;
     }
 
-    return timingSafeEqual(signatureBuffer, expectedBuffer);
+    return timingSafeEqual(tokenBuffer, secretBuffer);
   } catch {
     return false;
   }
@@ -168,7 +164,7 @@ export interface VerificationResult {
  * @param headers - Request headers
  * @returns Verification result
  */
-export function verifyWebhook(payload: string, headers: Headers): VerificationResult {
+export function verifyWebhook(_payload: string, headers: Headers): VerificationResult {
   const ip = getClientIP(headers);
 
   // Check IP whitelist
@@ -180,15 +176,12 @@ export function verifyWebhook(payload: string, headers: Headers): VerificationRe
     };
   }
 
-  // Check signature
-  const signature = headers.get('tally-signature');
+  // Check secret token
   const secret = process.env.WEBHOOK_SECRET;
 
   if (!secret) {
-    // In development, allow requests without signature if no secret configured
-    if (process.env.NODE_ENV === 'development') {
-      return { valid: true, ip };
-    }
+    // Fail closed: require WEBHOOK_SECRET to be configured
+    console.warn('[Webhook] No WEBHOOK_SECRET configured');
     return {
       valid: false,
       error: 'WEBHOOK_SECRET not configured',
@@ -196,18 +189,27 @@ export function verifyWebhook(payload: string, headers: Headers): VerificationRe
     };
   }
 
-  if (!signature) {
+  // Accept secret from multiple sources:
+  // 1. x-webhook-secret header
+  // 2. Authorization: Bearer <secret>
+  const headerSecret = headers.get('x-webhook-secret');
+  const authHeader = headers.get('authorization');
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  const providedSecret = headerSecret || bearerToken;
+
+  if (!providedSecret) {
     return {
       valid: false,
-      error: 'Missing tally-signature header',
+      error: 'Missing x-webhook-secret header or Authorization Bearer token',
       ip,
     };
   }
 
-  if (!verifyTallySignature(payload, signature, secret)) {
+  if (!verifyWebhookSecret(providedSecret, secret)) {
     return {
       valid: false,
-      error: 'Invalid signature',
+      error: 'Invalid webhook secret',
       ip,
     };
   }

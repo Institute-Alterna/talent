@@ -49,6 +49,9 @@ function createAdapter() {
     password: config.password,
     database: config.database,
     connectionLimit: 5, // Reasonable limit for shared hosting
+    acquireTimeout: 30000, // Wait up to 30s to acquire a connection from pool
+    connectTimeout: 30000, // Wait up to 30s for initial connection
+    idleTimeout: 60000, // Close idle connections after 60s
   });
 }
 

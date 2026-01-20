@@ -46,6 +46,7 @@ import {
   logStatusChange,
 } from '@/lib/audit';
 import { recruitment } from '@/config/recruitment';
+import { sanitizeForLog } from '@/lib/security';
 
 /**
  * Webhook error response
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (existingAssessment) {
-    console.log(`[Webhook GC] Duplicate submission ignored: ${submissionId}`);
+    console.log(`[Webhook GC] Duplicate submission ignored: ${sanitizeForLog(submissionId)}`);
     return NextResponse.json(
       {
         success: true,
@@ -146,13 +147,13 @@ export async function POST(request: NextRequest) {
   // Verify person exists
   const person = await getPersonById(personId);
   if (!person) {
-    console.error(`[Webhook GC] Person not found: ${personId}`);
+    console.error(`[Webhook GC] Person not found: ${sanitizeForLog(personId)}`);
     return errorResponse(`Person not found: ${personId}`, 404, rateLimitHeaders);
   }
 
   // Check if person already completed GC
   if (person.generalCompetenciesCompleted) {
-    console.log(`[Webhook GC] Person ${personId} already completed GC, updating score`);
+    console.log(`[Webhook GC] Person ${sanitizeForLog(personId)} already completed GC, updating score`);
   }
 
   // Determine pass/fail
@@ -236,7 +237,7 @@ export async function POST(request: NextRequest) {
   }
 
   console.log(
-    `[Webhook GC] Assessment processed: Person ${personId}, Score: ${score}/${threshold}, ` +
+    `[Webhook GC] Assessment processed: Person ${sanitizeForLog(personId)}, Score: ${sanitizeForLog(score)}/${threshold}, ` +
       `Passed: ${passed}, Applications advanced: ${applicationsAdvanced}, rejected: ${applicationsRejected}`
   );
 
@@ -270,7 +271,7 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, tally-signature',
+      'Access-Control-Allow-Headers': 'Content-Type, x-webhook-secret, Authorization',
     },
   });
 }

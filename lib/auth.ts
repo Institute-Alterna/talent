@@ -307,20 +307,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           return token;
         }
 
-        // Sync user to database
+        // Store access info in token (before DB sync, in case it fails)
+        token.hasAccess = true;
+        token.isAdmin = isAdmin;
+        token.oktaUserId = oktaProfile.sub;
+
+        // Sync user to database (non-blocking for access)
         try {
           const dbUser = await syncUserToDatabase(oktaProfile, isAdmin);
           token.dbUserId = dbUser.id;
           token.isAdmin = dbUser.isAdmin;
-          token.hasAccess = true;
-          token.oktaUserId = oktaProfile.sub;
           token.firstName = dbUser.firstName;
           token.displayName = dbUser.displayName;
           console.log('[Auth JWT] User synced to DB, dbUserId:', dbUser.id, 'isAdmin:', dbUser.isAdmin);
         } catch (error) {
-          console.error('[Auth JWT] Failed to sync user:', error);
-          token.isAdmin = false;
-          token.hasAccess = false;
+          // DB sync failed, but user still has access (Okta check passed)
+          // They just won't have a local DB record until next successful login
+          console.error('[Auth JWT] Failed to sync user (user can still access app):', error);
         }
       }
 

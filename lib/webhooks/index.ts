@@ -9,7 +9,7 @@
 
 // Verification utilities
 export {
-  verifyTallySignature,
+  verifyWebhookSecret,
   verifyIP,
   getClientIP,
   verifyWebhook,

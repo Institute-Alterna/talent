@@ -41,6 +41,7 @@ import {
   logStatusChange,
 } from '@/lib/audit';
 import { recruitment } from '@/config/recruitment';
+import { sanitizeForLog } from '@/lib/security';
 
 /**
  * Webhook error response
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (existingAssessment) {
-    console.log(`[Webhook SC] Duplicate submission ignored: ${submissionId}`);
+    console.log(`[Webhook SC] Duplicate submission ignored: ${sanitizeForLog(submissionId)}`);
     return NextResponse.json(
       {
         success: true,
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
   // Verify application exists
   const application = await getApplicationById(applicationId);
   if (!application) {
-    console.error(`[Webhook SC] Application not found: ${applicationId}`);
+    console.error(`[Webhook SC] Application not found: ${sanitizeForLog(applicationId)}`);
     return errorResponse(`Application not found: ${applicationId}`, 404, rateLimitHeaders);
   }
 
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
     application.currentStage !== 'GENERAL_COMPETENCIES'
   ) {
     console.error(
-      `[Webhook SC] Application ${applicationId} is in ${application.currentStage} stage, expected SPECIALIZED_COMPETENCIES`
+      `[Webhook SC] Application ${sanitizeForLog(applicationId)} is in ${sanitizeForLog(application.currentStage)} stage, expected SPECIALIZED_COMPETENCIES`
     );
     return errorResponse(
       `Application is not in the correct stage for specialized assessment`,
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
 
   // Verify application is still active
   if (application.status !== 'ACTIVE') {
-    console.error(`[Webhook SC] Application ${applicationId} is ${application.status}, not ACTIVE`);
+    console.error(`[Webhook SC] Application ${sanitizeForLog(applicationId)} is ${sanitizeForLog(application.status)}, not ACTIVE`);
     return errorResponse(`Application is not active`, 400, rateLimitHeaders);
   }
 
@@ -230,7 +231,7 @@ export async function POST(request: NextRequest) {
   }
 
   console.log(
-    `[Webhook SC] Assessment processed: Application ${applicationId}, Score: ${score}/${threshold}, ` +
+    `[Webhook SC] Assessment processed: Application ${sanitizeForLog(applicationId)}, Score: ${sanitizeForLog(score)}/${threshold}, ` +
       `Passed: ${passed}, New stage: ${newStage}, New status: ${newStatus}`
   );
 
@@ -264,7 +265,7 @@ export async function OPTIONS() {
     headers: {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, tally-signature',
+      'Access-Control-Allow-Headers': 'Content-Type, x-webhook-secret, Authorization',
     },
   });
 }

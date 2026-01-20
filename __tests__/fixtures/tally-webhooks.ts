@@ -334,10 +334,14 @@ export function createInvalidPayload(): TallyWebhookPayload {
 }
 
 /**
- * Generate HMAC signature for a payload
+ * Get webhook secret for use in tests
+ *
+ * Since we switched from HMAC signature verification to simple secret header,
+ * this now just returns the secret directly.
+ *
+ * @deprecated Use the secret directly instead of calling this function
  */
-export function generateWebhookSignature(payload: unknown, secret: string): string {
-  const { createHmac } = require('crypto');
-  const body = typeof payload === 'string' ? payload : JSON.stringify(payload);
-  return createHmac('sha256', secret).update(body).digest('hex');
+export function generateWebhookSignature(_payload: unknown, secret: string): string {
+  // No longer generating HMAC - just return the secret for header auth
+  return secret;
 }

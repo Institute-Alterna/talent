@@ -4,9 +4,8 @@
  * Unit tests for webhook signature verification and IP validation.
  */
 
-import { createHmac } from 'crypto';
 import {
-  verifyTallySignature,
+  verifyWebhookSecret,
   verifyIP,
   getClientIP,
   verifyWebhook,
@@ -39,57 +38,35 @@ describe('Webhook Verification', () => {
     });
   };
 
-  describe('verifyTallySignature', () => {
+  describe('verifyWebhookSecret', () => {
     const secret = 'test-webhook-secret';
-    const payload = JSON.stringify({ test: 'data' });
 
-    it('returns true for valid signature', () => {
-      const signature = createHmac('sha256', secret).update(payload).digest('hex');
-
-      const result = verifyTallySignature(payload, signature, secret);
+    it('returns true for matching secret', () => {
+      const result = verifyWebhookSecret(secret, secret);
 
       expect(result).toBe(true);
     });
 
-    it('returns false for invalid signature', () => {
-      const result = verifyTallySignature(payload, 'invalid-signature', secret);
+    it('returns false for non-matching secret', () => {
+      const result = verifyWebhookSecret('wrong-secret', secret);
 
       expect(result).toBe(false);
     });
 
-    it('returns false for wrong secret', () => {
-      const signature = createHmac('sha256', secret).update(payload).digest('hex');
-
-      const result = verifyTallySignature(payload, signature, 'wrong-secret');
-
-      expect(result).toBe(false);
-    });
-
-    it('returns false for modified payload', () => {
-      const signature = createHmac('sha256', secret).update(payload).digest('hex');
-      const modifiedPayload = JSON.stringify({ test: 'modified' });
-
-      const result = verifyTallySignature(modifiedPayload, signature, secret);
-
-      expect(result).toBe(false);
-    });
-
-    it('returns false for empty signature', () => {
-      const result = verifyTallySignature(payload, '', secret);
+    it('returns false for empty token', () => {
+      const result = verifyWebhookSecret('', secret);
 
       expect(result).toBe(false);
     });
 
     it('returns false for empty secret', () => {
-      const signature = createHmac('sha256', secret).update(payload).digest('hex');
-
-      const result = verifyTallySignature(payload, signature, '');
+      const result = verifyWebhookSecret(secret, '');
 
       expect(result).toBe(false);
     });
 
-    it('handles malformed signatures gracefully', () => {
-      const result = verifyTallySignature(payload, 'not-valid-hex!@#$', secret);
+    it('returns false for different length strings', () => {
+      const result = verifyWebhookSecret('short', 'much-longer-secret');
 
       expect(result).toBe(false);
     });
@@ -202,10 +179,9 @@ describe('Webhook Verification', () => {
       setNodeEnv('development');
     });
 
-    it('returns valid for correct signature in development', () => {
-      const signature = createHmac('sha256', secret).update(payload).digest('hex');
+    it('returns valid for correct secret in x-webhook-secret header', () => {
       const headers = new Headers({
-        'tally-signature': signature,
+        'x-webhook-secret': secret,
         'x-forwarded-for': '192.168.1.1',
       });
 
@@ -215,7 +191,19 @@ describe('Webhook Verification', () => {
       expect(result.ip).toBe('192.168.1.1');
     });
 
-    it('returns invalid for missing signature header', () => {
+    it('returns valid for correct secret in Authorization Bearer header', () => {
+      const headers = new Headers({
+        authorization: `Bearer ${secret}`,
+        'x-forwarded-for': '192.168.1.1',
+      });
+
+      const result = verifyWebhook(payload, headers);
+
+      expect(result.valid).toBe(true);
+      expect(result.ip).toBe('192.168.1.1');
+    });
+
+    it('returns invalid for missing secret header', () => {
       const headers = new Headers({
         'x-forwarded-for': '192.168.1.1',
       });
@@ -223,22 +211,22 @@ describe('Webhook Verification', () => {
       const result = verifyWebhook(payload, headers);
 
       expect(result.valid).toBe(false);
-      expect(result.error).toBe('Missing tally-signature header');
+      expect(result.error).toBe('Missing x-webhook-secret header or Authorization Bearer token');
     });
 
-    it('returns invalid for wrong signature', () => {
+    it('returns invalid for wrong secret', () => {
       const headers = new Headers({
-        'tally-signature': 'wrong-signature',
+        'x-webhook-secret': 'wrong-secret',
         'x-forwarded-for': '192.168.1.1',
       });
 
       const result = verifyWebhook(payload, headers);
 
       expect(result.valid).toBe(false);
-      expect(result.error).toBe('Invalid signature');
+      expect(result.error).toBe('Invalid webhook secret');
     });
 
-    it('allows requests in development without secret configured', () => {
+    it('rejects requests when WEBHOOK_SECRET not configured (fail closed)', () => {
       delete process.env.WEBHOOK_SECRET;
       setNodeEnv('development');
 
@@ -248,7 +236,8 @@ describe('Webhook Verification', () => {
 
       const result = verifyWebhook(payload, headers);
 
-      expect(result.valid).toBe(true);
+      expect(result.valid).toBe(false);
+      expect(result.error).toBe('WEBHOOK_SECRET not configured');
     });
 
     it('rejects requests in production without secret configured', () => {
