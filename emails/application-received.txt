@@ -1,0 +1,23 @@
+Application Received - {{POSITION}}
+
+Dear {{PERSON_FIRST_NAME}},
+
+Thank you for your interest in joining {{ORGANIZATION_NAME}}! We have successfully received your application for the {{POSITION}} position submitted on {{APPLICATION_DATE}}.
+
+As part of our selection process, we invite you to complete a brief General Competencies Assessment. This assessment helps us understand your skills and ensures a good fit for our team.
+
+Please visit the following link to begin the assessment:
+{{GC_ASSESSMENT_LINK}}
+
+WHAT'S NEXT?
+1. Complete the General Competencies Assessment
+2. If successful, you'll receive an invitation for a role-specific assessment
+3. Qualified candidates will be invited for an interview
+
+If you have any questions, please reply to this email or contact us at {{SUPPORT_EMAIL}}.
+
+Best regards,
+{{ORGANIZATION_NAME}} Talent Team
+
+---
+© {{CURRENT_YEAR}} {{ORGANIZATION_NAME}}. All rights reserved.

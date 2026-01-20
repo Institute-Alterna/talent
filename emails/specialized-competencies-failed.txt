@@ -1,0 +1,23 @@
+Application Update - {{POSITION}}
+
+Dear {{PERSON_FIRST_NAME}},
+
+Thank you for completing the Specialized Competencies Assessment for the {{POSITION}} position at {{ORGANIZATION_NAME}}.
+
+After careful review, we regret to inform you that we will not be moving forward with your application for this specific role at this time. While your score of {{SC_SCORE}}% shows potential, it did not meet our minimum threshold of {{SC_THRESHOLD}}% for this position.
+
+We want to acknowledge your effort throughout the application process. You demonstrated strong general competencies, and we encourage you to:
+
+• Continue developing your specialized skills in this area
+• Explore other positions at {{ORGANIZATION_NAME}} that may better match your current expertise
+• Consider reapplying in the future as you gain more experience
+
+We appreciate your interest in joining our team and wish you success in your career journey.
+
+If you have any questions, please contact us at {{SUPPORT_EMAIL}}.
+
+Best regards,
+{{ORGANIZATION_NAME}} Talent Team
+
+---
+© {{CURRENT_YEAR}} {{ORGANIZATION_NAME}}. All rights reserved.

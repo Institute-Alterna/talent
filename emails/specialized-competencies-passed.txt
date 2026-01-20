@@ -1,0 +1,25 @@
+Interview Invitation - {{POSITION}}
+
+Dear {{PERSON_FIRST_NAME}},
+
+Excellent work! You have successfully passed the Specialized Competencies Assessment for the {{POSITION}} position.
+
+YOUR SCORE: {{SC_SCORE}}%
+Passing threshold: {{SC_THRESHOLD}}%
+
+WHAT'S NEXT?
+We're excited to move forward with your application. Our team will review your results and reach out shortly to schedule an interview. You'll receive a separate email with scheduling details and a calendar link.
+
+In the meantime, we encourage you to:
+
+• Review the job description and prepare questions about the role
+• Think about specific examples from your experience that demonstrate your skills
+• Research {{ORGANIZATION_NAME}} and our mission
+
+If you have any questions, please contact us at {{SUPPORT_EMAIL}}.
+
+Best regards,
+{{ORGANIZATION_NAME}} Talent Team
+
+---
+© {{CURRENT_YEAR}} {{ORGANIZATION_NAME}}. All rights reserved.

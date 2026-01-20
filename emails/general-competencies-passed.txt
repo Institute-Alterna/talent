@@ -1,0 +1,21 @@
+Congratulations! Next Steps for {{POSITION}}
+
+Dear {{PERSON_FIRST_NAME}},
+
+Great news! You have successfully passed the General Competencies Assessment for the {{POSITION}} position.
+
+YOUR SCORE: {{GC_SCORE}}%
+Passing threshold: {{GC_THRESHOLD}}%
+
+WHAT'S NEXT?
+Your application will now be reviewed by our team. If your profile matches our current needs for the {{POSITION}} role, you will receive an invitation to complete a role-specific Specialized Competencies Assessment.
+
+We appreciate your patience during this process. We review applications regularly and will be in touch soon.
+
+If you have any questions, please contact us at {{SUPPORT_EMAIL}}.
+
+Best regards,
+{{ORGANIZATION_NAME}} Talent Team
+
+---
+© {{CURRENT_YEAR}} {{ORGANIZATION_NAME}}. All rights reserved.

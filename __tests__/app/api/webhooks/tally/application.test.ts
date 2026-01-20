@@ -74,12 +74,22 @@ const setNodeEnv = (env: string) => {
 
 describe('POST /api/webhooks/tally/application', () => {
   const webhookSecret = 'test-secret';
+  let consoleLogSpy: jest.SpyInstance;
+  let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     jest.clearAllMocks();
     clearAllRateLimits();
     process.env.WEBHOOK_SECRET = webhookSecret;
     setNodeEnv('development');
+    // Suppress console output during tests
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleLogSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
   });
 
   function createRequest(payload: unknown, signature?: string): NextRequest {
