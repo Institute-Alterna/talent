@@ -153,9 +153,9 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
             but Alterna uses a random quote instead!
             <span>&copy;</span>
             */
-           <span>{copyrightRandomText()}</span>
+           <span suppressHydrationWarning>{copyrightRandomText()}</span>
           ) : (
-            <span>{copyrightRandomText()}</span>
+            <span suppressHydrationWarning>{copyrightRandomText()}</span>
             /*
             <span>&copy; {new Date().getFullYear()} {branding.copyrightText}</span>
             */

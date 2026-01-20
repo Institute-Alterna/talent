@@ -48,7 +48,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "tailwind-merge": "^3.4.0",
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "dotenv": "^17.2.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -60,7 +61,6 @@
     "@types/nodemailer": "^7.0.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.2",
     "eslint-config-prettier": "^10.1.8",
