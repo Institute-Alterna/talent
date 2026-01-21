@@ -151,3 +151,4 @@ vite.config.ts.timestamp-*
 *.pem
 
 /lib/generated/prisma
+next-env.d.ts
