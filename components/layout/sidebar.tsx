@@ -15,7 +15,8 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { cn, copyrightRandomText } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { footerRandomText } from "@institute-alterna/footer-quotes"
 import { strings, branding } from '@/config';
 import {
   LayoutDashboard,
@@ -153,9 +154,9 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
             but Alterna uses a random quote instead!
             <span>&copy;</span>
             */
-           <span suppressHydrationWarning>{copyrightRandomText()}</span>
+           <span suppressHydrationWarning>{footerRandomText()}</span>
           ) : (
-            <span suppressHydrationWarning>{copyrightRandomText()}</span>
+            <span suppressHydrationWarning>{footerRandomText()}</span>
             /*
             <span>&copy; {new Date().getFullYear()} {branding.copyrightText}</span>
             */

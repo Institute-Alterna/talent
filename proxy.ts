@@ -1,7 +1,7 @@
 /**
- * Next.js Middleware
+ * Next.js Proxy
  *
- * This middleware runs on every request in Edge Runtime and handles:
+ * This proxy runs on every request in Edge Runtime and handles:
  * - Route protection (redirecting unauthenticated users)
  *
  * Uses the edge-compatible auth config (no database operations).
@@ -22,7 +22,7 @@ const { auth } = NextAuth(authConfig);
 
 export default auth;
 
-// Configure which routes the middleware runs on
+// Configure which routes the proxy runs on
 export const config = {
   matcher: [
     // Match protected routes only
