@@ -19,6 +19,8 @@ import {
   MoreHorizontal,
   Calendar,
   AlertCircle,
+  FileDown,
+  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -56,6 +58,8 @@ interface ApplicationCardProps {
   onView: (id: string) => void;
   onSendEmail?: (id: string) => void;
   onScheduleInterview?: (id: string) => void;
+  onExportPdf?: (id: string) => void;
+  isExportingPdf?: boolean;
   isAdmin?: boolean;
   className?: string;
 }
@@ -79,6 +83,8 @@ export function ApplicationCard({
   onView,
   onSendEmail,
   onScheduleInterview,
+  onExportPdf,
+  isExportingPdf = false,
   isAdmin = false,
   className,
 }: ApplicationCardProps) {
@@ -178,6 +184,22 @@ export function ApplicationCard({
                     <Calendar className="mr-2 h-4 w-4" />
                     Schedule Interview
                   </DropdownMenuItem>
+                )}
+                {onExportPdf && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => onExportPdf(application.id)}
+                      disabled={isExportingPdf}
+                    >
+                      {isExportingPdf ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileDown className="mr-2 h-4 w-4" />
+                      )}
+                      {isExportingPdf ? 'Exporting...' : 'Export PDF'}
+                    </DropdownMenuItem>
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

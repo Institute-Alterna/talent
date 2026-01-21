@@ -29,7 +29,7 @@ import {
 } from '@/components/applications';
 import { strings } from '@/config';
 import { Stage, Status } from '@/lib/generated/prisma/client';
-import { Search, RefreshCw, Filter, Users, Briefcase } from 'lucide-react';
+import { Search, RefreshCw, Filter, Users, Briefcase, FileDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface CandidatesPageClientProps {
@@ -84,6 +84,9 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   const [selectedApplication, setSelectedApplication] = React.useState<ApplicationDetailData | null>(null);
   const [auditLogs, setAuditLogs] = React.useState<AuditLogResponse['auditLogs'] | undefined>(undefined);
   const [isDetailLoading, setIsDetailLoading] = React.useState(false);
+
+  // PDF export
+  const [exportingPdfId, setExportingPdfId] = React.useState<string | null>(null);
 
   // Fetch pipeline data
   const fetchPipelineData = React.useCallback(async () => {
@@ -222,6 +225,53 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       description: 'Decision recording will be implemented soon',
     });
   };
+
+  const handleExportPdf = React.useCallback(async (applicationId: string) => {
+    try {
+      setExportingPdfId(applicationId);
+
+      const response = await fetch(`/api/applications/${applicationId}/export-pdf`);
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'Failed to export PDF' }));
+        throw new Error(data.error || 'Failed to export PDF');
+      }
+
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = 'candidate-report.pdf';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
+        if (match) {
+          filename = match[1];
+        }
+      }
+
+      // Download the file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: 'PDF Exported',
+        description: `${filename} has been downloaded`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Export Failed',
+        description: err instanceof Error ? err.message : 'Failed to export PDF',
+        variant: 'destructive',
+      });
+    } finally {
+      setExportingPdfId(null);
+    }
+  }, [toast]);
 
   // Get unique positions for filter
   const positions = React.useMemo(() => {
@@ -410,6 +460,8 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
                 onViewApplication={handleViewApplication}
                 onSendEmail={handleViewApplication}
                 onScheduleInterview={handleViewApplication}
+                onExportPdf={handleExportPdf}
+                exportingPdfId={exportingPdfId}
                 isAdmin={isAdmin}
                 isLoading={isLoading}
               />

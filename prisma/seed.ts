@@ -62,10 +62,10 @@ const prisma = new PrismaClient({ adapter });
 const cleanMode = process.argv.includes('--clean');
 
 async function main() {
-  console.log('🌱 Starting database seed...\n');
+  console.log('Starting database seed...\n');
 
   if (cleanMode) {
-    console.log('⚠️  Running in CLEAN mode - all data including real users will be deleted\n');
+    console.warn('Running in CLEAN mode - all data including real users will be deleted!\n');
   }
 
   // Preserve real users (those synced from Okta, not sample data)
@@ -81,7 +81,7 @@ async function main() {
   });
 
   if (realUsers.length > 0) {
-    console.log(`📌 Preserving ${realUsers.length} real user(s): ${realUsers.map(u => u.email).join(', ')}\n`);
+    console.warn(`Preserving ${realUsers.length} real user(s).`);
   }
 
   // Clear existing data (in reverse order of dependencies)
@@ -109,22 +109,21 @@ async function main() {
   console.log('✓ Existing data cleared\n');
 
   // Create Users (Alterna personnel)
-  console.log('Creating users...');
+  console.log('Creating fictional user records...');
   const adminUser = await prisma.user.create({
     data: {
       oktaUserId: 'okta-admin-001',
-      email: 'admin@alterna.dev',
-      firstName: 'Ana',
-      lastName: 'Martinez',
-      displayName: 'Ana Martinez',
+      email: 'alex@test.alterna.labs',
+      firstName: 'Alex',
+      lastName: 'Alterna',
+      displayName: 'Alex Alterna',
       title: 'HR Director',
-      city: 'Austin',
-      state: 'TX',
-      countryCode: 'US',
+      city: 'Geneva',
+      countryCode: 'CH',
       operationalClearance: Clearance.C,
       isAdmin: true,
       hasAppAccess: true,
-      schedulingLink: 'https://cal.com/ana-martinez/interview',
+      schedulingLink: 'https://cal.com/alex-alterna/interview',
       lastSyncedAt: new Date(),
     },
   });
@@ -132,53 +131,55 @@ async function main() {
   const hiringManager = await prisma.user.create({
     data: {
       oktaUserId: 'okta-manager-001',
-      email: 'carlos@alterna.dev',
-      firstName: 'Carlos',
-      lastName: 'Rodriguez',
-      displayName: 'Carlos Rodriguez',
+      email: 'julian@test.alterna.labs',
+      firstName: 'Julián',
+      lastName: 'Ramírez',
+      displayName: 'Julián Ramírez',
       title: 'Engineering Manager',
-      city: 'Mexico City',
+      city: 'Mítikäh',
+      state: 'CDMX',
       countryCode: 'MX',
       operationalClearance: Clearance.B,
       isAdmin: false,
       hasAppAccess: true,
-      schedulingLink: 'https://calendly.com/carlos-rodriguez/30min',
+      schedulingLink: 'https://calendly.com/julian-ramirez/30min',
       lastSyncedAt: new Date(),
     },
   });
-  console.log(`✓ Created 2 users\n`);
+  console.log(`✓ Created 2 fictional user records\n`);
 
   // Create Persons (unique individuals identified by email)
-  console.log('Creating persons...');
+  console.log('Creating fictional person records...');
 
-  // Person 1: Maria Garcia - Just applied, hasn't taken GC yet
+  // Person 1: Robert Trigo - Just applied, hasn't taken GC yet
   const person1 = await prisma.person.create({
     data: {
-      email: 'maria.garcia@email.com',
-      firstName: 'Maria',
-      lastName: 'Garcia',
+      email: 'robert.trigo@test.alterna.labs',
+      firstName: 'Robert',
+      lastName: 'Trigo',
       phoneNumber: '+1-555-0101',
       country: 'United States',
       countryCode: 'US',
-      city: 'San Francisco',
-      state: 'CA',
+      city: 'Miami',
+      state: 'FL',
       educationLevel: "Bachelor's Degree",
-      portfolioLink: 'https://mariagarcia.dev',
+      portfolioLink: 'https://roberttrigo.dev',
       generalCompetenciesCompleted: false,
       tallyRespondentId: 'tally-resp-001',
     },
   });
 
-  // Person 2: Juan Lopez - Passed GC, taking specialized
+  // Person 2: Maria Hernandez - Passed GC, taking specialized
   const person2 = await prisma.person.create({
     data: {
-      email: 'juan.lopez@email.com',
-      firstName: 'Juan',
-      lastName: 'Lopez',
+      email: 'maria.hernandez@test.alterna.labs',
+      firstName: 'Maria',
+      lastName: 'Hernandez',
       phoneNumber: '+52-555-0102',
-      country: 'Mexico',
-      countryCode: 'MX',
-      city: 'Guadalajara',
+      country: 'United States',
+      countryCode: 'US',
+      city: 'Miami',
+      state: 'FL',
       educationLevel: "Master's Degree",
       generalCompetenciesCompleted: true,
       generalCompetenciesScore: 82.5,
@@ -187,17 +188,17 @@ async function main() {
     },
   });
 
-  // Person 3: Sofia Hernandez - Passed both assessments, in interview
+  // Person 3: Jan Won Young - Passed both assessments, in interview
   const person3 = await prisma.person.create({
     data: {
-      email: 'sofia.h@email.com',
-      firstName: 'Sofia',
-      lastName: 'Hernandez',
+      email: 'jan.wonyoung@test.alterna.labs',
+      firstName: 'Jan',
+      lastName: 'Won Young',
       phoneNumber: '+1-555-0103',
-      country: 'United States',
-      countryCode: 'US',
-      city: 'Miami',
-      state: 'FL',
+      country: 'South Korea',
+      countryCode: 'KR',
+      city: 'Seoul',
+      state: 'Hannam-dong',
       educationLevel: "Bachelor's Degree",
       generalCompetenciesCompleted: true,
       generalCompetenciesScore: 88.0,
@@ -209,13 +210,14 @@ async function main() {
   // Person 4: Diego Ramirez - Accepted, in agreement stage
   const person4 = await prisma.person.create({
     data: {
-      email: 'diego.r@email.com',
+      email: 'diego.ramirez@test.alterna.labs',
       firstName: 'Diego',
       lastName: 'Ramirez',
       phoneNumber: '+503-555-0104',
       country: 'El Salvador',
       countryCode: 'SV',
       city: 'San Salvador',
+      state: 'San Salvador',
       educationLevel: "Bachelor's Degree",
       portfolioLink: 'https://vimeo.com/diegoramirez',
       generalCompetenciesCompleted: true,
@@ -228,7 +230,7 @@ async function main() {
   // Person 5: Pedro Santos - Failed GC, rejected
   const person5 = await prisma.person.create({
     data: {
-      email: 'pedro.s@email.com',
+      email: 'pedro.santos@test.alterna.labs',
       firstName: 'Pedro',
       lastName: 'Santos',
       country: 'Brazil',
@@ -240,20 +242,20 @@ async function main() {
       tallyRespondentId: 'tally-resp-005',
     },
   });
-  console.log(`✓ Created 5 persons\n`);
+  console.log(`✓ Created 5 fictional person records\n`);
 
   // Create Applications (one or more per person)
-  console.log('Creating applications...');
+  console.log('Creating fictional application records...');
 
-  // Application 1: Maria's Software Developer application
+  // Application 1: Robert's Compliance Specialist application
   const app1 = await prisma.application.create({
     data: {
       personId: person1.id,
-      position: 'Software Developer',
+      position: 'Compliance Specialist',
       currentStage: Stage.APPLICATION,
       status: Status.ACTIVE,
-      academicBackground: 'Computer Science from UC Berkeley',
-      previousExperience: '3 years as a frontend developer at a startup',
+      academicBackground: 'Legendary Computer Science teacher, now head of compsci at Miami Dade County Public Schools',
+      previousExperience: 'Accelerated a tiny project some time ago',
       resumeUrl: 'https://tally.so/r/resume-001.pdf',
       videoLink: 'https://youtube.com/watch?v=intro001',
       hasResume: true,
@@ -266,15 +268,15 @@ async function main() {
     },
   });
 
-  // Application 2: Juan's Instructional Designer application
+  // Application 2: Maria's Instructional Designer application
   const app2 = await prisma.application.create({
     data: {
       personId: person2.id,
       position: 'Instructional Designer',
       currentStage: Stage.SPECIALIZED_COMPETENCIES,
       status: Status.ACTIVE,
-      academicBackground: 'Educational Technology from ITESM',
-      previousExperience: '5 years designing e-learning courses',
+      academicBackground: 'Educational Technology at FIU',
+      previousExperience: 'building cybersecurity teams at Miami-Dade high schools',
       hasAcademicBg: true,
       hasPreviousExp: true,
       tallySubmissionId: 'tally-sub-002',
@@ -283,15 +285,15 @@ async function main() {
     },
   });
 
-  // Application 3: Sofia's Course Facilitator application
+  // Application 3: Jan's Chief People Officer application
   const app3 = await prisma.application.create({
     data: {
       personId: person3.id,
-      position: 'Course Facilitator',
+      position: 'Chief People Officer',
       currentStage: Stage.INTERVIEW,
       status: Status.ACTIVE,
-      academicBackground: 'Education from FIU',
-      previousExperience: '2 years as teaching assistant',
+      academicBackground: 'Training in Performing Arts at Seoul National University',
+      previousExperience: 'Singer and dancer in a small idol group',
       hasAcademicBg: true,
       hasPreviousExp: true,
       tallySubmissionId: 'tally-sub-003',
@@ -333,7 +335,7 @@ async function main() {
   // Application 6: Maria also applied for Content Writer (demonstrating multi-application)
   const app6 = await prisma.application.create({
     data: {
-      personId: person1.id,
+      personId: person2.id,
       position: 'Content Writer',
       currentStage: Stage.APPLICATION,
       status: Status.ACTIVE,
@@ -348,15 +350,15 @@ async function main() {
       tallyFormId: 'form-application-001',
     },
   });
-  console.log(`✓ Created 6 applications\n`);
+  console.log(`✓ Created 6 fictional application records\n`);
 
   // Create Assessments
-  console.log('Creating assessments...');
+  console.log('Creating fictional assessment records...');
 
   // General Competencies assessments (linked to Person)
   await prisma.assessment.createMany({
     data: [
-      // Person 2 (Juan): Passed GC
+      // Person 2 (Maria): Passed GC
       {
         personId: person2.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
@@ -373,7 +375,7 @@ async function main() {
           behaviourScore: 81,
         },
       },
-      // Person 3 (Sofia): Passed GC
+      // Person 3 (Jan): Passed GC
       {
         personId: person3.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
@@ -430,7 +432,7 @@ async function main() {
   // Specialized Competencies assessments (linked to Application)
   await prisma.assessment.createMany({
     data: [
-      // Application 3 (Sofia's Course Facilitator): Passed SC
+      // Application 3 (Jan's Chief People Officer): Passed SC
       {
         applicationId: app3.id,
         assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
@@ -452,10 +454,10 @@ async function main() {
       },
     ],
   });
-  console.log(`✓ Created 6 assessments\n`);
+  console.log(`✓ Created 6 fictional assessment records\n`);
 
   // Create Interviews (linked to Application)
-  console.log('Creating interviews...');
+  console.log('Creating fictional interview records...');
   await prisma.interview.create({
     data: {
       applicationId: app3.id,
@@ -479,10 +481,10 @@ async function main() {
       emailSentAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
     },
   });
-  console.log(`✓ Created 2 interviews\n`);
+  console.log(`✓ Created 2 fictional interview records\n`);
 
   // Create Decisions (linked to Application)
-  console.log('Creating decisions...');
+  console.log('Creating fictional decision records...');
   await prisma.decision.create({
     data: {
       applicationId: app4.id,
@@ -502,10 +504,10 @@ async function main() {
       decidedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), // 4 days ago
     },
   });
-  console.log(`✓ Created 2 decisions\n`);
+  console.log(`✓ Created 2 fictional decision records\n`);
 
   // Create Audit Logs (can link to Person, Application, or both)
-  console.log('Creating audit logs...');
+  console.log('Creating fictional audit logs...');
   await prisma.auditLog.createMany({
     data: [
       // Application received
@@ -558,10 +560,10 @@ async function main() {
       },
     ],
   });
-  console.log(`✓ Created 5 audit logs\n`);
+  console.log(`✓ Created 5 fictional audit logs\n`);
 
   // Create Email Logs (can link to Person, Application, or both)
-  console.log('Creating email logs...');
+  console.log('Creating fictional email logs...');
   await prisma.emailLog.createMany({
     data: [
       // Application confirmation
@@ -618,23 +620,23 @@ async function main() {
       },
     ],
   });
-  console.log(`✓ Created 5 email logs\n`);
+  console.log(`✓ Created 5 fictional email logs\n`);
 
-  console.log('✅ Database seeded successfully!\n');
+  console.log('Database seeded successfully!\n');
   console.log('Summary:');
   console.log('  - 2 sample users (1 admin, 1 hiring manager)');
   if (realUsers.length > 0) {
     console.log(`  - ${realUsers.length} real user(s) preserved`);
   }
-  console.log('  - 5 persons (unique individuals)');
-  console.log('  - 6 applications (including 2 from same person)');
-  console.log('  - 6 assessments (4 GC on Persons, 2 SC on Applications)');
-  console.log('  - 2 interviews');
-  console.log('  - 2 decisions');
-  console.log('  - 5 audit logs');
-  console.log('  - 5 email logs');
+  console.log('  - 5 fictional persons (unique individuals)');
+  console.log('  - 6 fictional application records (including 2 from same person)');
+  console.log('  - 6 fictional assessment records (4 GC on Persons, 2 SC on Applications)');
+  console.log('  - 2 fictional interview records');
+  console.log('  - 2 fictional decision records');
+  console.log('  - 5 fictional audit logs');
+  console.log('  - 5 fictional email logs');
   if (!cleanMode) {
-    console.log('\n💡 Tip: Use --clean flag to delete real users too');
+    console.log('\nUse --clean flag to delete real users in next seed.');
   }
 }
 

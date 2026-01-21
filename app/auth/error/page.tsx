@@ -11,24 +11,24 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { strings } from '@/config/strings';
 
 const errorMessages: Record<string, { title: string; description: string }> = {
   Configuration: {
     title: 'Configuration Error',
-    description:
-      'There is a problem with the server configuration. Please check that OKTA_CLIENT_ID, OKTA_CLIENT_SECRET, and OKTA_ISSUER are correctly set.',
+    description: strings.errors.serverConfiguration,
   },
   AccessDenied: {
     title: 'Access Denied',
-    description: 'You do not have permission to sign in. Please contact an administrator.',
+    description: strings.errors.accessDenied,
   },
   Verification: {
     title: 'Verification Error',
-    description: 'The verification link may have expired or already been used.',
+    description: strings.errors.verificationError,
   },
   Default: {
     title: 'Authentication Error',
-    description: 'An error occurred during authentication. Please try again.',
+    description: strings.errors.authenticationError,
   },
 };
 
@@ -46,7 +46,7 @@ export default async function AuthErrorPage({
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl text-destructive">{errorInfo.title}</CardTitle>
-          <CardDescription>Authentication failed</CardDescription>
+          <CardDescription>{errorInfo.title}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <p className="text-center text-sm text-muted-foreground">{errorInfo.description}</p>

@@ -163,6 +163,11 @@ export const strings = {
     forbidden: 'Access denied',
     validationFailed: 'Please check your input and try again',
     networkError: 'Network error. Please check your connection.',
+    // Login errors handled in /app/auth/error/page.tsx
+    serverConfiguration: 'There is a problem with the server configuration. Please check that all IdP environment variables are correctly set.',
+    accessDenied: 'You do not have the Operational Clearance to access this resource. If this is a mistake, please contact the Safety team.',
+    verificationError: 'The verification link may have expired or already been used.',
+    authenticationError: 'There has been an error logging you in. Please try signing in again.',
   },
 
   // Empty states
