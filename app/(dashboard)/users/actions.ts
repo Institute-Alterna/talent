@@ -17,6 +17,7 @@ import {
   getUserStats,
   syncUsersFromOkta,
 } from '@/lib/services/users';
+import { cleanupSeedData } from '@/lib/services/seed-cleanup';
 import {
   isOktaConfigured,
   getAllOktaUsersWithAdminStatus,
@@ -153,8 +154,9 @@ export async function deleteUserAction(id: string): Promise<ActionResult<void>> 
  * Syncs ALL users from the Okta directory to the local database.
  * Updates their role information based on group membership.
  * Removes users from the database that no longer exist in Okta.
+ * Also cleans up seed/sample data to prepare the app for production.
  */
-export async function syncFromOktaAction(): Promise<ActionResult<{ synced: number; removed: number }>> {
+export async function syncFromOktaAction(): Promise<ActionResult<{ synced: number; removed: number; seedDataCleaned: boolean }>> {
   try {
     const session = await auth();
     if (!session?.user?.isAdmin) {
@@ -174,8 +176,21 @@ export async function syncFromOktaAction(): Promise<ActionResult<{ synced: numbe
 
     console.log(`[Sync] Completed: ${synced} users synced, ${removed} users removed`);
 
+    // Clean up seed data after successful sync to make app production-ready
+    const seedCleanupResult = await cleanupSeedData(session.user.dbUserId);
+    const seedDataCleaned = 
+      seedCleanupResult.usersRemoved > 0 ||
+      seedCleanupResult.personsRemoved > 0 ||
+      seedCleanupResult.applicationsRemoved > 0;
+
+    if (seedDataCleaned) {
+      console.log(`[Sync] Seed data cleaned: ${seedCleanupResult.usersRemoved} users, ${seedCleanupResult.personsRemoved} persons, ${seedCleanupResult.applicationsRemoved} applications removed`);
+    }
+
     revalidatePath('/users');
-    return { success: true, data: { synced, removed } };
+    revalidatePath('/candidates');
+    revalidatePath('/dashboard');
+    return { success: true, data: { synced, removed, seedDataCleaned } };
   } catch (error) {
     console.error('Error syncing from Okta:', error);
     // Provide more detailed error message

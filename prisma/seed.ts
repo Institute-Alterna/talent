@@ -4,6 +4,10 @@
  * This script populates the database with sample data for development and testing.
  * Run with: npx prisma db seed
  *
+ * IMPORTANT: By default, real users (synced from Okta) are PRESERVED.
+ * Only sample users (with oktaUserId starting with 'okta-') are deleted.
+ * To delete all users including real ones, use: npx prisma db seed -- --clean
+ *
  * What this creates:
  * - 2 sample users (1 admin, 1 hiring manager)
  * - 5 sample persons (unique individuals)
@@ -54,8 +58,31 @@ const adapter = new PrismaMariaDb({
 
 const prisma = new PrismaClient({ adapter });
 
+// Check for --clean flag to delete real users too
+const cleanMode = process.argv.includes('--clean');
+
 async function main() {
   console.log('🌱 Starting database seed...\n');
+
+  if (cleanMode) {
+    console.log('⚠️  Running in CLEAN mode - all data including real users will be deleted\n');
+  }
+
+  // Preserve real users (those synced from Okta, not sample data)
+  // Real users have oktaUserId that doesn't start with 'okta-' prefix
+  const realUsers = cleanMode ? [] : await prisma.user.findMany({
+    where: {
+      NOT: {
+        oktaUserId: {
+          startsWith: 'okta-',
+        },
+      },
+    },
+  });
+
+  if (realUsers.length > 0) {
+    console.log(`📌 Preserving ${realUsers.length} real user(s): ${realUsers.map(u => u.email).join(', ')}\n`);
+  }
 
   // Clear existing data (in reverse order of dependencies)
   console.log('Clearing existing data...');
@@ -66,7 +93,19 @@ async function main() {
   await prisma.assessment.deleteMany();
   await prisma.application.deleteMany();
   await prisma.person.deleteMany();
-  await prisma.user.deleteMany();
+  
+  // Only delete sample users, preserve real ones
+  if (cleanMode) {
+    await prisma.user.deleteMany();
+  } else {
+    await prisma.user.deleteMany({
+      where: {
+        oktaUserId: {
+          startsWith: 'okta-',
+        },
+      },
+    });
+  }
   console.log('✓ Existing data cleared\n');
 
   // Create Users (Alterna personnel)
@@ -583,7 +622,10 @@ async function main() {
 
   console.log('✅ Database seeded successfully!\n');
   console.log('Summary:');
-  console.log('  - 2 users (1 admin, 1 hiring manager)');
+  console.log('  - 2 sample users (1 admin, 1 hiring manager)');
+  if (realUsers.length > 0) {
+    console.log(`  - ${realUsers.length} real user(s) preserved`);
+  }
   console.log('  - 5 persons (unique individuals)');
   console.log('  - 6 applications (including 2 from same person)');
   console.log('  - 6 assessments (4 GC on Persons, 2 SC on Applications)');
@@ -591,6 +633,9 @@ async function main() {
   console.log('  - 2 decisions');
   console.log('  - 5 audit logs');
   console.log('  - 5 email logs');
+  if (!cleanMode) {
+    console.log('\n💡 Tip: Use --clean flag to delete real users too');
+  }
 }
 
 main()

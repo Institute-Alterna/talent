@@ -71,7 +71,11 @@ export function UsersPageClient({
           setStats(fetchResult.data.stats);
         }
         // Show success message with counts
-        console.log(`Sync completed: ${result.data.synced} users synced, ${result.data.removed} removed`);
+        let message = `Sync completed: ${result.data.synced} users synced, ${result.data.removed} removed`;
+        if (result.data.seedDataCleaned) {
+          message += '\n\n✨ Sample data has been cleaned up - app is now production-ready!';
+        }
+        console.log(message);
       } else {
         console.error('Sync failed:', result.error);
         // Display error to user (could add toast here)
