@@ -31,20 +31,13 @@ jest.mock('@/config', () => ({
 }));
 
 // Mock utils
-jest.mock('@/lib/utils', () => ({
-  cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
-  formatDateTime: (date: Date | string | null | undefined) => {
-    if (!date) return '';
-    const d = typeof date === 'string' ? new Date(date) : date;
-    return d.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  },
-}));
+jest.mock('@/lib/utils', () => {
+  const actual = jest.requireActual('@/lib/utils');
+  return {
+    cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
+    formatDateTime: (date: Date | string | null | undefined) => actual.formatDateTime(date),
+  };
+});
 
 // Mock server actions
 jest.mock('@/app/(dashboard)/settings/actions', () => ({

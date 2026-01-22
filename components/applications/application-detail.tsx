@@ -28,7 +28,7 @@ import { StatusBadge } from './status-badge';
 import { StageBadge } from './stage-badge';
 import { Timeline, TimelineItem, mapActionTypeToTimelineType } from '@/components/ui/timeline';
 import { Stage, Status } from '@/lib/generated/prisma/client';
-import { cn } from '@/lib/utils';
+import { cn, formatDateShort, formatDateTime } from '@/lib/utils';
 import {
   User,
   Mail,
@@ -137,24 +137,7 @@ interface ApplicationDetailProps {
   isLoading?: boolean;
 }
 
-function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
-
-function formatDateTime(date: string): string {
-  return new Date(date).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-}
+// Use shared date formatting helpers from '@/lib/utils' (D MMMM YYYY and 24-hour time)
 
 /**
  * Missing fields indicator
@@ -350,7 +333,7 @@ function AssessmentsTab({
             {person.generalCompetenciesPassedAt && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Completed</span>
-                <span>{formatDate(person.generalCompetenciesPassedAt)}</span>
+                <span>{formatDateShort(person.generalCompetenciesPassedAt)}</span>
               </div>
             )}
           </div>
@@ -403,7 +386,7 @@ function AssessmentsTab({
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Completed</span>
-              <span>{formatDate(scAssessment.completedAt)}</span>
+              <span>{formatDateShort(scAssessment.completedAt)}</span>
             </div>
           </div>
         ) : (
@@ -697,7 +680,7 @@ export function ApplicationDetail({
               <DialogDescription className="flex items-center gap-2 mt-1">
                 {application.position}
                 <span className="text-muted-foreground">•</span>
-                <span>Applied {formatDate(application.createdAt)}</span>
+                <span>Applied {formatDateShort(application.createdAt)}</span>
               </DialogDescription>
             </div>
             <div className="flex items-center gap-2">

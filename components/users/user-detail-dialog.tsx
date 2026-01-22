@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { strings } from '@/config';
+import { formatDateTime } from '@/lib/utils';
 import { updateUserAction, fetchUser } from '@/app/(dashboard)/users/actions';
 import type { UserListItem, User } from '@/types/user';
 
@@ -91,13 +92,8 @@ export function UserDetailDialog({
     onOpenChange(false);
   };
 
-  const formatDate = (date: Date | string | null | undefined) => {
-    if (!date) return '-';
-    return new Date(date).toLocaleString('en-US', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
-  };
+  // Use shared `formatDateTime` helper from '@/lib/utils' for consistent formatting
+
 
   if (!user) return null;
 
@@ -246,11 +242,11 @@ export function UserDetailDialog({
               </div>
               <div>
                 <p className="text-muted-foreground">Created</p>
-                <p className="font-medium">{formatDate(fullUser?.createdAt)}</p>
+                <p className="font-medium">{formatDateTime(fullUser?.createdAt)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Last Synced</p>
-                <p className="font-medium">{formatDate(fullUser?.lastSyncedAt)}</p>
+                <p className="font-medium">{formatDateTime(fullUser?.lastSyncedAt)}</p>
               </div>
             </div>
           </div>

@@ -192,7 +192,8 @@ export const pdfLabels = {
     generatedOn: 'Generated on',
     page: 'Page',
     of: 'of',
-    confidential: 'CONFIDENTIAL - Internal Use Only',
+    confidential: 'Candidate Information is Confidential.',
+    internalUseOnly: 'This document should be for Internal Use Only and shared with authorised parties, including where required by law, if requested.',
   },
 
   /**

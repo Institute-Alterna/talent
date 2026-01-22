@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RefreshCw, Search, Users, Shield, Calendar, CheckCircle2, XCircle, Ban } from 'lucide-react';
 import { strings } from '@/config';
+import { formatDateTime } from '@/lib/utils';
 import { UsersTable, UserDetailDialog } from '@/components/users';
 import { syncFromOktaAction, fetchUsers } from './actions';
 import type { UserListItem, UserStats } from '@/types/user';
@@ -232,12 +233,7 @@ export function UsersPageClient({
         <div className="flex items-center gap-3">
           {stats.lastSyncedAt && (
             <span className="text-sm text-muted-foreground">
-              Last synced: {new Date(stats.lastSyncedAt).toLocaleDateString('en-GB', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+              Last synced: {formatDateTime(stats.lastSyncedAt)}
             </span>
           )}
           <Button onClick={handleSync} disabled={isSyncing || isPending}>

@@ -248,8 +248,8 @@ describe('Email Templates', () => {
       const date = new Date('2026-02-14T00:00:00Z');
       const formatted = formatEmailDate(date);
       
-      // Format: "Saturday, February 14, 2026" (or similar based on locale)
-      expect(formatted).toMatch(/\w+,\s+\w+\s+\d+,\s+\d{4}/);
+      // Format: "Saturday, 14 February 2026" (en-GB style)
+      expect(formatted).toMatch(/\w+,\s+\d+\s+\w+\s+\d{4}/);
     });
   });
 

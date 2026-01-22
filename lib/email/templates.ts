@@ -13,6 +13,7 @@ import {
   type EmailTemplateName,
 } from './config';
 import { sanitizeForLog } from '@/lib/security';
+import { formatDate } from '@/lib/utils';
 
 /**
  * Template cache to avoid repeated file reads
@@ -234,12 +235,8 @@ export function buildAssessmentLink(
  * @returns Formatted date string
  */
 export function formatEmailDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  // Use shared helper with weekday included for consistent formatting
+  return formatDate(date, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 /**

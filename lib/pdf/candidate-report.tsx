@@ -787,7 +787,7 @@ function Footer({ confidential, generatedAt }: { confidential: boolean; generate
     <View style={styles.footer} fixed>
       <Text style={styles.footerText}>
         {pdfLabels.report.generatedOn}: {generatedAt}
-        {confidential && ` | ${pdfLabels.report.confidential}`}
+        {confidential && ` | ${pdfLabels.report.confidential} \n${pdfLabels.report.internalUseOnly}`}
       </Text>
       <Text
         style={styles.pageNumber}

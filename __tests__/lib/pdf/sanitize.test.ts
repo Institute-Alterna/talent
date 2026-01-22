@@ -293,9 +293,9 @@ describe('PDF Sanitization Utilities', () => {
   });
 
   describe('formatDate', () => {
-    it('should format dates with default options', () => {
+    it('should format dates with default options (European)', () => {
       const result = formatDate('2024-01-15T10:30:00Z');
-      expect(result).toMatch(/January 15, 2024/);
+      expect(result).toMatch(/15\s+January\s+2024/);
     });
 
     it('should return N/A for invalid dates', () => {
@@ -305,9 +305,9 @@ describe('PDF Sanitization Utilities', () => {
   });
 
   describe('formatDateOnly', () => {
-    it('should format date without time', () => {
+    it('should format date without time (DD MMMM YYYY)', () => {
       const result = formatDateOnly('2024-01-15T10:30:00Z');
-      expect(result).toMatch(/January 15, 2024/);
+      expect(result).toMatch(/15\s+January\s+2024/);
       expect(result).not.toMatch(/10:30/);
     });
   });

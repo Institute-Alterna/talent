@@ -14,6 +14,29 @@ import prettier from 'eslint-config-prettier';
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // Rule: discourage using Date.prototype.toLocaleDateString/toLocaleString directly
+  {
+    rules: {
+      'no-restricted-syntax': [
+        'warn',
+        {
+          selector: "CallExpression[callee.property.name='toLocaleDateString']",
+          message: 'Use shared date helpers from "@/lib/utils" instead of "toLocaleDateString" for consistent formatting.'
+        },
+        {
+          selector: "CallExpression[callee.property.name='toLocaleString']",
+          message: 'Use shared date helpers from "@/lib/utils" instead of "toLocaleString" for consistent formatting.'
+        }
+      ]
+    }
+  },
+  // Allowlist: disable the restriction inside our intentional helper modules
+  {
+    files: ['lib/utils.ts', 'lib/pdf/sanitize.ts', 'lib/email/templates.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
+    },
+  },
   // Prettier config - must be last to override other formatting rules
   prettier,
   // Override default ignores of eslint-config-next.

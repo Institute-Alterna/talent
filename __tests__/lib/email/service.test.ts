@@ -106,7 +106,7 @@ describe('Email Service', () => {
         variables: {
           PERSON_FIRST_NAME: 'John',
           POSITION: 'Software Engineer',
-          APPLICATION_DATE: 'January 19, 2026',
+          APPLICATION_DATE: '19 January 2026',
           GC_ASSESSMENT_LINK: 'https://tally.so/test',
         },
         personId: 'person-123',
@@ -140,7 +140,7 @@ describe('Email Service', () => {
         variables: {
           PERSON_FIRST_NAME: 'John',
           POSITION: 'Software Engineer',
-          APPLICATION_DATE: 'January 19, 2026',
+          APPLICATION_DATE: '19 January 2026',
           GC_ASSESSMENT_LINK: 'https://tally.so/test',
         },
       });
@@ -161,7 +161,7 @@ describe('Email Service', () => {
         variables: {
           PERSON_FIRST_NAME: 'John',
           POSITION: 'Software Engineer',
-          APPLICATION_DATE: 'January 19, 2026',
+          APPLICATION_DATE: '19 January 2026',
           GC_ASSESSMENT_LINK: 'https://tally.so/test',
         },
         skipRateLimit: true,

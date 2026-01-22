@@ -278,6 +278,13 @@ export function sanitizeDate(date: Date | string | null | undefined): string {
 /**
  * Format a date for display in PDFs
  *
+ * Uses European convention for the date portion (D MMMM YYYY) and 24-hour time
+ * for full timestamps. Locale is set to `en-GB` to ensure consistent ordering.
+ *
+ * Examples:
+ * - Date only: 21 January 2026
+ * - Full timestamp: 21 January 2026, 14:30 GMT
+ *
  * @param date - Date to format
  * @param options - Intl.DateTimeFormat options
  * @returns Formatted date string
@@ -298,13 +305,17 @@ export function formatDate(
     hour: '2-digit',
     minute: '2-digit',
     timeZoneName: 'short',
+    hour12: false,
   };
 
-  return new Date(sanitized).toLocaleDateString('en-US', options ?? defaultOptions);
+  // Use en-GB for D MMMM YYYY ordering and full month names (e.g., 21 January 2026)
+  return new Date(sanitized).toLocaleString('en-GB', options ?? defaultOptions);
 }
 
 /**
  * Format a date for display (date only, no time)
+ *
+ * Formats as DD MMMM YYYY (e.g., 21 January 2026)
  *
  * @param date - Date to format
  * @returns Formatted date string

@@ -8,7 +8,7 @@
  */
 
 import * as React from 'react';
-import { cn } from '@/lib/utils';
+import { cn, formatDate, formatDateTime } from '@/lib/utils';
 import {
   Mail,
   UserPlus,
@@ -100,23 +100,14 @@ function formatRelativeTime(date: Date | string): string {
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
 
-  return then.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: then.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-  });
+  // Use shared formatting (D MMMM YYYY)
+  return formatDate(then);
+
 }
 
 function formatTimestamp(date: Date | string): string {
-  const d = new Date(date);
-  return d.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
+  // Use shared helper for consistent timestamp formatting (D MMMM YYYY, 24-hour time)
+  return formatDateTime(date);
 }
 
 export function Timeline({ items, className, maxItems, emptyMessage = 'No activity yet' }: TimelineProps) {

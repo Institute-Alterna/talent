@@ -13,7 +13,7 @@
  * (for resolving conflicting Tailwind classes).
  */
 
-import { cn, isValidUUID, isValidURL, formatDate, formatDateTime } from '@/lib/utils';
+import { cn, isValidUUID, isValidURL, formatDate, formatDateTime, formatDateShort } from '@/lib/utils';
 
 describe('cn (className utility)', () => {
   /**
@@ -213,7 +213,7 @@ describe('formatDate', () => {
   it('formats a valid Date object', () => {
     const date = new Date('2024-01-15T10:30:00Z');
     const result = formatDate(date);
-    expect(result).toMatch(/Jan 15, 2024/);
+    expect(result).toMatch(/15\s+January\s+2024/);
   });
 
   /**
@@ -221,7 +221,7 @@ describe('formatDate', () => {
    */
   it('formats a valid ISO date string', () => {
     const result = formatDate('2024-03-20T15:45:00Z');
-    expect(result).toMatch(/Mar 20, 2024/);
+    expect(result).toMatch(/20\s+March\s+2024/);
   });
 
   /**
@@ -252,7 +252,21 @@ describe('formatDate', () => {
   it('accepts custom formatting options', () => {
     const date = new Date('2024-01-15T10:30:00Z');
     const result = formatDate(date, { month: 'long' });
-    expect(result).toMatch(/January 15, 2024/);
+    expect(result).toMatch(/15\s+January\s+2024/);
+  });
+});
+
+describe('formatDateShort', () => {
+  it('formats date as D MMM without year', () => {
+    const result = formatDateShort('2024-01-15T10:30:00Z');
+    expect(result).toMatch(/15\s+Jan/);
+    // Should not include a year
+    expect(result).not.toMatch(/\d{4}/);
+  });
+
+  it('returns empty string for null or undefined', () => {
+    expect(formatDateShort(null)).toBe('');
+    expect(formatDateShort(undefined)).toBe('');
   });
 });
 
@@ -264,7 +278,7 @@ describe('formatDateTime', () => {
     const date = new Date('2024-01-15T10:30:00Z');
     const result = formatDateTime(date);
     // Result includes date and time
-    expect(result).toMatch(/Jan 15, 2024/);
+    expect(result).toMatch(/15\s+January\s+2024/);
     // Time format depends on locale, just check it's not empty
     expect(result.length).toBeGreaterThan(12);
   });
@@ -274,7 +288,7 @@ describe('formatDateTime', () => {
    */
   it('formats a valid ISO date string with time', () => {
     const result = formatDateTime('2024-03-20T15:45:00Z');
-    expect(result).toMatch(/Mar 20, 2024/);
+    expect(result).toMatch(/20\s+March\s+2024/);
     expect(result.length).toBeGreaterThan(12);
   });
 

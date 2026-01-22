@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from './status-badge';
 import { Stage, Status } from '@/lib/generated/prisma/client';
-import { cn } from '@/lib/utils';
+import { cn, formatDateShort } from '@/lib/utils';
 import {
   Eye,
   Mail,
@@ -64,13 +64,8 @@ interface ApplicationCardProps {
   className?: string;
 }
 
-function formatDate(date: Date | string): string {
-  const d = new Date(date);
-  return d.toLocaleDateString('en-GB', {
-    month: 'short',
-    day: 'numeric',
-  });
-}
+// Use shared `formatDate` from '@/lib/utils' (D MMMM YYYY)
+
 
 /* 
 Uncomment if you wish to use avatar initials
@@ -131,7 +126,7 @@ export function ApplicationCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Calendar className="w-3 h-3" />
-            <span>{formatDate(application.createdAt)}</span>
+            <span>{formatDateShort(application.createdAt)}</span>
             {hasMissingFields && (
               <Tooltip>
                 <TooltipTrigger asChild>

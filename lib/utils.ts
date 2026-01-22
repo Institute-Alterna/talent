@@ -48,9 +48,9 @@ export function formatDate(
     const d = typeof date === 'string' ? new Date(date) : date;
     if (isNaN(d.getTime())) return '';
 
-    return d.toLocaleDateString('en-US', {
+    return d.toLocaleDateString('en-GB', {
       year: 'numeric',
-      month: 'short',
+      month: 'long',
       day: 'numeric',
       ...options,
     });
@@ -72,35 +72,25 @@ export function formatDateTime(date: Date | string | null | undefined): string {
     const d = typeof date === 'string' ? new Date(date) : date;
     if (isNaN(d.getTime())) return '';
 
-    return d.toLocaleDateString('en-US', {
+    return d.toLocaleString('en-GB', {
       year: 'numeric',
-      month: 'short',
+      month: 'long',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
     });
   } catch {
     return '';
   }
 }
 
-export function copyrightRandomText(): string {
-  const quotes = [
-    // Severance TV series quotes
-    "the work is mysterious and important",
-    "a handshake is available upon request",
-    "please enjoy each candidate profile equally",
-    "the exalted victory of cold harbor!",
-    "don't let the numbers scare you",
-      // Mr. Milchick
-    "may I introduce choreography and merriment",
-    "push through the discomfort for the reward",
-    "waffles are the key to happiness",
-    // Formula 1 quotes
-    "box box box",
-    "i have the seat full of water. like full of water"
-  ];
-
-  const randomIndex = Math.floor(Math.random() * quotes.length);
-  return quotes[randomIndex];
+/**
+ * Format a short date for display (D MMM, e.g., 21 Jan)
+ *
+ * @param date - Date to format
+ * @returns Formatted short date string
+ */
+export function formatDateShort(date: Date | string | null | undefined): string {
+  return formatDate(date, { day: 'numeric', month: 'short', year: undefined });
 }
