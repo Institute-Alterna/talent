@@ -16,10 +16,16 @@ export const recruitment = {
     { id: 'SIGNED', name: 'Signed', order: 6 },
   ],
 
-  // Minimum passing scores for assessments (out of 100)
+  // Minimum passing scores for assessments (with scale)
   assessmentThresholds: {
-    generalCompetencies: 70,
-    specializedCompetencies: 75,
+    generalCompetencies: {
+      threshold: 800,
+      scale: 1000,
+    },
+    specializedCompetencies: {
+      threshold: 400,
+      scale: 600,
+    },
   },
 
   // Interview settings
@@ -103,3 +109,39 @@ export const recruitment = {
 export type Recruitment = typeof recruitment;
 export type Stage = (typeof recruitment.stages)[number];
 export type Position = (typeof recruitment.positions)[number];
+export type AssessmentThreshold = {
+  threshold: number;
+  scale: number;
+};
+
+/**
+ * Calculate percentage from score and scale
+ */
+export function calculatePercentage(score: number, scale: number): number {
+  if (scale === 0) return 0;
+  return (score / scale) * 100;
+}
+
+/**
+ * Format score display with scale context
+ * @param score - The raw score
+ * @param scale - The maximum possible score
+ * @returns Object with display value and tooltip text
+ */
+export function formatScoreDisplay(
+  score: number | string | null | undefined,
+  scale: number
+): { value: string; tooltip: string } {
+  if (score === null || score === undefined) {
+    return { value: '—', tooltip: 'No score available' };
+  }
+  const numScore = typeof score === 'string' ? parseFloat(score) : score;
+  if (isNaN(numScore)) {
+    return { value: '—', tooltip: 'Invalid score' };
+  }
+  const percentage = calculatePercentage(numScore, scale);
+  return {
+    value: Math.round(numScore).toString(),
+    tooltip: `${Math.round(numScore)} / ${scale} (${percentage.toFixed(0)}%)`,
+  };
+}

@@ -30,6 +30,7 @@ interface PipelineBoardProps {
   onSendEmail?: (id: string) => void;
   onScheduleInterview?: (id: string) => void;
   onExportPdf?: (id: string) => void;
+  onWithdraw?: (id: string) => void;
   exportingPdfId?: string | null;
   isAdmin?: boolean;
   isLoading?: boolean;
@@ -52,6 +53,7 @@ interface StageColumnProps {
   onSendEmail?: (id: string) => void;
   onScheduleInterview?: (id: string) => void;
   onExportPdf?: (id: string) => void;
+  onWithdraw?: (id: string) => void;
   exportingPdfId?: string | null;
   isAdmin?: boolean;
 }
@@ -63,6 +65,7 @@ function StageColumn({
   onSendEmail,
   onScheduleInterview,
   onExportPdf,
+  onWithdraw,
   exportingPdfId,
   isAdmin,
 }: StageColumnProps) {
@@ -99,6 +102,7 @@ function StageColumn({
                 onSendEmail={onSendEmail}
                 onScheduleInterview={onScheduleInterview}
                 onExportPdf={onExportPdf}
+                onWithdraw={onWithdraw}
                 isExportingPdf={exportingPdfId === app.id}
                 isAdmin={isAdmin}
               />
@@ -141,6 +145,7 @@ export function PipelineBoard({
   onSendEmail,
   onScheduleInterview,
   onExportPdf,
+  onWithdraw,
   exportingPdfId,
   isAdmin = false,
   isLoading = false,
@@ -162,6 +167,7 @@ export function PipelineBoard({
             onSendEmail={onSendEmail}
             onScheduleInterview={onScheduleInterview}
             onExportPdf={onExportPdf}
+            onWithdraw={onWithdraw}
             exportingPdfId={exportingPdfId}
             isAdmin={isAdmin}
           />

@@ -27,6 +27,8 @@ import {
   ApplicationDetailData,
   ApplicationCardData,
 } from '@/components/applications';
+import { WithdrawDialog } from '@/components/applications/withdraw-dialog';
+import { DecisionDialog } from '@/components/applications/decision-dialog';
 import { strings } from '@/config';
 import { Stage, Status } from '@/lib/generated/prisma/client';
 import { Search, RefreshCw, Filter, Users, Briefcase, FileDown } from 'lucide-react';
@@ -87,6 +89,33 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
   // PDF export
   const [exportingPdfId, setExportingPdfId] = React.useState<string | null>(null);
+
+  // Withdraw dialog
+  const [withdrawApplicationId, setWithdrawApplicationId] = React.useState<string | null>(null);
+  const [withdrawApplicationName, setWithdrawApplicationName] = React.useState<string>('');
+  const [isWithdrawProcessing, setIsWithdrawProcessing] = React.useState(false);
+
+  // Decision dialog
+  const [isDecisionDialogOpen, setIsDecisionDialogOpen] = React.useState(false);
+  const [decisionType, setDecisionType] = React.useState<'ACCEPT' | 'REJECT'>('REJECT');
+  const [decisionApplicationName, setDecisionApplicationName] = React.useState('');
+  const [isDecisionProcessing, setIsDecisionProcessing] = React.useState(false);
+
+  // Email loading state
+  const [sendingEmailTemplate, setSendingEmailTemplate] = React.useState<string | null>(null);
+
+  // Browser warning for page refresh during operations
+  React.useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDecisionProcessing || sendingEmailTemplate !== null) {
+        e.preventDefault();
+        e.returnValue = ''; // Chrome requires returnValue to be set
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDecisionProcessing, sendingEmailTemplate]);
 
   // Fetch pipeline data
   const fetchPipelineData = React.useCallback(async () => {
@@ -180,6 +209,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   const handleSendEmail = async (templateName: string) => {
     if (!selectedApplicationId) return;
 
+    setSendingEmailTemplate(templateName);
     try {
       const response = await fetch(`/api/applications/${selectedApplicationId}/send-email`, {
         method: 'POST',
@@ -197,6 +227,9 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
         description: 'The email has been sent successfully',
       });
 
+      // Small delay to ensure activity log updates
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
       // Refresh the detail
       fetchApplicationDetail(selectedApplicationId);
     } catch (err) {
@@ -205,6 +238,8 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
         description: err instanceof Error ? err.message : 'Failed to send email',
         variant: 'destructive',
       });
+    } finally {
+      setSendingEmailTemplate(null);
     }
   };
 
@@ -217,13 +252,57 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   };
 
   const handleMakeDecision = async (decision: 'ACCEPT' | 'REJECT') => {
+    if (!selectedApplication) return;
+
+    setDecisionType(decision);
+    setDecisionApplicationName(
+      `${selectedApplication.person.firstName} ${selectedApplication.person.lastName}`
+    );
+    setIsDecisionDialogOpen(true);
+  };
+
+  const handleDecisionConfirm = async (data: {
+    decision: 'ACCEPT' | 'REJECT';
+    reason: string;
+    notes?: string;
+    sendEmail: boolean;
+  }) => {
     if (!selectedApplicationId) return;
 
-    // TODO: Open decision dialog with reason field
-    toast({
-      title: 'Coming Soon',
-      description: 'Decision recording will be implemented soon',
-    });
+    setIsDecisionProcessing(true);
+    try {
+      const response = await fetch(`/api/applications/${selectedApplicationId}/decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to record decision');
+      }
+
+      const result = await response.json();
+
+      toast({
+        title: data.decision === 'ACCEPT' ? 'Application Accepted' : 'Application Rejected',
+        description: result.message || 'Decision recorded successfully',
+      });
+
+      // Small delay to ensure activity log updates
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Refresh the detail and pipeline
+      await fetchApplicationDetail(selectedApplicationId);
+      fetchPipelineData();
+
+      setIsDecisionDialogOpen(false);
+    } catch (err) {
+      // Let DecisionDialog handle the error display (keep dialog open)
+      throw err;
+    } finally {
+      setIsDecisionProcessing(false);
+    }
   };
 
   const handleExportPdf = React.useCallback(async (applicationId: string) => {
@@ -272,6 +351,101 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       setExportingPdfId(null);
     }
   }, [toast]);
+
+  // Withdraw handlers
+  const handleWithdrawClick = React.useCallback((applicationId: string) => {
+    // Find the application to get its name
+    if (!pipelineData) return;
+    
+    for (const stage of Object.keys(pipelineData) as (keyof PipelineBoardData)[]) {
+      const app = pipelineData[stage].find(a => a.id === applicationId);
+      if (app) {
+        setWithdrawApplicationId(applicationId);
+        setWithdrawApplicationName(`${app.person.firstName} ${app.person.lastName}`);
+        return;
+      }
+    }
+  }, [pipelineData]);
+
+  const handleWithdrawClose = React.useCallback(() => {
+    setWithdrawApplicationId(null);
+    setWithdrawApplicationName('');
+  }, []);
+
+  const handleDenyApplication = React.useCallback(async () => {
+    if (!withdrawApplicationId) return;
+    
+    setIsWithdrawProcessing(true);
+    try {
+      // Set status to WITHDRAWN (soft delete)
+      const response = await fetch(`/api/applications/${withdrawApplicationId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'Application denied by administrator' }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to withdraw application');
+      }
+
+      // Send rejection email
+      await fetch(`/api/applications/${withdrawApplicationId}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateName: 'rejection' }),
+      });
+
+      toast({
+        title: 'Application Withdrawn',
+        description: 'The application has been withdrawn and a rejection email has been sent.',
+      });
+
+      // Refresh the pipeline
+      fetchPipelineData();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to withdraw application',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsWithdrawProcessing(false);
+    }
+  }, [withdrawApplicationId, toast, fetchPipelineData]);
+
+  const handleDeleteApplication = React.useCallback(async () => {
+    if (!withdrawApplicationId) return;
+    
+    setIsWithdrawProcessing(true);
+    try {
+      // Hard delete the application
+      const response = await fetch(`/api/applications/${withdrawApplicationId}?hardDelete=true`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete application');
+      }
+
+      toast({
+        title: 'Application Deleted',
+        description: 'The application and all associated data have been permanently deleted.',
+      });
+
+      // Refresh the pipeline
+      fetchPipelineData();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to delete application',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsWithdrawProcessing(false);
+    }
+  }, [withdrawApplicationId, toast, fetchPipelineData]);
 
   // Get unique positions for filter
   const positions = React.useMemo(() => {
@@ -461,6 +635,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
                 onSendEmail={handleViewApplication}
                 onScheduleInterview={handleViewApplication}
                 onExportPdf={handleExportPdf}
+                onWithdraw={handleWithdrawClick}
                 exportingPdfId={exportingPdfId}
                 isAdmin={isAdmin}
                 isLoading={isLoading}
@@ -480,6 +655,28 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
           onMakeDecision={handleMakeDecision}
           isAdmin={isAdmin}
           isLoading={isDetailLoading}
+          sendingEmailTemplate={sendingEmailTemplate}
+          isDecisionProcessing={isDecisionProcessing}
+        />
+
+        {/* Withdraw Application Dialog */}
+        <WithdrawDialog
+          isOpen={!!withdrawApplicationId}
+          onClose={handleWithdrawClose}
+          onDeny={handleDenyApplication}
+          onDelete={handleDeleteApplication}
+          applicationName={withdrawApplicationName}
+          isProcessing={isWithdrawProcessing}
+        />
+
+        {/* Decision Dialog */}
+        <DecisionDialog
+          isOpen={isDecisionDialogOpen}
+          onClose={() => setIsDecisionDialogOpen(false)}
+          onConfirm={handleDecisionConfirm}
+          decision={decisionType}
+          applicationName={decisionApplicationName}
+          isProcessing={isDecisionProcessing}
         />
       </div>
     </TooltipProvider>

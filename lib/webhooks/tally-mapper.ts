@@ -238,6 +238,38 @@ export function isCheckboxSelected(field: TallyField | undefined, optionId: stri
 }
 
 /**
+ * Get dropdown/select value from a field
+ *
+ * Dropdown fields in Tally return an array of option IDs in the value field.
+ * We need to look up the text from the options array.
+ *
+ * @param field - The Tally dropdown field
+ * @returns The selected option text or undefined
+ */
+export function getDropdownValue(field: TallyField | undefined): string | undefined {
+  if (!field || !Array.isArray(field.value) || field.value.length === 0) {
+    return undefined;
+  }
+
+  // Check if value is already TallyCheckboxValue[] (has text directly)
+  const firstValue = field.value[0];
+  if (firstValue && typeof firstValue === 'object' && 'text' in firstValue) {
+    return (firstValue as TallyCheckboxValue).text;
+  }
+
+  // Otherwise, value is array of option IDs - look up text from options
+  if (field.options && field.options.length > 0) {
+    const selectedIds = field.value as unknown as string[];
+    const selectedOption = field.options.find((opt) => selectedIds.includes(opt.id));
+    if (selectedOption) {
+      return selectedOption.text;
+    }
+  }
+
+  return undefined;
+}
+
+/**
  * Extract person data from application webhook payload
  *
  * @param payload - The Tally webhook payload
@@ -267,6 +299,10 @@ export function extractPersonData(payload: TallyWebhookPayload): CreatePersonDat
     throw new Error('Last name is required but missing from webhook payload');
   }
 
+  // Education level is a dropdown, so we need to extract the text from options
+  const educationLevelField = findFieldByKey(fields, APPLICATION_FIELD_KEYS.educationLevel);
+  const educationLevel = getDropdownValue(educationLevelField) || getStringValue(educationLevelField);
+
   return {
     email,
     firstName,
@@ -274,7 +310,7 @@ export function extractPersonData(payload: TallyWebhookPayload): CreatePersonDat
     phoneNumber: getStringValue(findFieldByKey(fields, APPLICATION_FIELD_KEYS.phoneNumber)),
     country: getStringValue(findFieldByKey(fields, APPLICATION_FIELD_KEYS.country)),
     portfolioLink: getStringValue(findFieldByKey(fields, APPLICATION_FIELD_KEYS.portfolioLink)),
-    educationLevel: getStringValue(findFieldByKey(fields, APPLICATION_FIELD_KEYS.educationLevel)),
+    educationLevel,
     tallyRespondentId: respondentId,
   };
 }

@@ -554,3 +554,134 @@ export function sanitizeUuid(id: string | null | undefined): string {
   }
   return id!.toLowerCase();
 }
+
+// =============================================================================
+// PDF-SPECIFIC SANITIZATION
+// =============================================================================
+// React-PDF renders plain text, NOT HTML. Therefore, we should NOT use HTML
+// entity escaping for PDF content. The escapeHtml function converts characters
+// like ' to &#x27; which would be displayed literally in the PDF.
+// =============================================================================
+
+/**
+ * Sanitize short text for PDF rendering (no HTML escaping)
+ *
+ * @param text - Text to sanitize
+ * @returns Sanitized text safe for PDF
+ */
+export function sanitizeShortTextForPdf(text: string | null | undefined): string {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+
+  let cleaned = removeControlCharacters(text);
+  cleaned = normalizeWhitespace(cleaned);
+  cleaned = truncateText(cleaned, CONTENT_LIMITS.SHORT_TEXT);
+  // Do NOT escape HTML - react-pdf renders plain text
+
+  return cleaned;
+}
+
+/**
+ * Sanitize medium text for PDF rendering (no HTML escaping)
+ *
+ * @param text - Text to sanitize
+ * @returns Sanitized text safe for PDF
+ */
+export function sanitizeMediumTextForPdf(text: string | null | undefined): string {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+
+  let cleaned = removeControlCharacters(text);
+  cleaned = cleaned.trim();
+  cleaned = truncateText(cleaned, CONTENT_LIMITS.MEDIUM_TEXT);
+  // Do NOT escape HTML - react-pdf renders plain text
+
+  return cleaned;
+}
+
+/**
+ * Sanitize long text for PDF rendering (no HTML escaping)
+ * Preserves newlines for multi-paragraph content
+ *
+ * @param text - Text to sanitize
+ * @returns Sanitized text safe for PDF with preserved line breaks
+ */
+export function sanitizeLongTextForPdf(text: string | null | undefined): string {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+
+  let cleaned = removeControlCharacters(text);
+  // Normalize line breaks
+  cleaned = cleaned.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // Remove excessive blank lines (more than 2 consecutive)
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  cleaned = cleaned.trim();
+  cleaned = truncateText(cleaned, CONTENT_LIMITS.LONG_TEXT);
+  // Do NOT escape HTML - react-pdf renders plain text
+
+  return cleaned;
+}
+
+/**
+ * Sanitize email for PDF rendering (no HTML escaping)
+ *
+ * @param email - Email to sanitize
+ * @returns Sanitized email safe for PDF
+ */
+export function sanitizeEmailForPdf(email: string | null | undefined): string {
+  if (!email || typeof email !== 'string') {
+    return '';
+  }
+
+  const cleaned = removeControlCharacters(email.trim().toLowerCase());
+
+  if (!isValidEmail(cleaned)) {
+    return '';
+  }
+
+  // Do NOT escape HTML - react-pdf renders plain text
+  return cleaned;
+}
+
+/**
+ * Sanitize JSON for PDF rendering (no HTML escaping)
+ *
+ * @param data - JSON data to sanitize
+ * @returns Sanitized JSON string safe for PDF
+ */
+export function sanitizeJsonForPdf(data: unknown): string {
+  if (data === null || data === undefined) {
+    return '';
+  }
+
+  try {
+    const stringified = JSON.stringify(data, null, 2);
+    // Limit JSON output size
+    const truncated = truncateText(stringified, CONTENT_LIMITS.ACTIVITY_TEXT);
+    // Do NOT escape HTML - react-pdf renders plain text
+    return truncated;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Sanitize user agent for PDF rendering (no HTML escaping)
+ *
+ * @param userAgent - User agent string
+ * @returns Sanitized user agent safe for PDF
+ */
+export function sanitizeUserAgentForPdf(userAgent: string | null | undefined): string {
+  if (!userAgent || typeof userAgent !== 'string') {
+    return '';
+  }
+
+  let cleaned = removeControlCharacters(userAgent);
+  cleaned = truncateText(cleaned, CONTENT_LIMITS.MEDIUM_TEXT);
+  // Do NOT escape HTML - react-pdf renders plain text
+
+  return cleaned;
+}

@@ -344,10 +344,28 @@ export async function getAuditLogsForApplication(
 }
 
 /**
+ * Options for fetching recent audit logs
+ */
+export interface RecentAuditLogsOptions {
+  /** Maximum number of logs to return */
+  limit?: number;
+  /** Action types to exclude from results */
+  excludeActionTypes?: ActionType[];
+}
+
+/**
  * Get recent audit logs (for dashboard)
  */
-export async function getRecentAuditLogs(limit: number = 20) {
+export async function getRecentAuditLogs(options: RecentAuditLogsOptions = {}) {
+  const { limit = 20, excludeActionTypes = [] } = options;
+
+  const whereClause =
+    excludeActionTypes.length > 0
+      ? { actionType: { notIn: excludeActionTypes } }
+      : {};
+
   return db.auditLog.findMany({
+    where: whereClause,
     orderBy: { createdAt: 'desc' },
     take: limit,
     include: {
@@ -373,6 +391,118 @@ export async function getRecentAuditLogs(limit: number = 20) {
       },
     },
   });
+}
+
+/**
+ * Options for fetching all audit logs with cursor-based pagination
+ */
+export interface GetAllAuditLogsOptions {
+  /** Maximum number of logs to return per page */
+  limit?: number;
+  /** Cursor for pagination (ID of the last item from previous page) */
+  cursor?: string;
+  /** Filter by user ID (who performed the action) */
+  actorId?: string;
+  /** Search in action text */
+  searchTerm?: string;
+  /** Filter by action types */
+  actionTypes?: ActionType[];
+}
+
+/**
+ * Get all audit logs with cursor-based pagination (for admin audit log page)
+ */
+export async function getAllAuditLogs(options: GetAllAuditLogsOptions = {}) {
+  const { limit = 30, cursor, actorId, searchTerm, actionTypes } = options;
+
+  // Build where clause based on filters
+  const whereClause: Prisma.AuditLogWhereInput = {};
+
+  if (actorId) {
+    whereClause.userId = actorId;
+  }
+
+  if (searchTerm && searchTerm.trim()) {
+    // Sanitize search term to prevent injection - only allow alphanumeric and basic punctuation
+    const sanitizedTerm = searchTerm.trim().slice(0, 100);
+    whereClause.action = {
+      contains: sanitizedTerm,
+    };
+  }
+
+  if (actionTypes && actionTypes.length > 0) {
+    whereClause.actionType = { in: actionTypes };
+  }
+
+  // Fetch one more than limit to determine if there are more results
+  const logs = await db.auditLog.findMany({
+    where: whereClause,
+    orderBy: { createdAt: 'desc' },
+    take: limit + 1,
+    ...(cursor && {
+      skip: 1,
+      cursor: { id: cursor },
+    }),
+    include: {
+      person: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
+      },
+      application: {
+        select: {
+          id: true,
+          position: true,
+        },
+      },
+      user: {
+        select: {
+          id: true,
+          displayName: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  const hasMore = logs.length > limit;
+  const returnedLogs = hasMore ? logs.slice(0, limit) : logs;
+  const nextCursor = hasMore ? returnedLogs[returnedLogs.length - 1]?.id : null;
+
+  return {
+    logs: returnedLogs,
+    nextCursor,
+    hasMore,
+  };
+}
+
+/**
+ * Get list of users who have performed actions (for filter dropdown)
+ */
+export async function getAuditActors() {
+  const actors = await db.auditLog.findMany({
+    where: {
+      userId: { not: null },
+    },
+    select: {
+      user: {
+        select: {
+          id: true,
+          displayName: true,
+          email: true,
+        },
+      },
+    },
+    distinct: ['userId'],
+  });
+
+  // Filter out nulls and dedupe
+  return actors
+    .map((a) => a.user)
+    .filter((user): user is NonNullable<typeof user> => user !== null);
 }
 
 /**

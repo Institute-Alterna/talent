@@ -11,9 +11,8 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Timeline, TimelineItem, mapActionTypeToTimelineType } from '@/components/ui/timeline';
-import { StageBadge } from '@/components/applications';
+import { PipelineChart } from '@/components/dashboard';
 import { strings } from '@/config';
 import { Stage } from '@/lib/generated/prisma/client';
 import {
@@ -71,14 +70,6 @@ interface DashboardResponse {
   generatedAt: string;
 }
 
-const STAGE_ORDER: Stage[] = [
-  'APPLICATION',
-  'GENERAL_COMPETENCIES',
-  'SPECIALIZED_COMPETENCIES',
-  'INTERVIEW',
-  'AGREEMENT',
-  'SIGNED',
-];
 
 export function DashboardPageClient({ displayName }: DashboardPageClientProps) {
   const { toast } = useToast();
@@ -120,11 +111,6 @@ export function DashboardPageClient({ displayName }: DashboardPageClientProps) {
   React.useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
-
-  // Calculate total for pipeline chart
-  const totalInPipeline = data
-    ? Object.values(data.byStage).reduce((sum, count) => sum + count, 0)
-    : 0;
 
   // Convert activity to timeline items
   const activityItems: TimelineItem[] = (data?.recentActivity || []).map(item => ({
@@ -241,9 +227,9 @@ export function DashboardPageClient({ displayName }: DashboardPageClientProps) {
       </div>
 
       {/* Main Content Area */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+      <div className="grid gap-4 md:grid-cols-2">
         {/* Pipeline Overview */}
-        <Card className="lg:col-span-4">
+        <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -261,42 +247,17 @@ export function DashboardPageClient({ displayName }: DashboardPageClientProps) {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <div className="space-y-4">
-                {STAGE_ORDER.map((stage) => (
-                  <div key={stage} className="animate-pulse">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="h-5 bg-muted rounded w-32" />
-                      <div className="h-5 bg-muted rounded w-8" />
-                    </div>
-                    <div className="h-2 bg-muted rounded" />
-                  </div>
-                ))}
+              <div className="flex h-[300px] items-center justify-center">
+                <div className="h-[200px] w-[200px] animate-pulse rounded-full bg-muted" />
               </div>
             ) : (
-              <div className="space-y-4">
-                {STAGE_ORDER.map((stage) => {
-                  const count = data?.byStage[stage] || 0;
-                  const percentage = totalInPipeline > 0
-                    ? (count / totalInPipeline) * 100
-                    : 0;
-
-                  return (
-                    <div key={stage}>
-                      <div className="flex items-center justify-between mb-2">
-                        <StageBadge stage={stage} size="sm" />
-                        <span className="text-sm font-medium">{count}</span>
-                      </div>
-                      <Progress value={percentage} className="h-2" />
-                    </div>
-                  );
-                })}
-              </div>
+              <PipelineChart data={data?.byStage as Record<Stage, number>} />
             )}
           </CardContent>
         </Card>
 
         {/* Recent Activity */}
-        <Card className="lg:col-span-3">
+        <Card>
           <CardHeader>
             <CardTitle>{strings.dashboard.recentActivity}</CardTitle>
             <CardDescription>

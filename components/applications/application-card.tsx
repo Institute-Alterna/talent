@@ -21,6 +21,7 @@ import {
   AlertCircle,
   FileDown,
   Loader2,
+  Ban,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -34,6 +35,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { recruitment, formatScoreDisplay } from '@/config';
 
 export interface ApplicationCardData {
   id: string;
@@ -59,6 +61,7 @@ interface ApplicationCardProps {
   onSendEmail?: (id: string) => void;
   onScheduleInterview?: (id: string) => void;
   onExportPdf?: (id: string) => void;
+  onWithdraw?: (id: string) => void;
   isExportingPdf?: boolean;
   isAdmin?: boolean;
   className?: string;
@@ -79,6 +82,7 @@ export function ApplicationCard({
   onSendEmail,
   onScheduleInterview,
   onExportPdf,
+  onWithdraw,
   isExportingPdf = false,
   isAdmin = false,
   className,
@@ -89,13 +93,13 @@ export function ApplicationCard({
   return (
     <Card
       className={cn(
-        'cursor-pointer hover:shadow-md transition-shadow py-3',
+        'cursor-pointer hover:shadow-md transition-shadow py-3 min-h-[160px] flex flex-col',
         application.status !== 'ACTIVE' && 'opacity-60',
         className
       )}
       onClick={() => onView(application.id)}
     >
-      <CardContent className="px-3">
+      <CardContent className="px-3 flex flex-col flex-1">
         {/* Header with name and status */}
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-center gap-2 min-w-0">
@@ -104,11 +108,11 @@ export function ApplicationCard({
               {getInitials(person.firstName, person.lastName)}
             </div> */}
             {/* Name and email */}
-            <div className="min-w-0">
-              <p className="font-medium text-sm truncate">
+            <div className="min-w-0 max-w-[160px]">
+              <p className="font-medium text-sm truncate" title={`${person.firstName} ${person.lastName}`}>
                 {person.firstName} {person.lastName}
               </p>
-              <p className="text-xs text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate" title={person.email}>
                 {person.email}
               </p>
             </div>
@@ -196,27 +200,57 @@ export function ApplicationCard({
                     </DropdownMenuItem>
                   </>
                 )}
+                {onWithdraw && isAdmin && application.status === 'ACTIVE' && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => onWithdraw(application.id)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Ban className="mr-2 h-4 w-4" />
+                      Withdraw
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
 
-        {/* GC Score indicator (if completed) */}
-        {person.generalCompetenciesCompleted && person.generalCompetenciesScore && (
-          <div className="mt-2 pt-2 border-t">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">GC Score</span>
-              <span className={cn(
-                'font-medium',
-                parseFloat(person.generalCompetenciesScore) >= 70
-                  ? 'text-green-600'
-                  : 'text-red-600'
-              )}>
-                {parseFloat(person.generalCompetenciesScore).toFixed(0)}%
-              </span>
-            </div>
+        {/* GC Score indicator - always reserve space for consistent card height */}
+        <div className="mt-auto pt-2 border-t">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">GC Score</span>
+            {person.generalCompetenciesCompleted && person.generalCompetenciesScore ? (
+              (() => {
+                const { threshold, scale } = recruitment.assessmentThresholds.generalCompetencies;
+                const score = parseFloat(person.generalCompetenciesScore);
+                const scoreDisplay = formatScoreDisplay(score, scale);
+                const passed = score >= threshold;
+                return (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className={cn(
+                        'font-medium cursor-help',
+                        passed ? 'text-green-600' : 'text-red-600'
+                      )}>
+                        {scoreDisplay.value}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{scoreDisplay.tooltip}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Threshold: {threshold}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })()
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );

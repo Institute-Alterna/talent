@@ -161,6 +161,8 @@ export async function getApplicationsForPipeline(filters?: {
           firstName: true,
           lastName: true,
           email: true,
+          generalCompetenciesCompleted: true,
+          generalCompetenciesScore: true,
           _count: {
             select: { applications: true },
           },
@@ -197,9 +199,12 @@ export async function getApplicationsForPipeline(filters?: {
       status: app.status,
       createdAt: app.createdAt,
       person: {
+        id: app.person.id,
         firstName: app.person.firstName,
         lastName: app.person.lastName,
         email: app.person.email,
+        generalCompetenciesCompleted: app.person.generalCompetenciesCompleted,
+        generalCompetenciesScore: app.person.generalCompetenciesScore,
       },
       personApplicationCount: app.person._count.applications,
       missingFields,

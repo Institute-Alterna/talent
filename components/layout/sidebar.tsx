@@ -23,6 +23,7 @@ import {
   Users,
   UserCircle,
   Settings,
+  ScrollText,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -54,6 +55,12 @@ const navItems: NavItem[] = [
     href: '/users',
     label: strings.nav.personnel,
     icon: Users,
+    adminOnly: true,
+  },
+  {
+    href: '/audit-log',
+    label: strings.auditLog.title,
+    icon: ScrollText,
     adminOnly: true,
   },
   {

@@ -20,6 +20,10 @@ jest.mock('@/config', () => ({
       personnel: 'Personnel',
       settings: 'Settings',
     },
+    auditLog: {
+      title: 'Audit Log',
+      description: 'Complete history of system activity',
+    },
   },
   branding: {
     organisationName: 'Alterna',
@@ -60,6 +64,16 @@ describe('Sidebar', () => {
     it('shows Personnel link for admin users', () => {
       render(<Sidebar isAdmin={true} />);
       expect(screen.getByRole('link', { name: /personnel/i })).toBeInTheDocument();
+    });
+
+    it('hides Audit Log link for non-admin users', () => {
+      render(<Sidebar isAdmin={false} />);
+      expect(screen.queryByRole('link', { name: /audit log/i })).not.toBeInTheDocument();
+    });
+
+    it('shows Audit Log link for admin users', () => {
+      render(<Sidebar isAdmin={true} />);
+      expect(screen.getByRole('link', { name: /audit log/i })).toBeInTheDocument();
     });
   });
 

@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Determine pass/fail
-  const threshold = recruitment.assessmentThresholds.specializedCompetencies;
+  const { threshold, scale } = recruitment.assessmentThresholds.specializedCompetencies;
   const passed = score >= threshold;
 
   // Create Assessment record
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
       application.currentStage,
       'INTERVIEW',
       undefined,
-      `Specialized competencies passed with score ${score}/${threshold}`
+      `Specialized competencies passed with score ${score}/${scale} (threshold: ${threshold})`
     );
 
     // TODO: In Phase 6c, send interview scheduling email
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
       'ACTIVE',
       'REJECTED',
       undefined,
-      `Specialized competencies failed with score ${score}/${threshold}`
+      `Specialized competencies failed with score ${score}/${scale} (threshold: ${threshold})`
     );
 
     // TODO: In Phase 6c, send rejection email
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
   }
 
   console.log(
-    `[Webhook SC] Assessment processed: Application ${sanitizeForLog(applicationId)}, Score: ${sanitizeForLog(score)}/${threshold}, ` +
+    `[Webhook SC] Assessment processed: Application ${sanitizeForLog(applicationId)}, Score: ${sanitizeForLog(score)}/${scale} (threshold: ${threshold}), ` +
       `Passed: ${passed}, New stage: ${newStage}, New status: ${newStatus}`
   );
 

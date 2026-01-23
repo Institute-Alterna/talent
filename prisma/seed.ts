@@ -182,7 +182,7 @@ async function main() {
       state: 'FL',
       educationLevel: "Master's Degree",
       generalCompetenciesCompleted: true,
-      generalCompetenciesScore: 82.5,
+      generalCompetenciesScore: 850,
       generalCompetenciesPassedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
       tallyRespondentId: 'tally-resp-002',
     },
@@ -201,7 +201,7 @@ async function main() {
       state: 'Hannam-dong',
       educationLevel: "Bachelor's Degree",
       generalCompetenciesCompleted: true,
-      generalCompetenciesScore: 88.0,
+      generalCompetenciesScore: 920,
       generalCompetenciesPassedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
       tallyRespondentId: 'tally-resp-003',
     },
@@ -221,7 +221,7 @@ async function main() {
       educationLevel: "Bachelor's Degree",
       portfolioLink: 'https://vimeo.com/diegoramirez',
       generalCompetenciesCompleted: true,
-      generalCompetenciesScore: 91.0,
+      generalCompetenciesScore: 885,
       generalCompetenciesPassedAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
       tallyRespondentId: 'tally-resp-004',
     },
@@ -237,12 +237,32 @@ async function main() {
       countryCode: 'BR',
       educationLevel: 'Some College',
       generalCompetenciesCompleted: true,
-      generalCompetenciesScore: 55.0,
+      generalCompetenciesScore: 650,
       // No generalCompetenciesPassedAt because they failed
       tallyRespondentId: 'tally-resp-005',
     },
   });
-  console.log(`✓ Created 5 fictional person records\n`);
+
+  // Person 6: Sarah Chen - Failed GC (score below threshold), not rejected yet
+  const person6 = await prisma.person.create({
+    data: {
+      email: 'sarah.chen@test.alterna.labs',
+      firstName: 'Sarah',
+      lastName: 'Chen',
+      phoneNumber: '+1-555-0106',
+      country: 'Canada',
+      countryCode: 'CA',
+      city: 'Toronto',
+      state: 'ON',
+      educationLevel: "Bachelor's Degree",
+      portfolioLink: 'https://sarahchen.design',
+      generalCompetenciesCompleted: true,
+      generalCompetenciesScore: 720,
+      // No generalCompetenciesPassedAt because they failed
+      tallyRespondentId: 'tally-resp-006',
+    },
+  });
+  console.log(`✓ Created 6 fictional person records\n`);
 
   // Create Applications (one or more per person)
   console.log('Creating fictional application records...');
@@ -350,7 +370,28 @@ async function main() {
       tallyFormId: 'form-application-001',
     },
   });
-  console.log(`✓ Created 6 fictional application records\n`);
+
+  // Application 7: Sarah's UX Designer application (failed GC, awaiting decision)
+  const app7 = await prisma.application.create({
+    data: {
+      personId: person6.id,
+      position: 'UX Designer',
+      currentStage: Stage.GENERAL_COMPETENCIES,
+      status: Status.ACTIVE,
+      academicBackground: 'Human-Computer Interaction at University of Toronto',
+      previousExperience: '3 years designing educational apps',
+      resumeUrl: 'https://tally.so/r/resume-007.pdf',
+      videoLink: 'https://vimeo.com/sarahchen',
+      hasResume: true,
+      hasAcademicBg: true,
+      hasVideoIntro: true,
+      hasPreviousExp: true,
+      tallySubmissionId: 'tally-sub-007',
+      tallyResponseId: 'tally-res-007',
+      tallyFormId: 'form-application-001',
+    },
+  });
+  console.log(`✓ Created 7 fictional application records\n`);
 
   // Create Assessments
   console.log('Creating fictional assessment records...');
@@ -362,68 +403,85 @@ async function main() {
       {
         personId: person2.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
-        score: 82.5,
+        score: 850,
         passed: true,
-        threshold: 70,
+        threshold: 800,
         completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         tallySubmissionId: 'tally-gc-002',
         rawData: {
-          environmentScore: 85,
-          communicationsScore: 80,
-          collaborationScore: 82,
-          learnScore: 84,
-          behaviourScore: 81,
+          environmentScore: 860,
+          communicationsScore: 840,
+          collaborationScore: 855,
+          learnScore: 865,
+          behaviourScore: 830,
         },
       },
       // Person 3 (Jan): Passed GC
       {
         personId: person3.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
-        score: 88.0,
+        score: 920,
         passed: true,
-        threshold: 70,
+        threshold: 800,
         completedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
         tallySubmissionId: 'tally-gc-003',
         rawData: {
-          environmentScore: 90,
-          communicationsScore: 88,
-          collaborationScore: 87,
-          learnScore: 89,
-          behaviourScore: 86,
+          environmentScore: 935,
+          communicationsScore: 910,
+          collaborationScore: 925,
+          learnScore: 940,
+          behaviourScore: 890,
         },
       },
       // Person 4 (Diego): Passed GC
       {
         personId: person4.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
-        score: 91.0,
+        score: 885,
         passed: true,
-        threshold: 70,
+        threshold: 800,
         completedAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
         tallySubmissionId: 'tally-gc-004',
         rawData: {
-          environmentScore: 92,
-          communicationsScore: 90,
-          collaborationScore: 91,
-          learnScore: 93,
-          behaviourScore: 89,
+          environmentScore: 900,
+          communicationsScore: 875,
+          collaborationScore: 890,
+          learnScore: 895,
+          behaviourScore: 865,
         },
       },
       // Person 5 (Pedro): Failed GC
       {
         personId: person5.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
-        score: 55.0,
+        score: 650,
         passed: false,
-        threshold: 70,
+        threshold: 800,
         completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         tallySubmissionId: 'tally-gc-005',
         rawData: {
-          environmentScore: 52,
-          communicationsScore: 58,
-          collaborationScore: 55,
-          learnScore: 54,
-          behaviourScore: 56,
+          environmentScore: 640,
+          communicationsScore: 660,
+          collaborationScore: 655,
+          learnScore: 645,
+          behaviourScore: 650,
+        },
+      },
+      // Person 6 (Sarah): Failed GC (awaiting rejection decision)
+      {
+        personId: person6.id,
+        assessmentType: AssessmentType.GENERAL_COMPETENCIES,
+        score: 720,
+        passed: false,
+        threshold: 800,
+        completedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-gc-006',
+        rawData: {
+          environmentScore: 715,
+          communicationsScore: 730,
+          collaborationScore: 720,
+          learnScore: 710,
+          behaviourScore: 725,
         },
       },
     ],
@@ -436,9 +494,9 @@ async function main() {
       {
         applicationId: app3.id,
         assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
-        score: 79.5,
+        score: 485,
         passed: true,
-        threshold: 75,
+        threshold: 400,
         completedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
         tallySubmissionId: 'tally-sc-003',
       },
@@ -446,15 +504,25 @@ async function main() {
       {
         applicationId: app4.id,
         assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
-        score: 85.0,
+        score: 520,
         passed: true,
-        threshold: 75,
+        threshold: 400,
         completedAt: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000),
         tallySubmissionId: 'tally-sc-004',
       },
+      // Application 2 (Maria's Instructional Designer): Failed SC but can still interview
+      {
+        applicationId: app2.id,
+        assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
+        score: 350,
+        passed: false,
+        threshold: 400,
+        completedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-sc-002',
+      },
     ],
   });
-  console.log(`✓ Created 6 fictional assessment records\n`);
+  console.log(`✓ Created 7 fictional assessment records\n`);
 
   // Create Interviews (linked to Application)
   console.log('Creating fictional interview records...');
@@ -558,9 +626,27 @@ async function main() {
         details: { decision: 'REJECT', reason: 'Failed assessment' },
         createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
       },
+      // Sarah's application received
+      {
+        personId: person6.id,
+        applicationId: app7.id,
+        action: 'Application received via Tally webhook',
+        actionType: ActionType.CREATE,
+        details: { source: 'tally_webhook', formId: 'form-application-001' },
+        createdAt: app7.createdAt,
+      },
+      // Sarah completed GC assessment (failed)
+      {
+        personId: person6.id,
+        applicationId: app7.id,
+        action: 'General Competencies assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { score: 720, passed: false, threshold: 800 },
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      },
     ],
   });
-  console.log(`✓ Created 5 fictional audit logs\n`);
+  console.log(`✓ Created 7 fictional audit logs\n`);
 
   // Create Email Logs (can link to Person, Application, or both)
   console.log('Creating fictional email logs...');
@@ -618,9 +704,38 @@ async function main() {
         sentAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
         sentBy: adminUser.id,
       },
+      // Sarah's application confirmation
+      {
+        personId: person6.id,
+        applicationId: app7.id,
+        recipientEmail: person6.email,
+        templateName: 'application-received',
+        subject: 'Application Received - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: app7.createdAt,
+      },
+      // Sarah's GC invitation
+      {
+        personId: person6.id,
+        recipientEmail: person6.email,
+        templateName: 'general-competencies-invitation',
+        subject: 'Complete Your Assessment - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(app7.createdAt.getTime() + 1000),
+      },
+      // Sarah's GC failed notification
+      {
+        personId: person6.id,
+        applicationId: app7.id,
+        recipientEmail: person6.email,
+        templateName: 'general-competencies-failed',
+        subject: 'Assessment Results - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      },
     ],
   });
-  console.log(`✓ Created 5 fictional email logs\n`);
+  console.log(`✓ Created 8 fictional email logs\n`);
 
   console.log('Database seeded successfully!\n');
   console.log('Summary:');
@@ -628,9 +743,14 @@ async function main() {
   if (realUsers.length > 0) {
     console.log(`  - ${realUsers.length} real user(s) preserved`);
   }
-  console.log('  - 5 fictional persons (unique individuals)');
-  console.log('  - 6 fictional application records (including 2 from same person)');
-  console.log('  - 6 fictional assessment records (4 GC on Persons, 2 SC on Applications)');
+  console.log('  - 6 fictional persons (unique individuals)');
+  console.log('  - 7 fictional application records (including 2 from same person)');
+  console.log('  - 6 fictional assessment records (5 GC, 3 SC)');
+  console.log('  - 2 fictional interview records');
+  console.log('  - 2 fictional decision records');
+  console.log('  - 7 fictional audit logs');
+  console.log('  - 8 fictional email logs');
+  console.log('  - 7 fictional assessment records (4 GC on Persons, 3 SC on Applications - 1 failed SC)');
   console.log('  - 2 fictional interview records');
   console.log('  - 2 fictional decision records');
   console.log('  - 5 fictional audit logs');

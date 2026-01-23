@@ -15,6 +15,7 @@ import {
   updateApplication,
   updateApplicationStatus,
   advanceApplicationStage,
+  deleteApplication,
 } from '@/lib/services/applications';
 import {
   logRecordViewed,
@@ -362,6 +363,7 @@ export async function PATCH(
  * DELETE /api/applications/[id]
  *
  * Soft delete an application by setting status to WITHDRAWN.
+ * Use ?hardDelete=true to permanently delete the application and all related data.
  * Admin only.
  */
 export async function DELETE(
@@ -370,6 +372,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+
+    // Check for hardDelete query parameter
+    const { searchParams } = new URL(request.url);
+    const hardDelete = searchParams.get('hardDelete') === 'true';
 
     // Validate ID format
     if (!isValidUUID(id)) {
@@ -405,7 +411,17 @@ export async function DELETE(
       );
     }
 
-    // Check if already withdrawn/rejected
+    if (hardDelete) {
+      // Hard delete: permanently remove the application and all related data
+      await deleteApplication(id);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Application permanently deleted',
+      });
+    }
+
+    // Check if already withdrawn/rejected for soft delete
     if (existingApp.status === 'WITHDRAWN') {
       return NextResponse.json(
         { error: 'Application is already withdrawn' },

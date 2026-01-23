@@ -94,3 +94,40 @@ export function formatDateTime(date: Date | string | null | undefined): string {
 export function formatDateShort(date: Date | string | null | undefined): string {
   return formatDate(date, { day: 'numeric', month: 'short', year: undefined });
 }
+
+/**
+ * ISO 3166-1 alpha-2 country codes to full names
+ * Based on countries defined in config/recruitment.ts
+ */
+export const COUNTRY_CODES: Record<string, string> = {
+  US: 'United States',
+  CA: 'Canada',
+  MX: 'Mexico',
+  GT: 'Guatemala',
+  SV: 'El Salvador',
+  HN: 'Honduras',
+  NI: 'Nicaragua',
+  CR: 'Costa Rica',
+  PA: 'Panama',
+  CO: 'Colombia',
+  VE: 'Venezuela',
+  EC: 'Ecuador',
+  PE: 'Peru',
+  BR: 'Brazil',
+  AR: 'Argentina',
+  CL: 'Chile',
+  ES: 'Spain',
+  // Add more as needed
+};
+
+/**
+ * Get the full country name from a country code
+ *
+ * @param code - ISO 3166-1 alpha-2 country code
+ * @returns Full country name or the original code if not found
+ */
+export function getCountryName(code: string | null | undefined): string {
+  if (!code) return '';
+  const upper = code.toUpperCase().trim();
+  return COUNTRY_CODES[upper] || code;
+}

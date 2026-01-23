@@ -230,7 +230,7 @@ describe('Person Service', () => {
       const updatedPerson = {
         ...mockPerson,
         generalCompetenciesCompleted: true,
-        generalCompetenciesScore: 80,
+        generalCompetenciesScore: 850,
         generalCompetenciesPassedAt: new Date(),
       };
 
@@ -238,14 +238,14 @@ describe('Person Service', () => {
 
       await updateGeneralCompetencies('person-123', {
         generalCompetenciesCompleted: true,
-        generalCompetenciesScore: 80, // Threshold is 70
+        generalCompetenciesScore: 850, // Threshold is 800
       });
 
       expect(db.person.update).toHaveBeenCalledWith({
         where: { id: 'person-123' },
         data: expect.objectContaining({
           generalCompetenciesCompleted: true,
-          generalCompetenciesScore: 80,
+          generalCompetenciesScore: 850,
           generalCompetenciesPassedAt: expect.any(Date),
         }),
       });
@@ -255,7 +255,7 @@ describe('Person Service', () => {
       const updatedPerson = {
         ...mockPerson,
         generalCompetenciesCompleted: true,
-        generalCompetenciesScore: 50,
+        generalCompetenciesScore: 700,
         generalCompetenciesPassedAt: null,
       };
 
@@ -263,14 +263,14 @@ describe('Person Service', () => {
 
       await updateGeneralCompetencies('person-123', {
         generalCompetenciesCompleted: true,
-        generalCompetenciesScore: 50, // Below threshold of 70
+        generalCompetenciesScore: 700, // Below threshold of 800
       });
 
       expect(db.person.update).toHaveBeenCalledWith({
         where: { id: 'person-123' },
         data: expect.objectContaining({
           generalCompetenciesCompleted: true,
-          generalCompetenciesScore: 50,
+          generalCompetenciesScore: 700,
           generalCompetenciesPassedAt: null,
         }),
       });
@@ -281,7 +281,7 @@ describe('Person Service', () => {
     it('returns true when score meets threshold', async () => {
       (db.person.findUnique as jest.Mock).mockResolvedValue({
         generalCompetenciesCompleted: true,
-        generalCompetenciesScore: 80,
+        generalCompetenciesScore: 850,
       });
 
       const result = await hasPassedGeneralCompetencies('person-123');
@@ -292,7 +292,7 @@ describe('Person Service', () => {
     it('returns false when score below threshold', async () => {
       (db.person.findUnique as jest.Mock).mockResolvedValue({
         generalCompetenciesCompleted: true,
-        generalCompetenciesScore: 50,
+        generalCompetenciesScore: 700,
       });
 
       const result = await hasPassedGeneralCompetencies('person-123');

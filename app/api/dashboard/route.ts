@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
           },
         },
       }),
-      getRecentAuditLogs(10),
+      getRecentAuditLogs({ limit: 10, excludeActionTypes: ['VIEW'] }),
       // Top positions by application count
       db.application.groupBy({
         by: ['position'],

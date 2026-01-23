@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Determine pass/fail
-  const threshold = recruitment.assessmentThresholds.generalCompetencies;
+  const { threshold, scale } = recruitment.assessmentThresholds.generalCompetencies;
   const passed = score >= threshold;
 
   // Update person with GC results
@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
           app.currentStage,
           'SPECIALIZED_COMPETENCIES',
           undefined,
-          `General competencies passed with score ${score}/${threshold}`
+          `General competencies passed with score ${score}/${scale} (threshold: ${threshold})`
         );
       }
 
@@ -225,7 +225,7 @@ export async function POST(request: NextRequest) {
           'ACTIVE',
           'REJECTED',
           undefined,
-          `General competencies failed with score ${score}/${threshold}`
+          `General competencies failed with score ${score}/${scale} (threshold: ${threshold})`
         );
       }
 
@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
   }
 
   console.log(
-    `[Webhook GC] Assessment processed: Person ${sanitizeForLog(personId)}, Score: ${sanitizeForLog(score)}/${threshold}, ` +
+    `[Webhook GC] Assessment processed: Person ${sanitizeForLog(personId)}, Score: ${sanitizeForLog(score)}/${scale} (threshold: ${threshold}), ` +
       `Passed: ${passed}, Applications advanced: ${applicationsAdvanced}, rejected: ${applicationsRejected}`
   );
 

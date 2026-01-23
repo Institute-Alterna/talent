@@ -47,6 +47,7 @@ export const strings = {
     accepted: 'Accepted',
     rejected: 'Rejected',
     withdrawn: 'Withdrawn',
+    applicationRejected: 'Application Rejected',
   },
 
   // Candidate detail tabs
@@ -103,6 +104,10 @@ export const strings = {
     notes: 'Interview Notes',
     outcome: 'Outcome',
     duration: 'Duration',
+    requirementNotMet: 'Candidate must pass General Competencies first',
+    noInterviewScheduled: 'No interview scheduled',
+    gcNotCompleted: 'Complete GC first',
+    gcFailed: 'General Competencies failed',
   },
 
   // Decision
@@ -113,6 +118,20 @@ export const strings = {
     decidedBy: 'Decided by',
     decidedAt: 'Decision date',
     notes: 'Additional notes',
+    // Decision dialog strings
+    title: 'Confirm Decision',
+    acceptTitle: 'Accept Candidate',
+    acceptDescription: 'This will mark the application as accepted and move them to the final stage.',
+    rejectTitle: 'Reject Candidate',
+    rejectDescription: 'This will mark the application as rejected.',
+    reasonLabel: 'Reason',
+    reasonPlaceholder: 'Please provide a reason for this decision...',
+    reasonGdprNote: 'Reason is required for rejection decisions (GDPR compliance)',
+    notesLabel: 'Additional Notes',
+    notesPlaceholder: 'Any additional notes about this decision...',
+    sendEmailLabel: 'Send notification email to candidate',
+    confirmAccept: 'Confirm Accept',
+    confirmReject: 'Confirm Reject',
   },
 
   // Email
@@ -136,6 +155,18 @@ export const strings = {
     schedulingLinkMissing: 'Please set your scheduling link to conduct interviews',
     preferences: 'Preferences',
     activityHistory: 'Activity History',
+  },
+
+  // Audit Log (admin)
+  auditLog: {
+    title: 'Audit Log',
+    description: 'Complete history of system activity',
+    noLogs: 'No audit logs yet',
+    noMatches: 'No logs match your filters',
+    loadMore: 'Load 30 more',
+    filterByActor: 'Filter by Personnel',
+    allActors: 'All Personnel',
+    searchPlaceholder: 'Search actions...',
   },
 
   // Personnel (admin)
@@ -186,6 +217,20 @@ export const strings = {
     unsavedChanges: 'You have unsaved changes. Are you sure you want to leave?',
     makeAdmin: 'Are you sure you want to make this person an administrator? This will grant them full access to manage personnel, candidates, and system settings.',
     grantAccess: 'Are you sure you want to grant this person access to this application? They will be added to the talent-access group and be able to view and manage candidates.',
+  },
+
+  // Withdraw Application
+  withdraw: {
+    title: 'Withdraw Application',
+    description: 'Choose how to handle the application for {name}.',
+    denyTitle: 'Deny Application',
+    denyDescription: 'Sets the application status to Rejected and sends a rejection email to the candidate.',
+    denyAction: 'Deny & Send Rejection Email',
+    deleteTitle: 'Delete Entirely',
+    deleteDescription: 'Permanently removes the application and all associated data from the system. Use this for test applications only.',
+    deleteWarning: 'This action cannot be undone.',
+    deleteAction: 'Delete Permanently',
+    menuItem: 'Withdraw',
   },
 
   // Success messages

@@ -79,9 +79,12 @@ export interface ApplicationCard {
   status: Status;
   createdAt: Date;
   person: {
+    id: string;
     firstName: string;
     lastName: string;
     email: string;
+    generalCompetenciesCompleted: boolean;
+    generalCompetenciesScore: Decimal | null;
   };
   /** Number of applications this person has */
   personApplicationCount: number;

@@ -24,9 +24,7 @@ import {
   formatDate,
   formatDateOnly,
   sanitizeIpAddress,
-  sanitizeUserAgent,
   sanitizeJson,
-  sanitizeUuid,
   CONTENT_LIMITS,
   type SanitizedApplicationData,
   type SanitizedAuditLog,
@@ -34,6 +32,7 @@ import {
 import { pdfLabels } from './config';
 import { getApplicationDetail } from '@/lib/services/applications';
 import { getAuditLogsForApplication, getAuditLogsForPerson } from '@/lib/audit';
+import { getCountryName } from '@/lib/utils';
 import type { ApplicationDetail } from '@/types/application';
 
 /**
@@ -88,13 +87,16 @@ function buildSafeFilename(text: string): string {
 
 /**
  * Build location string from address components
+ * Converts country codes to full names
  */
 function buildLocation(
   city: string | null,
   state: string | null,
   country: string | null
 ): string {
-  const parts = [city, state, country].filter(Boolean);
+  // Convert country code to full name if it's a 2-letter code
+  const countryName = country && country.length === 2 ? getCountryName(country) : country;
+  const parts = [city, state, countryName].filter(Boolean);
   return parts.join(', ');
 }
 
@@ -107,7 +109,7 @@ function buildLocation(
 export function sanitizeApplicationData(application: ApplicationDetail): SanitizedApplicationData {
   const { person, assessments, interviews, decisions, ...app } = application;
 
-  // Sanitize person data
+  // Sanitize person data (using PDF-specific functions - no HTML escaping)
   const sanitizedPerson = {
     fullName: sanitizeShortText(`${person.firstName} ${person.lastName}`.trim()),
     firstName: sanitizeShortText(person.firstName),
@@ -133,9 +135,9 @@ export function sanitizeApplicationData(application: ApplicationDetail): Sanitiz
   if (app.hasPreviousExp && !app.previousExperience) missingFields.push('Previous Experience');
   if (app.hasOtherFile && !app.otherFileUrl) missingFields.push('Other File');
 
-  // Sanitize application data
+  // Sanitize application data (using PDF-specific functions - no HTML escaping)
   const sanitizedApplication = {
-    id: sanitizeUuid(app.id) || app.id,
+    id: sanitizeShortText(app.id) || app.id,
     position: sanitizeShortText(app.position),
     currentStage: app.currentStage,
     status: app.status,
@@ -161,7 +163,7 @@ export function sanitizeApplicationData(application: ApplicationDetail): Sanitiz
     completedAt: formatDate(assessment.completedAt),
   }));
 
-  // Sanitize interviews
+  // Sanitize interviews (using PDF-specific functions - no HTML escaping)
   const sanitizedInterviews = interviews.map((interview) => ({
     interviewer: sanitizeShortText(interview.interviewer.displayName),
     schedulingLink: sanitizeUrl(interview.schedulingLink),
@@ -171,7 +173,7 @@ export function sanitizeApplicationData(application: ApplicationDetail): Sanitiz
     notes: sanitizeLongText(interview.notes),
   }));
 
-  // Sanitize decisions
+  // Sanitize decisions (using PDF-specific functions - no HTML escaping)
   const sanitizedDecisions = decisions.map((decision) => ({
     decision: decision.decision,
     reason: sanitizeLongText(decision.reason),
@@ -207,7 +209,7 @@ export function sanitizeAuditLogs(
     details: log.details ? sanitizeJson(log.details) : '',
     user: log.user ? sanitizeShortText(log.user.displayName) : pdfLabels.common.system,
     ipAddress: sanitizeIpAddress(log.ipAddress),
-    userAgent: sanitizeUserAgent(log.userAgent),
+    userAgent: sanitizeMediumText(log.userAgent),
     createdAt: formatDate(log.createdAt),
   }));
 }
@@ -227,7 +229,7 @@ export async function generateCandidateReportPdf(
   const { confidential = true, includeAuditLogs = true, maxAuditLogs = 50 } = options;
 
   // Validate application ID
-  const safeId = sanitizeUuid(applicationId);
+  const safeId = sanitizeShortText(applicationId);
   if (!safeId) {
     throw new PdfGenerationError('Invalid application ID format');
   }
@@ -297,7 +299,7 @@ export async function generateAuditReportPdf(
   const { confidential = true, maxAuditLogs = 100 } = options;
 
   // Validate subject ID
-  const safeId = sanitizeUuid(subjectId);
+  const safeId = sanitizeShortText(subjectId);
   if (!safeId) {
     throw new PdfGenerationError('Invalid subject ID format');
   }
@@ -361,7 +363,7 @@ export async function generateAuditReportPdf(
  * @returns Boolean indicating if PDF can be generated
  */
 export async function canGeneratePdf(applicationId: string): Promise<boolean> {
-  const safeId = sanitizeUuid(applicationId);
+  const safeId = sanitizeShortText(applicationId);
   if (!safeId) {
     return false;
   }

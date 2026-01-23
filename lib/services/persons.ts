@@ -255,7 +255,7 @@ export async function updateGeneralCompetencies(
   id: string,
   data: UpdateGeneralCompetenciesData
 ): Promise<Person> {
-  const threshold = recruitment.assessmentThresholds.generalCompetencies;
+  const { threshold } = recruitment.assessmentThresholds.generalCompetencies;
   const passed = data.generalCompetenciesScore >= threshold;
 
   const person = await db.person.update({
@@ -290,7 +290,7 @@ export async function hasPassedGeneralCompetencies(id: string): Promise<boolean>
   if (!person.generalCompetenciesCompleted) return false;
   if (!person.generalCompetenciesScore) return false;
 
-  const threshold = recruitment.assessmentThresholds.generalCompetencies;
+  const { threshold } = recruitment.assessmentThresholds.generalCompetencies;
   return Number(person.generalCompetenciesScore) >= threshold;
 }
 

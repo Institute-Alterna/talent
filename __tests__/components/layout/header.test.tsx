@@ -28,6 +28,10 @@ jest.mock('@/config', () => ({
     settings: {
       profile: 'Profile',
     },
+    auditLog: {
+      title: 'Audit Log',
+      description: 'Complete history of system activity',
+    },
   },
   branding: {
     organisationName: 'Alterna',
