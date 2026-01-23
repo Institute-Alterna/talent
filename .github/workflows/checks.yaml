@@ -16,6 +16,25 @@ jobs:
       matrix:
         node-version: [22.x, 24.x, latest]
     
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+      DATABASE_USER: ${{ secrets.DATABASE_USER }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+      OKTA_CLIENT_ID: ${{ secrets.OKTA_CLIENT_ID }}
+      OKTA_CLIENT_SECRET: ${{ secrets.OKTA_CLIENT_SECRET }}
+      OKTA_ISSUER: ${{ secrets.OKTA_ISSUER }}
+      OKTA_DOMAIN: ${{ secrets.OKTA_DOMAIN }}
+      OKTA_API_TOKEN: ${{ secrets.OKTA_API_TOKEN }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+      WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+      APP_NAME: ${{ secrets.APP_NAME }}
+      NODE_ENV: ${{ secrets.NODE_ENV }}
+      LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
+      RATE_LIMIT_MAX: ${{ secrets.RATE_LIMIT_MAX }}
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,6 +47,9 @@ jobs:
       
       - name: Install dependencies
         run: npm ci
+      
+      - name: Generate Prisma client
+        run: npm run db:generate
       
       - name: Run tests
         run: npm run test:all
@@ -43,6 +65,25 @@ jobs:
     strategy:
       matrix:
         node-version: [22.x, 24.x, latest]
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_HOST: ${{ secrets.DATABASE_HOST }}
+      DATABASE_USER: ${{ secrets.DATABASE_USER }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+      OKTA_CLIENT_ID: ${{ secrets.OKTA_CLIENT_ID }}
+      OKTA_CLIENT_SECRET: ${{ secrets.OKTA_CLIENT_SECRET }}
+      OKTA_ISSUER: ${{ secrets.OKTA_ISSUER }}
+      OKTA_DOMAIN: ${{ secrets.OKTA_DOMAIN }}
+      OKTA_API_TOKEN: ${{ secrets.OKTA_API_TOKEN }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+      WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+      APP_NAME: ${{ secrets.APP_NAME }}
+      NODE_ENV: ${{ secrets.NODE_ENV }}
+      LOG_LEVEL: ${{ secrets.LOG_LEVEL }}
+      RATE_LIMIT_MAX: ${{ secrets.RATE_LIMIT_MAX }}
     
     steps:
       - name: Checkout repository
@@ -56,6 +97,9 @@ jobs:
       
       - name: Install dependencies
         run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
       
       - name: Build package
         run: npm run build
