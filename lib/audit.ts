@@ -216,6 +216,50 @@ export async function logInterviewScheduled(
 }
 
 /**
+ * Log an interview rescheduling event
+ */
+export async function logInterviewRescheduled(
+  applicationId: string,
+  personId: string,
+  oldInterviewerId: string,
+  newInterviewerId: string,
+  emailResent: boolean,
+  userId?: string
+) {
+  const action = oldInterviewerId === newInterviewerId
+    ? `Interview rescheduled${emailResent ? ' (email resent)' : ''}`
+    : `Interview reassigned to new interviewer${emailResent ? ' (email sent)' : ''}`;
+  
+  return createAuditLog({
+    applicationId,
+    personId,
+    userId,
+    action,
+    actionType: 'UPDATE',
+    details: { oldInterviewerId, newInterviewerId, emailResent },
+  });
+}
+
+/**
+ * Log an interview completion event
+ */
+export async function logInterviewCompleted(
+  applicationId: string,
+  personId: string,
+  interviewerId: string,
+  userId?: string
+) {
+  return createAuditLog({
+    applicationId,
+    personId,
+    userId,
+    action: 'Interview marked as completed',
+    actionType: 'UPDATE',
+    details: { interviewerId },
+  });
+}
+
+/**
  * Log a decision event
  */
 export async function logDecisionMade(

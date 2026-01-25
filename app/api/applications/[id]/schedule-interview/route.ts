@@ -188,6 +188,16 @@ export async function POST(
       scheduledAt = parsedDate;
     }
 
+    // Advance application to INTERVIEW stage if not already there
+    let stageChanged = false;
+    if (application.currentStage !== 'INTERVIEW') {
+      await db.application.update({
+        where: { id },
+        data: { currentStage: 'INTERVIEW' },
+      });
+      stageChanged = true;
+    }
+
     // Create interview record
     const interview = await db.interview.create({
       data: {
@@ -238,6 +248,7 @@ export async function POST(
         notes: interview.notes,
         outcome: interview.outcome,
       },
+      stageChanged,
       emailSent: sendEmail,
       emailResult: emailResult ? {
         success: emailResult.success,

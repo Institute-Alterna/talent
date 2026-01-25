@@ -26,6 +26,10 @@ import {
   ApplicationDetail,
   ApplicationDetailData,
   ApplicationCardData,
+  ScheduleInterviewDialog,
+  RescheduleInterviewDialog,
+  CompleteInterviewDialog,
+  type Interviewer,
 } from '@/components/applications';
 import { WithdrawDialog } from '@/components/applications/withdraw-dialog';
 import { DecisionDialog } from '@/components/applications/decision-dialog';
@@ -101,13 +105,33 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   const [decisionApplicationName, setDecisionApplicationName] = React.useState('');
   const [isDecisionProcessing, setIsDecisionProcessing] = React.useState(false);
 
+  // Interview dialogs
+  const [isScheduleInterviewDialogOpen, setIsScheduleInterviewDialogOpen] = React.useState(false);
+  const [isRescheduleInterviewDialogOpen, setIsRescheduleInterviewDialogOpen] = React.useState(false);
+  const [isCompleteInterviewDialogOpen, setIsCompleteInterviewDialogOpen] = React.useState(false);
+  const [interviewApplicationName, setInterviewApplicationName] = React.useState('');
+  const [isSchedulingInterview, setIsSchedulingInterview] = React.useState(false);
+  const [isReschedulingInterview, setIsReschedulingInterview] = React.useState(false);
+  const [isCompletingInterview, setIsCompletingInterview] = React.useState(false);
+
+  // Interviewers list (cached)
+  const [interviewers, setInterviewers] = React.useState<Array<{
+    id: string;
+    displayName: string;
+    email: string;
+    schedulingLink: string | null;
+  }>>([]);
+  const [currentUserId, setCurrentUserId] = React.useState<string | undefined>(undefined);
+  const [isLoadingInterviewers, setIsLoadingInterviewers] = React.useState(false);
+
   // Email loading state
   const [sendingEmailTemplate, setSendingEmailTemplate] = React.useState<string | null>(null);
 
   // Browser warning for page refresh during operations
   React.useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDecisionProcessing || sendingEmailTemplate !== null) {
+      if (isDecisionProcessing || sendingEmailTemplate !== null || 
+          isSchedulingInterview || isReschedulingInterview || isCompletingInterview) {
         e.preventDefault();
         e.returnValue = ''; // Chrome requires returnValue to be set
       }
@@ -115,7 +139,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDecisionProcessing, sendingEmailTemplate]);
+  }, [isDecisionProcessing, sendingEmailTemplate, isSchedulingInterview, isReschedulingInterview, isCompletingInterview]);
 
   // Fetch pipeline data
   const fetchPipelineData = React.useCallback(async () => {
@@ -243,12 +267,205 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     }
   };
 
-  const handleScheduleInterview = () => {
-    // TODO: Open interview scheduling dialog
-    toast({
-      title: 'Coming Soon',
-      description: 'Interview scheduling will be implemented soon',
-    });
+  const handleScheduleInterview = async () => {
+    if (!selectedApplication) return;
+
+    // Set application name and open dialog immediately
+    setInterviewApplicationName(
+      `${selectedApplication.person.firstName} ${selectedApplication.person.lastName}`
+    );
+    setIsScheduleInterviewDialogOpen(true);
+
+    // Fetch interviewers list if not already loaded
+    if (interviewers.length === 0) {
+      setIsLoadingInterviewers(true);
+      try {
+        const [usersResponse, sessionResponse] = await Promise.all([
+          fetch('/api/users'),
+          fetch('/api/auth/session'),
+        ]);
+
+        if (usersResponse.ok) {
+          const data = await usersResponse.json();
+          setInterviewers(data.users || []);
+        }
+
+        if (sessionResponse.ok) {
+          const sessionData = await sessionResponse.json();
+          setCurrentUserId(sessionData.user?.dbUserId);
+        }
+      } catch (err) {
+        console.error('Failed to fetch interviewers:', err);
+        toast({
+          title: 'Warning',
+          description: 'Failed to load interviewer list',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoadingInterviewers(false);
+      }
+    }
+  };
+
+  const handleRescheduleInterview = async () => {
+    if (!selectedApplication) return;
+
+    // Set application name and open dialog immediately
+    setInterviewApplicationName(
+      `${selectedApplication.person.firstName} ${selectedApplication.person.lastName}`
+    );
+    setIsRescheduleInterviewDialogOpen(true);
+
+    // Fetch interviewers list if not already loaded
+    if (interviewers.length === 0) {
+      setIsLoadingInterviewers(true);
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const data = await response.json();
+          setInterviewers(data.users || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch interviewers:', err);
+        toast({
+          title: 'Warning',
+          description: 'Failed to load interviewer list',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoadingInterviewers(false);
+      }
+    }
+  };
+
+  const handleCompleteInterview = () => {
+    if (!selectedApplication) return;
+
+    setInterviewApplicationName(
+      `${selectedApplication.person.firstName} ${selectedApplication.person.lastName}`
+    );
+    setIsCompleteInterviewDialogOpen(true);
+  };
+
+  const handleScheduleInterviewConfirm = async (data: {
+    interviewerId: string;
+    sendEmail: boolean;
+  }) => {
+    if (!selectedApplicationId) return;
+
+    setIsSchedulingInterview(true);
+    try {
+      const response = await fetch(`/api/applications/${selectedApplicationId}/schedule-interview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to schedule interview');
+      }
+
+      const result = await response.json();
+
+      toast({
+        title: 'Interview Scheduled',
+        description: result.message || 'Interview invitation sent successfully',
+      });
+
+      // Small delay to ensure activity log updates
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Refresh the detail and pipeline
+      await fetchApplicationDetail(selectedApplicationId);
+      fetchPipelineData();
+
+      setIsScheduleInterviewDialogOpen(false);
+    } catch (err) {
+      throw err; // Let dialog handle error display
+    } finally {
+      setIsSchedulingInterview(false);
+    }
+  };
+
+  const handleRescheduleInterviewConfirm = async (data: {
+    interviewerId: string;
+    resendEmail: boolean;
+  }) => {
+    if (!selectedApplicationId) return;
+
+    setIsReschedulingInterview(true);
+    try {
+      const response = await fetch(`/api/applications/${selectedApplicationId}/reschedule-interview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reschedule interview');
+      }
+
+      const result = await response.json();
+
+      toast({
+        title: 'Interview Rescheduled',
+        description: result.message || 'Interview updated successfully',
+      });
+
+      // Small delay to ensure activity log updates
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Refresh the detail and pipeline
+      await fetchApplicationDetail(selectedApplicationId);
+      fetchPipelineData();
+
+      setIsRescheduleInterviewDialogOpen(false);
+    } catch (err) {
+      throw err; // Let dialog handle error display
+    } finally {
+      setIsReschedulingInterview(false);
+    }
+  };
+
+  const handleCompleteInterviewConfirm = async (data: {
+    notes: string;
+  }) => {
+    if (!selectedApplicationId) return;
+
+    setIsCompletingInterview(true);
+    try {
+      const response = await fetch(`/api/applications/${selectedApplicationId}/complete-interview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to complete interview');
+      }
+
+      const result = await response.json();
+
+      toast({
+        title: 'Interview Completed',
+        description: result.message || 'Interview marked as completed',
+      });
+
+      // Small delay to ensure activity log updates
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Refresh the detail
+      await fetchApplicationDetail(selectedApplicationId);
+
+      setIsCompleteInterviewDialogOpen(false);
+    } catch (err) {
+      throw err; // Let dialog handle error display
+    } finally {
+      setIsCompletingInterview(false);
+    }
   };
 
   const handleMakeDecision = async (decision: 'ACCEPT' | 'REJECT') => {
@@ -652,10 +869,15 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
           onClose={handleCloseDetail}
           onSendEmail={handleSendEmail}
           onScheduleInterview={handleScheduleInterview}
+          onRescheduleInterview={handleRescheduleInterview}
+          onCompleteInterview={handleCompleteInterview}
           onMakeDecision={handleMakeDecision}
           isAdmin={isAdmin}
           isLoading={isDetailLoading}
           sendingEmailTemplate={sendingEmailTemplate}
+          isSchedulingInterview={isSchedulingInterview}
+          isReschedulingInterview={isReschedulingInterview}
+          isCompletingInterview={isCompletingInterview}
           isDecisionProcessing={isDecisionProcessing}
         />
 
@@ -677,6 +899,42 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
           decision={decisionType}
           applicationName={decisionApplicationName}
           isProcessing={isDecisionProcessing}
+        />
+
+        {/* Schedule Interview Dialog */}
+        <ScheduleInterviewDialog
+          isOpen={isScheduleInterviewDialogOpen}
+          onClose={() => setIsScheduleInterviewDialogOpen(false)}
+          onConfirm={handleScheduleInterviewConfirm}
+          applicationName={interviewApplicationName}
+          interviewers={interviewers}
+          currentUserId={currentUserId}
+          isProcessing={isSchedulingInterview}
+          isLoadingInterviewers={isLoadingInterviewers}
+        />
+
+        {/* Reschedule Interview Dialog */}
+        <RescheduleInterviewDialog
+          isOpen={isRescheduleInterviewDialogOpen}
+          onClose={() => setIsRescheduleInterviewDialogOpen(false)}
+          onConfirm={handleRescheduleInterviewConfirm}
+          applicationName={interviewApplicationName}
+          candidateEmail={selectedApplication?.person.email || ''}
+          candidateName={`${selectedApplication?.person.firstName || ''} ${selectedApplication?.person.lastName || ''}`}
+          interviewers={interviewers}
+          currentInterviewerId={selectedApplication?.interviews[0]?.interviewerId}
+          isProcessing={isReschedulingInterview}
+          isLoadingInterviewers={isLoadingInterviewers}
+        />
+
+        {/* Complete Interview Dialog */}
+        <CompleteInterviewDialog
+          isOpen={isCompleteInterviewDialogOpen}
+          onClose={() => setIsCompleteInterviewDialogOpen(false)}
+          onConfirm={handleCompleteInterviewConfirm}
+          applicationName={interviewApplicationName}
+          interviewerName={selectedApplication?.interviews[0]?.interviewer?.displayName || 'Unknown'}
+          isProcessing={isCompletingInterview}
         />
       </div>
     </TooltipProvider>

@@ -106,6 +106,7 @@ export interface ApplicationDetailData {
     completedAt: string | null;
     notes: string | null;
     outcome: string;
+    emailSentAt: string | null;
     interviewer?: {
       id: string;
       displayName: string;
@@ -138,10 +139,15 @@ interface ApplicationDetailProps {
   onClose: () => void;
   onSendEmail?: (templateName: string) => void;
   onScheduleInterview?: () => void;
+  onRescheduleInterview?: () => void;
+  onCompleteInterview?: () => void;
   onMakeDecision?: (decision: 'ACCEPT' | 'REJECT') => void;
   isAdmin?: boolean;
   isLoading?: boolean;
   sendingEmailTemplate?: string | null;
+  isSchedulingInterview?: boolean;
+  isReschedulingInterview?: boolean;
+  isCompletingInterview?: boolean;
   isDecisionProcessing?: boolean;
 }
 
@@ -456,17 +462,27 @@ function RightPanel({
   application,
   onSendEmail,
   onScheduleInterview,
+  onRescheduleInterview,
+  onCompleteInterview,
   onMakeDecision,
   isAdmin,
   sendingEmailTemplate,
+  isSchedulingInterview,
+  isReschedulingInterview,
+  isCompletingInterview,
   isDecisionProcessing,
 }: {
   application: ApplicationDetailData;
   onSendEmail?: (template: string) => void;
   onScheduleInterview?: () => void;
+  onRescheduleInterview?: () => void;
+  onCompleteInterview?: () => void;
   onMakeDecision?: (decision: 'ACCEPT' | 'REJECT') => void;
   isAdmin?: boolean;
   sendingEmailTemplate?: string | null;
+  isSchedulingInterview?: boolean;
+  isReschedulingInterview?: boolean;
+  isCompletingInterview?: boolean;
   isDecisionProcessing?: boolean;
 }) {
   const { person, assessments, interviews, decisions } = application;
@@ -476,7 +492,11 @@ function RightPanel({
   const latestDecision = decisions[0];
 
   // Track if any operation is in progress
-  const isAnyOperationInProgress = sendingEmailTemplate !== null || isDecisionProcessing === true;
+  const isAnyOperationInProgress = sendingEmailTemplate !== null || 
+    isSchedulingInterview === true || 
+    isReschedulingInterview === true || 
+    isCompletingInterview === true || 
+    isDecisionProcessing === true;
 
   return (
     <div className="space-y-4">
@@ -685,23 +705,25 @@ function RightPanel({
           const gcConfig = recruitment.assessmentThresholds.generalCompetencies;
           const gcScore = parseFloat(person.generalCompetenciesScore || '0');
           const gcPassed = gcScore >= gcConfig.threshold;
+          const gcFailed = person.generalCompetenciesCompleted && !gcPassed;
           const isActionable = application.status === 'ACTIVE';
           const canScheduleInterview = person.generalCompetenciesCompleted && gcPassed;
+          const isInterviewCompleted = latestInterview?.completedAt !== null;
 
           return (
             <>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-medium text-sm">Interview</h4>
                 {latestInterview ? (
-                  <Badge variant={
-                    latestInterview.outcome === 'ACCEPT' ? 'default' :
-                    latestInterview.outcome === 'REJECT' ? 'destructive' :
-                    'secondary'
-                  } className="text-xs">
-                    {latestInterview.outcome === 'ACCEPT' ? 'Accepted' :
-                     latestInterview.outcome === 'REJECT' ? 'Rejected' :
-                     'Pending'}
-                  </Badge>
+                  isInterviewCompleted ? (
+                    <Badge variant="default" className="text-xs">
+                      <CheckCircle className="h-3 w-3 mr-1" /> Completed
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">
+                      <Clock className="h-3 w-3 mr-1" /> Scheduled
+                    </Badge>
+                  )
                 ) : (
                   <Badge variant="secondary" className="text-xs">
                     <Clock className="h-3 w-3 mr-1" /> Not Scheduled
@@ -717,10 +739,10 @@ function RightPanel({
                       <span className="text-right">{latestInterview.interviewer.displayName}</span>
                     </div>
                   )}
-                  {latestInterview.scheduledAt && (
+                  {latestInterview.emailSentAt && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Scheduled</span>
-                      <span className="text-right">{formatDateTime(latestInterview.scheduledAt)}</span>
+                      <span className="text-muted-foreground">Invited</span>
+                      <span className="text-right">{formatDateTime(latestInterview.emailSentAt)}</span>
                     </div>
                   )}
                   {latestInterview.completedAt && (
@@ -737,20 +759,58 @@ function RightPanel({
                       </p>
                     </div>
                   )}
+                  
+                  {/* Actions for scheduled but not completed interview */}
+                  {!isInterviewCompleted && isActionable && (
+                    <div className="flex gap-2 pt-2">
+                      {onRescheduleInterview && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 flex-1"
+                          onClick={onRescheduleInterview}
+                          disabled={isAnyOperationInProgress}
+                        >
+                          {isReschedulingInterview ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Calendar className="h-3 w-3 mr-1" />
+                          )}
+                          Reschedule
+                        </Button>
+                      )}
+                      {onCompleteInterview && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="text-xs h-7 flex-1"
+                          onClick={onCompleteInterview}
+                          disabled={isAnyOperationInProgress}
+                        >
+                          {isCompletingInterview ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                          )}
+                          Complete
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-2">
                   {isActionable ? (
                     <>
-                      {!person.generalCompetenciesCompleted ? (
-                        <p className="text-xs text-muted-foreground opacity-60">
-                          {strings.interview.gcNotCompleted}
-                        </p>
-                      ) : !gcPassed ? (
+                      {gcFailed ? (
                         <p className="text-xs text-muted-foreground opacity-60">
                           {strings.interview.gcFailed}
                         </p>
-                      ) : (
+                      ) : !person.generalCompetenciesCompleted ? (
+                        <p className="text-xs text-muted-foreground opacity-60">
+                          {strings.interview.gcNotCompleted}
+                        </p>
+                      ) : canScheduleInterview ? (
                         <>
                           <p className="text-xs text-muted-foreground mb-2">
                             {strings.interview.noInterviewScheduled}
@@ -763,12 +823,16 @@ function RightPanel({
                               onClick={onScheduleInterview}
                               disabled={isAnyOperationInProgress}
                             >
-                              <Calendar className="h-3 w-3 mr-1" />
+                              {isSchedulingInterview ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <Calendar className="h-3 w-3 mr-1" />
+                              )}
                               Schedule
                             </Button>
                           )}
                         </>
-                      )}
+                      ) : null}
                     </>
                   ) : (
                     <p className="text-xs text-muted-foreground italic">
@@ -912,10 +976,15 @@ export function ApplicationDetail({
   onClose,
   onSendEmail,
   onScheduleInterview,
+  onRescheduleInterview,
+  onCompleteInterview,
   onMakeDecision,
   isAdmin = false,
   isLoading = false,
   sendingEmailTemplate,
+  isSchedulingInterview,
+  isReschedulingInterview,
+  isCompletingInterview,
   isDecisionProcessing,
 }: ApplicationDetailProps) {
   // Always render the dialog when open - show skeleton while loading
@@ -980,9 +1049,14 @@ export function ApplicationDetail({
                       application={application}
                       onSendEmail={onSendEmail}
                       onScheduleInterview={onScheduleInterview}
+                      onRescheduleInterview={onRescheduleInterview}
+                      onCompleteInterview={onCompleteInterview}
                       onMakeDecision={onMakeDecision}
                       isAdmin={isAdmin}
                       sendingEmailTemplate={sendingEmailTemplate}
+                      isSchedulingInterview={isSchedulingInterview}
+                      isReschedulingInterview={isReschedulingInterview}
+                      isCompletingInterview={isCompletingInterview}
                       isDecisionProcessing={isDecisionProcessing}
                     />
                   </div>
