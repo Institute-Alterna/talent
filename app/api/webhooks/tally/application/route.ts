@@ -42,7 +42,6 @@ import {
   logStatusChange,
 } from '@/lib/audit';
 import { sanitizeForLog } from '@/lib/security';
-import { recruitment } from '@/config/recruitment';
 
 /**
  * Webhook error response

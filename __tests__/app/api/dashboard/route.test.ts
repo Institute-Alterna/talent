@@ -69,7 +69,8 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getRecentAuditLogs } from '@/lib/audit';
 
-const mockAuth = auth as jest.MockedFunction<typeof auth>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockAuth = auth as jest.MockedFunction<any>;
 const mockDb = db as jest.Mocked<typeof db>;
 const mockGetRecentAuditLogs = getRecentAuditLogs as jest.MockedFunction<typeof getRecentAuditLogs>;
 
@@ -159,8 +160,11 @@ describe('Dashboard API Routes', () => {
           details: null,
           ipAddress: null,
           userAgent: null,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           user: { id: 'user-123', displayName: 'Admin User' } as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           person: { id: 'person-1', firstName: 'John', lastName: 'Doe', email: 'john@example.com' } as any,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           application: { id: 'app-1', position: 'Developer' } as any,
         },
       ]);

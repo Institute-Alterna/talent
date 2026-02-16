@@ -21,7 +21,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getApplications, getApplicationStats, getApplicationsForPipeline } from '@/lib/services/applications';
 import { Stage, Status } from '@/lib/generated/prisma/client';
-import { sanitizeForLog } from '@/lib/security';
+import { sanitizeForLog, ALLOWED_SORT_FIELDS } from '@/lib/security';
+import { isValidUUID } from '@/lib/utils';
 
 /**
  * Valid stage values
@@ -39,19 +40,6 @@ const VALID_STAGES: Stage[] = [
  * Valid status values
  */
 const VALID_STATUSES: Status[] = ['ACTIVE', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'];
-
-/**
- * Valid sort fields
- */
-const VALID_SORT_FIELDS = ['createdAt', 'updatedAt', 'position'] as const;
-
-/**
- * Validate UUID format to prevent injection
- */
-function isValidUUID(id: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-}
 
 /**
  * GET /api/applications
@@ -143,8 +131,8 @@ export async function GET(request: NextRequest) {
 
     // Validate sort parameters
     const sortByParam = searchParams.get('sortBy');
-    const sortBy = sortByParam && VALID_SORT_FIELDS.includes(sortByParam as typeof VALID_SORT_FIELDS[number])
-      ? (sortByParam as typeof VALID_SORT_FIELDS[number])
+    const sortBy = sortByParam && ALLOWED_SORT_FIELDS.includes(sortByParam as typeof ALLOWED_SORT_FIELDS[number])
+      ? (sortByParam as typeof ALLOWED_SORT_FIELDS[number])
       : 'createdAt';
 
     const sortOrderParam = searchParams.get('sortOrder');

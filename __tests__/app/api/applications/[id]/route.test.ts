@@ -29,9 +29,13 @@ jest.mock('@/lib/audit', () => ({
 }));
 
 // Mock security
-jest.mock('@/lib/security', () => ({
-  sanitizeForLog: jest.fn((s) => s),
-}));
+jest.mock('@/lib/security', () => {
+  const actual = jest.requireActual('@/lib/security');
+  return {
+    ...actual,
+    sanitizeForLog: jest.fn((s) => s),
+  };
+});
 
 import { GET, PATCH, DELETE } from '@/app/api/applications/[id]/route';
 import { auth } from '@/lib/auth';
@@ -294,7 +298,7 @@ describe('PATCH /api/applications/[id]', () => {
 
     const request = createRequest(mockAppId, { status: 'REJECTED' });
     const response = await PATCH(request, { params: createParams(mockAppId) });
-    const data = await response.json();
+    await response.json();
 
     expect(response.status).toBe(403);
   });
@@ -304,7 +308,7 @@ describe('PATCH /api/applications/[id]', () => {
 
     const request = createRequest(mockAppId, { currentStage: 'AGREEMENT' });
     const response = await PATCH(request, { params: createParams(mockAppId) });
-    const data = await response.json();
+    await response.json();
 
     expect(response.status).toBe(200);
     expect(updateApplication).toHaveBeenCalledWith(mockAppId, { currentStage: 'AGREEMENT' });
@@ -376,7 +380,7 @@ describe('DELETE /api/applications/[id]', () => {
   });
 
   const createRequest = (id: string, body?: object) => {
-    const init: RequestInit = { method: 'DELETE' };
+    const init: { method: string; headers?: Record<string, string>; body?: string } = { method: 'DELETE' };
     if (body) {
       init.headers = { 'Content-Type': 'application/json' };
       init.body = JSON.stringify(body);

@@ -14,7 +14,6 @@ import {
   getApplicationDetail,
   updateApplication,
   updateApplicationStatus,
-  advanceApplicationStage,
   deleteApplication,
 } from '@/lib/services/applications';
 import {
@@ -23,8 +22,9 @@ import {
   logStatusChange,
   logRecordDeleted,
 } from '@/lib/audit';
-import { sanitizeForLog } from '@/lib/security';
+import { sanitizeForLog, sanitizeText } from '@/lib/security';
 import { Stage, Status } from '@/lib/generated/prisma/client';
+import { isValidUUID, isValidURL } from '@/lib/utils';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -46,35 +46,6 @@ const VALID_STAGES: Stage[] = [
  * Valid status values
  */
 const VALID_STATUSES: Status[] = ['ACTIVE', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'];
-
-/**
- * Validate UUID format to prevent injection
- */
-function isValidUUID(id: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-}
-
-/**
- * Validate URL format
- */
-function isValidUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Sanitize text content to prevent XSS when stored
- */
-function sanitizeText(text: string | null | undefined, maxLength: number = 5000): string | null {
-  if (text === null || text === undefined) return null;
-  // Remove null bytes and trim to max length
-  return text.replace(/\0/g, '').substring(0, maxLength);
-}
 
 /**
  * GET /api/applications/[id]
@@ -253,7 +224,7 @@ export async function PATCH(
     // URL fields - validate if provided
     if (body.resumeUrl !== undefined) {
       if (body.resumeUrl !== null && typeof body.resumeUrl === 'string' && body.resumeUrl.length > 0) {
-        if (!isValidUrl(body.resumeUrl)) {
+        if (!isValidURL(body.resumeUrl)) {
           return NextResponse.json(
             { error: 'Invalid resumeUrl format' },
             { status: 400 }
@@ -267,7 +238,7 @@ export async function PATCH(
 
     if (body.videoLink !== undefined) {
       if (body.videoLink !== null && typeof body.videoLink === 'string' && body.videoLink.length > 0) {
-        if (!isValidUrl(body.videoLink)) {
+        if (!isValidURL(body.videoLink)) {
           return NextResponse.json(
             { error: 'Invalid videoLink format' },
             { status: 400 }
@@ -281,7 +252,7 @@ export async function PATCH(
 
     if (body.otherFileUrl !== undefined) {
       if (body.otherFileUrl !== null && typeof body.otherFileUrl === 'string' && body.otherFileUrl.length > 0) {
-        if (!isValidUrl(body.otherFileUrl)) {
+        if (!isValidURL(body.otherFileUrl)) {
           return NextResponse.json(
             { error: 'Invalid otherFileUrl format' },
             { status: 400 }

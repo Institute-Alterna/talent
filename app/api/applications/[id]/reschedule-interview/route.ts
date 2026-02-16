@@ -19,30 +19,11 @@ import { getUserById } from '@/lib/services/users';
 import { sendInterviewInvitation } from '@/lib/email';
 import { logInterviewRescheduled } from '@/lib/audit';
 import { db } from '@/lib/db';
-import { sanitizeForLog } from '@/lib/security';
+import { sanitizeForLog, requireString, RequiredFieldError } from '@/lib/security';
+import { isValidUUID, isValidURL } from '@/lib/utils';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-/**
- * Validate UUID format to prevent injection
- */
-function isValidUUID(id: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-}
-
-/**
- * Validate URL format
- */
-function isValidUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -124,15 +105,17 @@ export async function POST(
 
     // Parse request body
     const body = await request.json();
-    const { interviewerId, resendEmail = true } = body;
+    const { resendEmail = true } = body;
 
-    // Validate required fields
-    if (!interviewerId || typeof interviewerId !== 'string') {
-      console.error('[Reschedule Interview] Missing or invalid interviewerId');
-      return NextResponse.json(
-        { error: 'Interviewer ID is required' },
-        { status: 400 }
-      );
+    // Validate required fields — requireString prevents non-string truthy bypass
+    let interviewerId: string;
+    try {
+      interviewerId = requireString(body.interviewerId, 'interviewerId');
+    } catch (e) {
+      if (e instanceof RequiredFieldError) {
+        return NextResponse.json({ error: 'Interviewer ID is required' }, { status: 400 });
+      }
+      throw e;
     }
 
     if (!isValidUUID(interviewerId)) {
@@ -163,7 +146,7 @@ export async function POST(
     }
 
     // Validate scheduling link URL
-    if (!isValidUrl(interviewer.schedulingLink)) {
+    if (!isValidURL(interviewer.schedulingLink)) {
       console.error('[Reschedule Interview] Invalid scheduling link URL:', sanitizeForLog(interviewer.schedulingLink));
       return NextResponse.json(
         { error: 'Interviewer has an invalid scheduling link' },
@@ -232,7 +215,7 @@ export async function POST(
       emailSent: resendEmail && emailResult?.success,
     });
   } catch (error) {
-    console.error('[Reschedule Interview] Error:', error);
+    console.error('[Reschedule Interview] Error:', sanitizeForLog(error instanceof Error ? error.message : 'Unknown error'));
     return NextResponse.json(
       {
         error: 'Failed to reschedule interview',

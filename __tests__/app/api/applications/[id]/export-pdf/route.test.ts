@@ -51,9 +51,13 @@ jest.mock('@/lib/audit', () => ({
 }));
 
 // Mock security module
-jest.mock('@/lib/security', () => ({
-  sanitizeForLog: (x: unknown) => mockSanitizeForLog(x),
-}));
+jest.mock('@/lib/security', () => {
+  const actual = jest.requireActual('@/lib/security');
+  return {
+    ...actual,
+    sanitizeForLog: (x: unknown) => mockSanitizeForLog(x),
+  };
+});
 
 import { GET } from '@/app/api/applications/[id]/export-pdf/route';
 

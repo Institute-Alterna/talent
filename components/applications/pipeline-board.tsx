@@ -8,10 +8,9 @@
  */
 
 import * as React from 'react';
-import { Stage, Status } from '@/lib/generated/prisma/client';
+import { Stage } from '@/lib/generated/prisma/client';
 import { ApplicationCard, ApplicationCardData } from './application-card';
-import { StageBadge, getStageName } from './stage-badge';
-import { recruitment } from '@/config';
+import { StageBadge } from './stage-badge';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
@@ -69,7 +68,6 @@ function StageColumn({
   exportingPdfId,
   isAdmin,
 }: StageColumnProps) {
-  const stageInfo = recruitment.stages.find(s => s.id === stage);
   const count = applications.length;
 
   return (

@@ -17,7 +17,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getApplicationDetail } from '@/lib/services/applications';
 import {
-  sendEmail,
   sendGCInvitation,
   sendSCInvitation,
   sendInterviewInvitation,
@@ -26,9 +25,8 @@ import {
   type EmailTemplateName,
 } from '@/lib/email';
 import { escapeHtml } from '@/lib/email/templates';
-import { logEmailSent } from '@/lib/audit';
 import { sanitizeForLog } from '@/lib/security';
-import { recruitment } from '@/config/recruitment';
+import { isValidUUID, isValidURL } from '@/lib/utils';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -43,26 +41,6 @@ const ALLOWED_TEMPLATES: EmailTemplateName[] = [
   EMAIL_TEMPLATES.INTERVIEW_INVITATION,
   EMAIL_TEMPLATES.REJECTION,
 ];
-
-/**
- * Validate UUID format to prevent injection
- */
-function isValidUUID(id: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-}
-
-/**
- * Validate URL format
- */
-function isValidUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
 
 /**
  * POST /api/applications/[id]/send-email
@@ -181,7 +159,7 @@ export async function POST(
           );
         }
 
-        if (!isValidUrl(assessmentFormUrl)) {
+        if (!isValidURL(assessmentFormUrl)) {
           return NextResponse.json(
             { error: 'Invalid assessmentFormUrl format' },
             { status: 400 }
@@ -219,7 +197,7 @@ export async function POST(
           );
         }
 
-        if (!isValidUrl(schedulingLink)) {
+        if (!isValidURL(schedulingLink)) {
           return NextResponse.json(
             { error: 'Invalid schedulingLink format' },
             { status: 400 }

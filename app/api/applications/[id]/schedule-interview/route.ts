@@ -20,39 +20,11 @@ import { getUserById } from '@/lib/services/users';
 import { sendInterviewInvitation } from '@/lib/email';
 import { logInterviewScheduled } from '@/lib/audit';
 import { db } from '@/lib/db';
-import { sanitizeForLog } from '@/lib/security';
-import { escapeHtml } from '@/lib/email/templates';
+import { sanitizeForLog, requireString, RequiredFieldError, sanitizeText } from '@/lib/security';
+import { isValidUUID, isValidURL } from '@/lib/utils';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-/**
- * Validate UUID format to prevent injection
- */
-function isValidUUID(id: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-}
-
-/**
- * Validate URL format
- */
-function isValidUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Sanitize text content
- */
-function sanitizeText(text: string | null | undefined, maxLength: number = 5000): string | null {
-  if (text === null || text === undefined) return null;
-  return text.replace(/\0/g, '').substring(0, maxLength);
 }
 
 /**
@@ -122,12 +94,14 @@ export async function POST(
     }
 
     // Validate interviewerId
-    const interviewerId = body.interviewerId as string;
-    if (!interviewerId) {
-      return NextResponse.json(
-        { error: 'interviewerId is required' },
-        { status: 400 }
-      );
+    let interviewerId: string;
+    try {
+      interviewerId = requireString(body.interviewerId, 'interviewerId');
+    } catch (e) {
+      if (e instanceof RequiredFieldError) {
+        return NextResponse.json({ error: e.message }, { status: 400 });
+      }
+      throw e;
     }
 
     if (!isValidUUID(interviewerId)) {
@@ -155,7 +129,7 @@ export async function POST(
     }
 
     // Validate scheduling link
-    if (!isValidUrl(interviewer.schedulingLink)) {
+    if (!isValidURL(interviewer.schedulingLink)) {
       return NextResponse.json(
         { error: 'Interviewer has an invalid scheduling link configured' },
         { status: 400 }
@@ -163,7 +137,7 @@ export async function POST(
     }
 
     // Optional notes
-    const notes = sanitizeText(body.notes as string | undefined, 2000);
+    const notes = typeof body.notes === 'string' ? sanitizeText(body.notes, 2000) : null;
 
     // Whether to send email (default: true)
     const sendEmail = body.sendEmail !== false;

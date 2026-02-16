@@ -13,7 +13,6 @@ import {
   recordSent,
   enqueue,
   getRateLimitStatus,
-  requeueForRetry,
 } from './queue';
 import {
   senderConfig,
@@ -160,7 +159,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendResult> 
     );
 
     // Queue for later
-    const queueId = enqueue({
+    enqueue({
       recipient: to,
       subject,
       html,
@@ -286,58 +285,6 @@ export async function sendGCInvitation(
 }
 
 /**
- * Send general competencies passed notification
- */
-export async function sendGCPassed(
-  personId: string,
-  applicationId: string,
-  to: string,
-  firstName: string,
-  position: string,
-  score: number
-): Promise<SendResult> {
-  return sendEmail({
-    to,
-    template: EMAIL_TEMPLATES.GC_PASSED,
-    variables: {
-      PERSON_FIRST_NAME: escapeHtml(firstName),
-      POSITION: escapeHtml(position),
-      GC_SCORE: score.toString(),
-      GC_THRESHOLD: recruitment.assessmentThresholds.generalCompetencies.toString(),
-    },
-    personId,
-    applicationId,
-    priority: 'high',
-  });
-}
-
-/**
- * Send general competencies failed notification
- */
-export async function sendGCFailed(
-  personId: string,
-  applicationId: string,
-  to: string,
-  firstName: string,
-  position: string,
-  score: number
-): Promise<SendResult> {
-  return sendEmail({
-    to,
-    template: EMAIL_TEMPLATES.GC_FAILED,
-    variables: {
-      PERSON_FIRST_NAME: escapeHtml(firstName),
-      POSITION: escapeHtml(position),
-      GC_SCORE: score.toString(),
-      GC_THRESHOLD: recruitment.assessmentThresholds.generalCompetencies.toString(),
-    },
-    personId,
-    applicationId,
-    priority: 'normal',
-  });
-}
-
-/**
  * Send specialized competencies assessment invitation
  */
 export async function sendSCInvitation(
@@ -361,58 +308,6 @@ export async function sendSCInvitation(
     personId,
     applicationId,
     priority: 'high',
-  });
-}
-
-/**
- * Send specialized competencies passed notification
- */
-export async function sendSCPassed(
-  personId: string,
-  applicationId: string,
-  to: string,
-  firstName: string,
-  position: string,
-  score: number
-): Promise<SendResult> {
-  return sendEmail({
-    to,
-    template: EMAIL_TEMPLATES.SC_PASSED,
-    variables: {
-      PERSON_FIRST_NAME: escapeHtml(firstName),
-      POSITION: escapeHtml(position),
-      SC_SCORE: score.toString(),
-      SC_THRESHOLD: recruitment.assessmentThresholds.specializedCompetencies.toString(),
-    },
-    personId,
-    applicationId,
-    priority: 'high',
-  });
-}
-
-/**
- * Send specialized competencies failed notification
- */
-export async function sendSCFailed(
-  personId: string,
-  applicationId: string,
-  to: string,
-  firstName: string,
-  position: string,
-  score: number
-): Promise<SendResult> {
-  return sendEmail({
-    to,
-    template: EMAIL_TEMPLATES.SC_FAILED,
-    variables: {
-      PERSON_FIRST_NAME: escapeHtml(firstName),
-      POSITION: escapeHtml(position),
-      SC_SCORE: score.toString(),
-      SC_THRESHOLD: recruitment.assessmentThresholds.specializedCompetencies.toString(),
-    },
-    personId,
-    applicationId,
-    priority: 'normal',
   });
 }
 

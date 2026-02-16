@@ -27,17 +27,10 @@ import {
 import { getApplicationDetail } from '@/lib/services/applications';
 import { createAuditLog } from '@/lib/audit';
 import { sanitizeForLog } from '@/lib/security';
+import { isValidUUID } from '@/lib/utils';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-/**
- * Validate UUID format to prevent injection
- */
-function isValidUUID(id: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
 }
 
 /**

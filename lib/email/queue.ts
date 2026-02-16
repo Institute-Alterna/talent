@@ -50,7 +50,6 @@ const emailQueue: QueuedEmail[] = [];
  */
 function cleanOldRecords(): void {
   const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-  const oneHourAgo = Date.now() - 60 * 60 * 1000;
 
   // Keep only records from the last 24 hours
   while (sendHistory.length > 0 && sendHistory[0].timestamp < oneDayAgo) {
@@ -294,7 +293,7 @@ export async function processQueue(
       }
       processed++;
     } catch (error) {
-      console.error(`[EmailQueue] Failed to send email ${email.id}:`, error);
+      console.error(`[EmailQueue] Failed to send email ${email.id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       requeueForRetry(email);
       processed++;
     }

@@ -12,6 +12,7 @@
 
 import { db } from '@/lib/db';
 import { ActionType, Prisma } from '@/lib/generated/prisma/client';
+import { sanitizeForLog } from '@/lib/security';
 
 /**
  * Options for creating an audit log entry
@@ -107,7 +108,7 @@ export async function logApplicationCreated(
   return createAuditLog({
     applicationId,
     personId,
-    action: `Application submitted for ${position}`,
+    action: `Application submitted for ${sanitizeForLog(position)}`,
     actionType: 'CREATE',
     details: { position, ...details },
     ipAddress,
@@ -129,7 +130,7 @@ export async function logStageChange(
     applicationId,
     personId,
     userId,
-    action: `Stage changed from ${fromStage} to ${toStage}`,
+    action: `Stage changed from ${sanitizeForLog(fromStage)} to ${sanitizeForLog(toStage)}`,
     actionType: 'STAGE_CHANGE',
     details: { fromStage, toStage, reason },
   });
@@ -150,7 +151,7 @@ export async function logStatusChange(
     applicationId,
     personId,
     userId,
-    action: `Status changed from ${fromStatus} to ${toStatus}`,
+    action: `Status changed from ${sanitizeForLog(fromStatus)} to ${sanitizeForLog(toStatus)}`,
     actionType: 'STATUS_CHANGE',
     details: { fromStatus, toStatus, reason },
   });
@@ -169,7 +170,7 @@ export async function logAssessmentCompleted(
   return createAuditLog({
     personId,
     applicationId: applicationId ?? undefined,
-    action: `${assessmentType} assessment completed`,
+    action: `${sanitizeForLog(assessmentType)} assessment completed`,
     actionType: 'UPDATE',
     details: { assessmentType, score, passed },
   });
@@ -189,7 +190,7 @@ export async function logEmailSent(
     personId,
     applicationId: applicationId ?? undefined,
     userId,
-    action: `Email sent: ${templateName}`,
+    action: `Email sent: ${sanitizeForLog(templateName)}`,
     actionType: 'EMAIL_SENT',
     details: { templateName, recipientEmail },
   });
@@ -273,7 +274,7 @@ export async function logDecisionMade(
     applicationId,
     personId,
     userId,
-    action: `Decision made: ${decision}`,
+    action: `Decision made: ${sanitizeForLog(decision)}`,
     actionType: 'UPDATE',
     details: { decision, reason },
   });
@@ -292,7 +293,7 @@ export async function logWebhookReceived(
   return createAuditLog({
     personId,
     applicationId,
-    action: `Webhook received: ${webhookType}`,
+    action: `Webhook received: ${sanitizeForLog(webhookType)}`,
     actionType: 'CREATE',
     details: { webhookType, ...details },
     ipAddress,
@@ -312,7 +313,7 @@ export async function logRecordViewed(
     personId,
     applicationId: applicationId ?? undefined,
     userId,
-    action: `Record viewed: ${viewType}`,
+    action: `Record viewed: ${sanitizeForLog(viewType)}`,
     actionType: 'VIEW',
     details: { viewType },
   });
@@ -333,7 +334,7 @@ export async function logRecordDeleted(
     personId,
     applicationId,
     userId,
-    action: `${entityType} deleted`,
+    action: `${sanitizeForLog(entityType)} deleted`,
     actionType: 'DELETE',
     details: { entityType, entityId, reason },
   });

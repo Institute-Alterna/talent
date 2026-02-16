@@ -67,6 +67,7 @@ describe('Auth Configuration', () => {
   });
 });
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- mock auth params don't match full NextAuth types */
 describe('Auth Configuration - Route Protection', () => {
   describe('authorized callback', () => {
     const mockAuthorized = authConfig.callbacks?.authorized;

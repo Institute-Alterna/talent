@@ -25,6 +25,7 @@ import { sanitizeForLog } from '@/lib/security';
  * Get dashboard metrics and overview data.
  * Requires authenticated user (hiring manager or admin).
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Next.js route handler signature
 export async function GET(request: NextRequest) {
   try {
     // Check authentication
@@ -47,7 +48,6 @@ export async function GET(request: NextRequest) {
     // Get date ranges
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     // Fetch all metrics in parallel
     const [

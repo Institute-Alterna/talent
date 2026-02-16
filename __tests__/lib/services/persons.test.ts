@@ -10,10 +10,10 @@ import {
   getPersons,
   getPersonById,
   getPersonByEmail,
-  getPersonWithApplications,
+  
   findOrCreatePerson,
   createPerson,
-  updatePerson,
+  
   updateGeneralCompetencies,
   hasPassedGeneralCompetencies,
   getPersonStats,

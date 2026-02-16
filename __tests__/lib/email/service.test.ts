@@ -16,11 +16,7 @@ import {
   sendEmail,
   sendApplicationReceived,
   sendGCInvitation,
-  sendGCPassed,
-  sendGCFailed,
   sendSCInvitation,
-  sendSCPassed,
-  sendSCFailed,
   sendInterviewInvitation,
   sendRejection,
   sendOfferLetter,
@@ -213,36 +209,6 @@ describe('Email Service', () => {
     });
   });
 
-  describe('sendGCPassed', () => {
-    it('sends GC passed email with score', async () => {
-      const result = await sendGCPassed(
-        'person-123',
-        'app-456',
-        'candidate@example.com',
-        'Jane',
-        'Data Analyst',
-        85
-      );
-
-      expect(result.success).toBe(true);
-    });
-  });
-
-  describe('sendGCFailed', () => {
-    it('sends GC failed email with score', async () => {
-      const result = await sendGCFailed(
-        'person-123',
-        'app-456',
-        'candidate@example.com',
-        'Jane',
-        'Data Analyst',
-        55
-      );
-
-      expect(result.success).toBe(true);
-    });
-  });
-
   describe('sendSCInvitation', () => {
     it('sends SC invitation with assessment URL', async () => {
       const result = await sendSCInvitation(
@@ -252,36 +218,6 @@ describe('Email Service', () => {
         'Jane',
         'Data Analyst',
         'https://tally.so/r/specialized-form'
-      );
-
-      expect(result.success).toBe(true);
-    });
-  });
-
-  describe('sendSCPassed', () => {
-    it('sends SC passed email with score', async () => {
-      const result = await sendSCPassed(
-        'person-123',
-        'app-456',
-        'candidate@example.com',
-        'Jane',
-        'Data Analyst',
-        82
-      );
-
-      expect(result.success).toBe(true);
-    });
-  });
-
-  describe('sendSCFailed', () => {
-    it('sends SC failed email with score', async () => {
-      const result = await sendSCFailed(
-        'person-123',
-        'app-456',
-        'candidate@example.com',
-        'Jane',
-        'Data Analyst',
-        60
       );
 
       expect(result.success).toBe(true);

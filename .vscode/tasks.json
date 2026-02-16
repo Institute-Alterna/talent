@@ -1,16 +1,103 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "npm",
-			"script": "build",
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
-			"problemMatcher": [],
-			"label": "npm: build",
-			"detail": "next build"
+  "version": "2.0.0",
+  "tasks": [
+	{
+		"label": "build",
+		"type": "npm",
+		"script": "build",
+		"group": {
+			"kind": "build",
+			"isDefault": true
+		},
+		"problemMatcher": [],
+		"detail": "Build Next.js for production",
+		"presentation": {
+			"group": "build"
 		}
-	]
+	},
+	{
+		"label": "typecheck",
+		"type": "shell",
+		"command": "npx tsc --noEmit",
+		"group": "test",
+		"problemMatcher": "$tsc",
+		"detail": "Run TypeScript type checking",
+		"presentation": {
+			"group": "validate",
+			"reveal": "always",
+			"panel": "shared"
+		}
+	},
+	{
+		"label": "lint",
+		"type": "npm",
+		"script": "lint",
+		"group": "test",
+		"problemMatcher": [
+			"$eslint-stylish"
+		],
+		"detail": "Run ESLint",
+		"presentation": {
+			"group": "validate",
+			"reveal": "always",
+			"panel": "shared"
+		}
+	},
+	{
+		"label": "test",
+		"type": "npm",
+		"script": "test",
+		"group": "test",
+		"problemMatcher": [],
+		"detail": "Run Tests",
+		"presentation": {
+			"group": "test",
+			"reveal": "always",
+			"panel": "shared"
+		}
+	},
+	{
+		"label": "verify",
+		"dependsOn": [
+			"typecheck",
+			"lint",
+			"test",
+			"build"
+		],
+		"dependsOrder": "sequence",
+		"group": "test",
+		"problemMatcher": [],
+		"detail": "Full verification: typecheck → lint → test → build",
+		"presentation": {
+			"group": "validate",
+			"reveal": "always"
+		}
+	},
+	{
+		"label": "clean",
+		"type": "shell",
+		"command": "rm -rf .next && echo 'Cleaned .next directory'",
+		"problemMatcher": [],
+		"detail": "Remove .next build directory",
+		"presentation": {
+			"group": "build",
+			"reveal": "silent",
+			"close": true
+		}
+	},
+	{
+		"label": "build",
+		"type": "npm",
+		"script": "build",
+		"group": {
+			"kind": "build",
+			"isDefault": true
+		},
+		"problemMatcher": [],
+		"detail": "Build Next.js for production",
+		"presentation": {
+			"group": "build"
+		}
+	}
+]
 }

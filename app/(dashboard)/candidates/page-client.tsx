@@ -8,7 +8,6 @@
  */
 
 import * as React from 'react';
-import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,13 +28,12 @@ import {
   ScheduleInterviewDialog,
   RescheduleInterviewDialog,
   CompleteInterviewDialog,
-  type Interviewer,
 } from '@/components/applications';
 import { WithdrawDialog } from '@/components/applications/withdraw-dialog';
 import { DecisionDialog } from '@/components/applications/decision-dialog';
 import { strings } from '@/config';
 import { Stage, Status } from '@/lib/generated/prisma/client';
-import { Search, RefreshCw, Filter, Users, Briefcase, FileDown } from 'lucide-react';
+import { Search, RefreshCw, Filter, Users, Briefcase } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface CandidatesPageClientProps {
@@ -71,7 +69,6 @@ interface AuditLogResponse {
 }
 
 export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
-  const router = useRouter();
   const { toast } = useToast();
 
   // State
@@ -194,7 +191,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
         const auditData: AuditLogResponse = await auditResponse.json();
         setAuditLogs(auditData.auditLogs);
       }
-    } catch (err) {
+    } catch {
       toast({
         title: 'Error',
         description: 'Failed to load application details',

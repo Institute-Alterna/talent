@@ -18,10 +18,6 @@ import {
   pdfPageConfig,
   pdfLabels,
   pdfSections,
-  getStatusColor,
-  getStageColor,
-  getResultColor,
-  getOutcomeColor,
 } from './config';
 import type { SanitizedApplicationData, SanitizedAuditLog } from './sanitize';
 import { branding } from '@/config/branding';
@@ -362,8 +358,6 @@ function ApplicationDetailsSection({
 }) {
   if (!pdfSections.candidateReport.showApplicationDetails) return null;
 
-  const statusLabel =
-    pdfLabels.status[application.status as keyof typeof pdfLabels.status] || application.status;
   const stageLabel =
     pdfLabels.stage[application.currentStage as keyof typeof pdfLabels.stage] ||
     application.currentStage;

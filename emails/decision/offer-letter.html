@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offer Letter - Welcome to the Team</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8f9fa; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; margin: 0 auto; padding: 40px 20px;">
+    <!-- Logo -->
+    <tr>
+      <td style="padding-bottom: 32px;">
+        <img src="{{LOGO_URL}}" alt="{{ORGANIZATION_SHORT_NAME}}" height="32" style="height: 32px; width: auto;">
+      </td>
+    </tr>
+
+    <!-- Title -->
+    <tr>
+      <td>
+        <h1 style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 22px; font-weight: 600; color: #1a1a1a; margin: 0 0 24px 0;">
+          Congratulations, {{PERSON_FIRST_NAME}}!
+        </h1>
+      </td>
+    </tr>
+
+    <!-- Content -->
+    <tr>
+      <td style="color: #1a1a1a; font-size: 15px; line-height: 1.6;">
+        <p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0 0 20px 0;">
+          We are thrilled to extend an official offer for you to join {{ORGANIZATION_NAME}} as a <strong>{{POSITION}}</strong>.
+        </p>
+
+        <p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0 0 20px 0;">
+          After reviewing your application, assessments, and interview, we are confident that you will be an excellent addition to our team.
+        </p>
+
+        <!-- Offer Details Card -->
+        <table width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0;">
+          <tr>
+            <td style="padding: 16px; background-color: #f8f9fa; border-left: 3px solid {{PRIMARY_COLOR}};">
+              <p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0 0 8px 0; font-size: 14px;">
+                <strong>Position:</strong> {{POSITION}}
+              </p>
+              <p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0; font-size: 14px;">
+                <strong>Start Date:</strong> {{START_DATE}}
+              </p>
+            </td>
+          </tr>
+        </table>
+
+        {{ADDITIONAL_DETAILS}}
+
+        <p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0 0 20px 0;">
+          <strong>Next Steps:</strong>
+        </p>
+        <ol style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0 0 20px 0; padding-left: 20px;">
+          <li style="margin-bottom: 8px;">Review the offer details carefully</li>
+          <li style="margin-bottom: 8px;">Reply to this email to confirm your acceptance</li>
+          <li style="margin-bottom: 8px;">Complete any required onboarding documentation</li>
+          <li>Prepare for your start date</li>
+        </ol>
+
+        <p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0 0 20px 0;">
+          We are excited to welcome you to the {{ORGANIZATION_NAME}} family and look forward to the contributions you will make to our team.
+        </p>
+
+        <p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 24px 0 20px 0;">
+          If you have any questions about this offer, please contact us at <a href="mailto:{{SUPPORT_EMAIL}}" style="color: {{PRIMARY_COLOR}}; text-decoration: none;">{{SUPPORT_EMAIL}}</a>.
+        </p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="padding-top: 20px; border-top: 1px solid #e5e5e5; margin-top: 20px;">
+        <p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0; font-size: 12px; color: #888888; line-height: 1.5;">
+          Sent to {{PERSON_EMAIL}} on {{SENT_DATE}} at {{SENT_TIME}}.<br>
+          Please do not reply to this email.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

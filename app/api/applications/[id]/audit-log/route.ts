@@ -19,17 +19,10 @@ import { getApplicationById } from '@/lib/services/applications';
 import { getAuditLogsForApplication } from '@/lib/audit';
 import { getEmailLogsForApplication } from '@/lib/email';
 import { sanitizeForLog } from '@/lib/security';
+import { isValidUUID } from '@/lib/utils';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-/**
- * Validate UUID format to prevent injection
- */
-function isValidUUID(id: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
 }
 
 /**

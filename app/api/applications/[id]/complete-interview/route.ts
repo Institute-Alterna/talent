@@ -16,27 +16,11 @@ import { auth } from '@/lib/auth';
 import { getApplicationDetail } from '@/lib/services/applications';
 import { logInterviewCompleted } from '@/lib/audit';
 import { db } from '@/lib/db';
-import { sanitizeForLog } from '@/lib/security';
+import { sanitizeForLog, requireString, RequiredFieldError, sanitizeText } from '@/lib/security';
+import { isValidUUID } from '@/lib/utils';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-/**
- * Validate UUID format to prevent injection
- */
-function isValidUUID(id: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-}
-
-/**
- * Sanitize text content
- */
-function sanitizeText(text: string | null | undefined, maxLength: number = 5000): string | null {
-  if (text === null || text === undefined) return null;
-  // Remove null bytes to prevent injection
-  return text.replace(/\0/g, '').substring(0, maxLength);
 }
 
 /**
@@ -109,21 +93,24 @@ export async function POST(
 
     // Parse request body
     const body = await request.json();
-    const { notes } = body;
 
-    // Validate required fields
-    if (!notes || typeof notes !== 'string' || !notes.trim()) {
-      console.error('[Complete Interview] Missing or invalid notes');
-      return NextResponse.json(
-        { error: 'Interview notes are required' },
-        { status: 400 }
-      );
+    // Validate required fields — requireString prevents non-string truthy bypass
+    let notes: string;
+    try {
+      notes = requireString(body.notes, 'notes');
+    } catch (e) {
+      if (e instanceof RequiredFieldError) {
+        return NextResponse.json(
+          { error: 'Interview notes are required' },
+          { status: 400 }
+        );
+      }
+      throw e;
     }
 
     // Sanitize notes (max 2000 chars)
     const sanitizedNotes = sanitizeText(notes.trim(), 2000);
     if (!sanitizedNotes) {
-      console.error('[Complete Interview] Notes sanitization resulted in empty string');
       return NextResponse.json(
         { error: 'Interview notes are required' },
         { status: 400 }
@@ -164,7 +151,7 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error('[Complete Interview] Error:', error);
+    console.error('[Complete Interview] Error:', sanitizeForLog(error instanceof Error ? error.message : 'Unknown error'));
     return NextResponse.json(
       {
         error: 'Failed to complete interview',

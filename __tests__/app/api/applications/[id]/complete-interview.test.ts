@@ -34,15 +34,18 @@ jest.mock('@/lib/audit', () => ({
 }));
 
 // Mock security
-jest.mock('@/lib/security', () => ({
-  sanitizeForLog: jest.fn((s) => s),
-}));
+jest.mock('@/lib/security', () => {
+  const actual = jest.requireActual('@/lib/security');
+  return {
+    ...actual,
+    sanitizeForLog: jest.fn((s) => s),
+  };
+});
 
 import { POST } from '@/app/api/applications/[id]/complete-interview/route';
 import { auth } from '@/lib/auth';
 import { getApplicationDetail } from '@/lib/services/applications';
 import { db } from '@/lib/db';
-import { logInterviewCompleted } from '@/lib/audit';
 
 const mockSession = {
   user: {

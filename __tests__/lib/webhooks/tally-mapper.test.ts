@@ -13,7 +13,7 @@ import {
   extractPersonData,
   extractApplicationData,
   extractGCAssessmentData,
-  extractSCAssessmentData,
+  
   validateRequiredFields,
   APPLICATION_FIELD_KEYS,
   PACKAGE_CHECKBOX_IDS,

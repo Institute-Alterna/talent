@@ -25,8 +25,9 @@ import { sendRejection, sendOfferLetter } from '@/lib/email';
 import { logDecisionMade, logStatusChange } from '@/lib/audit';
 import { db } from '@/lib/db';
 import { DecisionType, Status } from '@/lib/generated/prisma/client';
-import { sanitizeForLog } from '@/lib/security';
+import { sanitizeForLog, sanitizeText } from '@/lib/security';
 import { escapeHtml } from '@/lib/email/templates';
+import { isValidUUID } from '@/lib/utils';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -36,22 +37,6 @@ interface RouteParams {
  * Valid decision types
  */
 const VALID_DECISIONS: DecisionType[] = ['ACCEPT', 'REJECT'];
-
-/**
- * Validate UUID format to prevent injection
- */
-function isValidUUID(id: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-}
-
-/**
- * Sanitize text content
- */
-function sanitizeText(text: string | null | undefined, maxLength: number = 5000): string {
-  if (text === null || text === undefined) return '';
-  return text.replace(/\0/g, '').substring(0, maxLength);
-}
 
 /**
  * POST /api/applications/[id]/decision
@@ -145,8 +130,8 @@ export async function POST(
     }
 
     // Validate reason (required for rejections per GDPR)
-    const reason = sanitizeText(body.reason as string | undefined, 2000);
-    if (decision === 'REJECT' && !reason.trim()) {
+    const reason = typeof body.reason === 'string' ? sanitizeText(body.reason, 2000) : null;
+    if (decision === 'REJECT' && (!reason || !reason.trim())) {
       return NextResponse.json(
         { error: 'Reason is required for rejection decisions (GDPR compliance)' },
         { status: 400 }
@@ -154,10 +139,10 @@ export async function POST(
     }
 
     // Default reason for acceptance
-    const finalReason = reason.trim() || 'Application accepted';
+    const finalReason = reason?.trim() || 'Application accepted';
 
     // Optional notes
-    const notes = sanitizeText(body.notes as string | undefined, 5000) || null;
+    const notes = typeof body.notes === 'string' ? sanitizeText(body.notes, 5000) : null;
 
     // Whether to send email (default: true)
     const sendEmail = body.sendEmail !== false;

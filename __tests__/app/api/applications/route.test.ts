@@ -21,9 +21,13 @@ jest.mock('@/lib/services/applications', () => ({
 }));
 
 // Mock security
-jest.mock('@/lib/security', () => ({
-  sanitizeForLog: jest.fn((s) => s),
-}));
+jest.mock('@/lib/security', () => {
+  const actual = jest.requireActual('@/lib/security');
+  return {
+    ...actual,
+    sanitizeForLog: jest.fn((s) => s),
+  };
+});
 
 import { GET } from '@/app/api/applications/route';
 import { auth } from '@/lib/auth';

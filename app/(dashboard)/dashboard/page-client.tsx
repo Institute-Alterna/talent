@@ -16,7 +16,6 @@ import { PipelineChart } from '@/components/dashboard';
 import { strings } from '@/config';
 import { Stage } from '@/lib/generated/prisma/client';
 import {
-  Users,
   Briefcase,
   Clock,
   Calendar,

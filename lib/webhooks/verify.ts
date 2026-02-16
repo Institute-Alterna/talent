@@ -8,6 +8,7 @@
  */
 
 import { timingSafeEqual } from 'crypto';
+import { sanitizeForLog } from '@/lib/security';
 
 /**
  * Verify webhook secret token
@@ -171,7 +172,7 @@ export function verifyWebhook(_payload: string, headers: Headers): VerificationR
   if (!verifyIP(ip)) {
     return {
       valid: false,
-      error: `IP not whitelisted: ${ip}`,
+      error: `IP not whitelisted: ${sanitizeForLog(ip)}`,
       ip,
     };
   }

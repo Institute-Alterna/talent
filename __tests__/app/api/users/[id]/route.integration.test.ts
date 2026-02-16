@@ -149,7 +149,7 @@ describe('/api/users/[id]', () => {
         body: JSON.stringify({ schedulingLink: 'https://cal.com/user' }),
       });
       const response = await PUT(request, { params: Promise.resolve({ id: 'user-db-id' }) });
-      const data = await response.json();
+      await response.json();
 
       expect(response.status).toBe(200);
       expect(updateUser).toHaveBeenCalledWith('user-db-id', { schedulingLink: 'https://cal.com/user' });

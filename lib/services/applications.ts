@@ -9,6 +9,7 @@
 import { db } from '@/lib/db';
 import { Prisma, Stage, Status } from '@/lib/generated/prisma/client';
 import { recruitment } from '@/config/recruitment';
+import { validateSortField, validateSortOrder } from '@/lib/security';
 import type {
   Application,
   ApplicationListItem,
@@ -19,7 +20,6 @@ import type {
   ApplicationStats,
   ApplicationFilters,
   ApplicationsListResponse,
-  getMissingFields,
 } from '@/types/application';
 
 /**
@@ -68,8 +68,10 @@ export async function getApplications(filters?: ApplicationFilters): Promise<App
     ];
   }
 
+  const validatedSortBy = validateSortField(sortBy);
+  const validatedSortOrder = validateSortOrder(sortOrder);
   const orderBy: Prisma.ApplicationOrderByWithRelationInput = {
-    [sortBy]: sortOrder,
+    [validatedSortBy]: validatedSortOrder,
   };
 
   const [applications, total] = await Promise.all([

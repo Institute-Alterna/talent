@@ -32,7 +32,6 @@ import { db } from '@/lib/db';
 import {
   getPersonById,
   updateGeneralCompetencies,
-  hasPassedGeneralCompetencies,
 } from '@/lib/services/persons';
 import {
   getApplicationsAwaitingGCResult,

@@ -54,7 +54,7 @@ export function loadTemplate(templateName: string, format: 'html' | 'txt' = 'htm
     templateCache.set(cacheKey, content);
     return content;
   } catch (error) {
-    console.error(`[Email] Failed to load template ${sanitizeForLog(templatePath)}:`, error);
+    console.error(`[Email] Failed to load template ${sanitizeForLog(templatePath)}: ${sanitizeForLog(error instanceof Error ? error.message : String(error))}`);
     return null;
   }
 }

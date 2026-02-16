@@ -6,13 +6,13 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Validate if a string is a valid UUID v4
+ * Validate if a string is a valid UUID
  *
  * @param id - String to validate
- * @returns true if valid UUID v4
+ * @returns true if valid UUID format
  */
 export function isValidUUID(id: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return uuidRegex.test(id);
 }
 

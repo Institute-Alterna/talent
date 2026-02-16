@@ -7,6 +7,7 @@
 
 import { recruitment } from '@/config/recruitment';
 import { branding } from '@/config/branding';
+import { formatDate, formatDateTime } from '@/lib/utils';
 
 /**
  * SMTP configuration from environment
@@ -52,32 +53,33 @@ export const appUrls = {
  * Common template variables available to all templates
  */
 export function getCommonVariables(): Record<string, string> {
+  const now = new Date();
   return {
     ORGANIZATION_NAME: branding.organisationName,
     ORGANIZATION_SHORT_NAME: branding.organisationShortName,
     PRIMARY_COLOR: branding.primaryColor,
     SECONDARY_COLOR: branding.secondaryColor,
     APP_URL: appUrls.baseUrl,
-    CURRENT_YEAR: new Date().getFullYear().toString(),
+    CURRENT_YEAR: now.getFullYear().toString(),
     SUPPORT_EMAIL: senderConfig.email,
+    LOGO_URL: `${appUrls.baseUrl}/emails/alterna-logo-email.png`,
+    SENT_DATE: formatDate(now),
+    SENT_TIME: formatDateTime(now),
   };
 }
 
 /**
  * Email template names
+ * Templates are organized into folders by stage
  */
 export const EMAIL_TEMPLATES = {
-  APPLICATION_RECEIVED: 'application-received',
-  GC_INVITATION: 'general-competencies-invitation',
-  GC_PASSED: 'general-competencies-passed',
-  GC_FAILED: 'general-competencies-failed',
-  SC_INVITATION: 'specialized-competencies-invitation',
-  SC_PASSED: 'specialized-competencies-passed',
-  SC_FAILED: 'specialized-competencies-failed',
-  INTERVIEW_INVITATION: 'interview-invitation',
-  OFFER_LETTER: 'offer-letter',
-  REJECTION: 'rejection',
-  ACCOUNT_CREATED: 'account-created',
+  APPLICATION_RECEIVED: 'application/application-received',
+  GC_INVITATION: 'assessment/general-competencies-invitation',
+  SC_INVITATION: 'assessment/specialized-competencies-invitation',
+  INTERVIEW_INVITATION: 'interview/interview-invitation',
+  OFFER_LETTER: 'decision/offer-letter',
+  REJECTION: 'decision/rejection',
+  ACCOUNT_CREATED: 'onboarding/account-created',
 } as const;
 
 export type EmailTemplateName = (typeof EMAIL_TEMPLATES)[keyof typeof EMAIL_TEMPLATES];
@@ -90,47 +92,31 @@ export const EMAIL_TEMPLATE_META: Record<
   { subject: string; description: string }
 > = {
   [EMAIL_TEMPLATES.APPLICATION_RECEIVED]: {
-    subject: 'Application Received - {{POSITION}}',
+    subject: 'Application Received for {{POSITION}}',
     description: 'Confirmation email sent when application is submitted',
   },
   [EMAIL_TEMPLATES.GC_INVITATION]: {
-    subject: 'Complete Your Assessment - {{ORGANIZATION_SHORT_NAME}}',
+    subject: 'Complete Your Assessment at {{ORGANIZATION_SHORT_NAME}}',
     description: 'Invitation to complete general competencies assessment',
   },
-  [EMAIL_TEMPLATES.GC_PASSED]: {
-    subject: 'Congratulations! Next Steps for {{POSITION}}',
-    description: 'Notification that general competencies assessment was passed',
-  },
-  [EMAIL_TEMPLATES.GC_FAILED]: {
-    subject: 'Application Update - {{POSITION}}',
-    description: 'Notification that general competencies assessment was not passed',
-  },
   [EMAIL_TEMPLATES.SC_INVITATION]: {
-    subject: 'Role-Specific Assessment - {{POSITION}}',
+    subject: 'Role-Specific Assessment for {{POSITION}}',
     description: 'Invitation to complete specialized competencies assessment',
   },
-  [EMAIL_TEMPLATES.SC_PASSED]: {
-    subject: 'Interview Invitation - {{POSITION}}',
-    description: 'Notification that specialized assessment was passed, includes interview link',
-  },
-  [EMAIL_TEMPLATES.SC_FAILED]: {
-    subject: 'Application Update - {{POSITION}}',
-    description: 'Notification that specialized assessment was not passed',
-  },
   [EMAIL_TEMPLATES.INTERVIEW_INVITATION]: {
-    subject: 'Schedule Your Interview - {{POSITION}}',
+    subject: 'Schedule Your Interview for {{POSITION}}',
     description: 'Interview scheduling invitation with calendar link',
   },
   [EMAIL_TEMPLATES.OFFER_LETTER]: {
-    subject: 'Offer Letter - {{POSITION}} at {{ORGANIZATION_NAME}}',
+    subject: 'Application Update at {{ORGANIZATION_NAME}}',
     description: 'Job offer with agreement details',
   },
   [EMAIL_TEMPLATES.REJECTION]: {
-    subject: 'Application Update - {{ORGANIZATION_NAME}}',
+    subject: 'Application Update at {{ORGANIZATION_NAME}}',
     description: 'Final rejection notification',
   },
   [EMAIL_TEMPLATES.ACCOUNT_CREATED]: {
-    subject: 'Welcome to {{ORGANIZATION_NAME}} - Account Created',
+    subject: 'Welcome to {{ORGANIZATION_NAME}}',
     description: 'Onboarding email with account credentials',
   },
 };

@@ -91,6 +91,7 @@ describe('Home Page (Login)', () => {
   });
 });
 
+/* eslint-disable @typescript-eslint/no-require-imports -- dynamic mock overrides in test */
 describe('Home Page (Authenticated redirect)', () => {
   it('redirects authenticated users to dashboard', async () => {
     // Override the mock for this test

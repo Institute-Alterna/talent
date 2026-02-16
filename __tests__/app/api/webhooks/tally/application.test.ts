@@ -10,7 +10,7 @@ import { POST, OPTIONS } from '@/app/api/webhooks/tally/application/route';
 import { NextRequest } from 'next/server';
 import {
   createApplicationPayload,
-  createMinimalApplicationPayload,
+  
   createInvalidPayload,
   generateWebhookSignature,
 } from '@/__tests__/fixtures/tally-webhooks';
@@ -54,7 +54,6 @@ jest.mock('@/lib/audit', () => ({
   logStatusChange: jest.fn(),
 }));
 
-import { db } from '@/lib/db';
 import { findOrCreatePerson, hasPassedGeneralCompetencies } from '@/lib/services/persons';
 import {
   createApplication,
