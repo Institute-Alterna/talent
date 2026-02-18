@@ -156,12 +156,12 @@ export function DashboardPageClient({ displayName }: DashboardPageClientProps) {
 
       {/* Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+        <Card className="hover:shadow-md transition-all duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {strings.metrics.totalCandidates}
             </CardTitle>
-            <Briefcase className="h-4 w-4 text-muted-foreground" />
+            <Briefcase className="h-4 w-4 text-primary/60" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -173,12 +173,12 @@ export function DashboardPageClient({ displayName }: DashboardPageClientProps) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-md transition-all duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {strings.metrics.awaitingAction}
             </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-primary/60" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -190,12 +190,12 @@ export function DashboardPageClient({ displayName }: DashboardPageClientProps) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-md transition-all duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {strings.metrics.thisWeek}
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <TrendingUp className="h-4 w-4 text-primary/60" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -207,12 +207,12 @@ export function DashboardPageClient({ displayName }: DashboardPageClientProps) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="hover:shadow-md transition-all duration-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {strings.interview.pending}
             </CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Calendar className="h-4 w-4 text-primary/60" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -238,7 +238,7 @@ export function DashboardPageClient({ displayName }: DashboardPageClientProps) {
                 </CardDescription>
               </div>
               <Link href="/candidates">
-                <Button variant="ghost" size="sm">
+                <Button variant="link" size="sm" className="text-primary">
                   View All <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
@@ -302,19 +302,19 @@ export function DashboardPageClient({ displayName }: DashboardPageClientProps) {
           <CardContent>
             <div className="grid gap-4 md:grid-cols-3">
               {data.metrics.breakdown.awaitingGC > 0 && (
-                <div className="border rounded-lg p-4">
+                <div className="border rounded-lg p-4 hover:bg-accent/30 transition-colors">
                   <div className="text-2xl font-bold">{data.metrics.breakdown.awaitingGC}</div>
                   <p className="text-sm text-muted-foreground">Awaiting General Competencies</p>
                 </div>
               )}
               {data.metrics.breakdown.awaitingSC > 0 && (
-                <div className="border rounded-lg p-4">
+                <div className="border rounded-lg p-4 hover:bg-accent/30 transition-colors">
                   <div className="text-2xl font-bold">{data.metrics.breakdown.awaitingSC}</div>
                   <p className="text-sm text-muted-foreground">Awaiting Specialized Assessment</p>
                 </div>
               )}
               {data.metrics.breakdown.pendingInterviews > 0 && (
-                <div className="border rounded-lg p-4">
+                <div className="border rounded-lg p-4 hover:bg-accent/30 transition-colors">
                   <div className="text-2xl font-bold">{data.metrics.breakdown.pendingInterviews}</div>
                   <p className="text-sm text-muted-foreground">Pending Interviews</p>
                 </div>

@@ -45,6 +45,16 @@ const STAGE_ORDER: Stage[] = [
   'SIGNED',
 ];
 
+// Stage color map for top accent bars
+const STAGE_COLORS: Record<Stage, string> = {
+  APPLICATION: '#64748b',
+  GENERAL_COMPETENCIES: '#7c3aed',
+  SPECIALIZED_COMPETENCIES: '#4f46e5',
+  INTERVIEW: '#d97706',
+  AGREEMENT: '#0891b2',
+  SIGNED: '#16a34a',
+};
+
 interface StageColumnProps {
   stage: Stage;
   applications: ApplicationCardData[];
@@ -71,16 +81,23 @@ function StageColumn({
   const count = applications.length;
 
   return (
-    <div className="flex-shrink-0 w-72 flex flex-col bg-muted/30 rounded-lg">
+    <div className="flex-shrink-0 w-72 flex flex-col rounded-xl border border-border/50 bg-card/50 min-h-[400px] snap-start">
+      {/* Colored top bar */}
+      <div
+        className="absolute top-0 left-3 right-3 h-[2px] rounded-full"
+        style={{ backgroundColor: STAGE_COLORS[stage] }}
+      />
+      
       {/* Column header */}
-      <div className="p-3 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <StageBadge stage={stage} size="sm" />
-            <span className="text-sm font-medium text-muted-foreground">
-              {count}
-            </span>
-          </div>
+      <div className="relative p-3 border-b border-border/50">
+        <div className="flex items-center justify-between mb-1">
+          <StageBadge stage={stage} size="sm" />
+          <span className="inline-flex items-center justify-center h-5 min-w-5 rounded-full bg-muted text-xs font-medium px-1.5">
+            {count}
+          </span>
+        </div>
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          {stage.replace(/_/g, ' ')}
         </div>
       </div>
 
@@ -154,7 +171,7 @@ export function PipelineBoard({
   }
 
   return (
-    <ScrollArea className={cn('w-full', className)}>
+    <ScrollArea className={cn('w-full snap-x snap-mandatory', className)}>
       <div className="flex gap-4 pb-4 min-w-max">
         {STAGE_ORDER.map((stage) => (
           <StageColumn
