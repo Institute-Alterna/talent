@@ -247,12 +247,12 @@ function MissingFieldsAlert({ application }: { application: ApplicationDetailDat
   if (missingFields.length === 0) return null;
 
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-3 mb-4">
       <div className="flex items-start gap-2">
         <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium text-amber-800 text-sm">Missing Documents</p>
-          <p className="text-amber-700 text-sm mt-1">
+          <p className="font-medium text-amber-800 dark:text-amber-200 text-sm">Missing Documents</p>
+          <p className="text-amber-700 dark:text-amber-200 text-sm mt-1">
             The applicant indicated they would submit: {missingFields.join(', ')}, but these were not received.
           </p>
         </div>
@@ -309,7 +309,7 @@ function DocumentLink({
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="font-medium text-sm text-muted-foreground mb-3">{children}</h4>
+    <h4 className="uppercase tracking-wider text-[11px] font-medium text-muted-foreground mb-3">{children}</h4>
   );
 }
 
@@ -997,7 +997,7 @@ export function ApplicationDetail({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] sm:max-w-6xl h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-[95vw] sm:max-w-6xl h-[90vh] flex flex-col p-0 rounded-2xl shadow-2xl">
         {/* Header */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">

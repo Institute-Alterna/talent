@@ -179,6 +179,11 @@ export const strings = {
     schedulingLinkMissing: 'Please set your scheduling link to conduct interviews',
     preferences: 'Preferences',
     activityHistory: 'Activity History',
+    appearance: 'Appearance',
+    appearanceDescription: 'Choose your preferred colour scheme',
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    themeSystem: 'System',
   },
 
   // Audit Log (admin)
