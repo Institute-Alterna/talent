@@ -42,7 +42,7 @@ export default async function AuthErrorPage({
   const errorInfo = errorMessages[error] || errorMessages.Default;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-8 dark:bg-zinc-950">
+    <div className="flex min-h-screen items-center justify-center bg-background p-8">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl text-destructive">{errorInfo.title}</CardTitle>

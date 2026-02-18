@@ -86,7 +86,7 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'flex h-full flex-col border-r bg-card',
+          'flex h-full flex-col border-r border-border/50 bg-background/80 backdrop-blur-xl',
           collapsed ? 'w-16' : 'w-64'
         )}
       >
@@ -98,7 +98,7 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
           )}
         >
           <div
-            className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold"
+            className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-bold"
             aria-hidden="true"
           >
             {branding.organisationShortName.charAt(0)}
@@ -122,10 +122,10 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
                 href={item.href}
                 className={cn(
                   'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  'hover:bg-accent hover:text-accent-foreground',
+                  'hover:bg-accent/40 hover:text-foreground',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   isActive
-                    ? 'bg-accent text-accent-foreground'
+                    ? 'bg-accent/50 text-foreground relative before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-primary'
                     : 'text-muted-foreground',
                   collapsed && 'justify-center px-2'
                 )}
@@ -152,7 +152,7 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
         {/* Footer */}
         <div
           className={cn(
-            'border-t p-4 text-xs text-muted-foreground',
+            'border-t p-4 text-xs text-muted-foreground opacity-50',
             collapsed && 'text-center'
           )}
         >
@@ -204,10 +204,10 @@ export function MobileNav({
             onClick={onNavigate}
             className={cn(
               'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-              'hover:bg-accent hover:text-accent-foreground',
+              'hover:bg-accent/40 hover:text-foreground',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               isActive
-                ? 'bg-accent text-accent-foreground'
+                ? 'bg-accent/50 text-foreground relative before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-primary'
                 : 'text-muted-foreground'
             )}
             aria-current={isActive ? 'page' : undefined}

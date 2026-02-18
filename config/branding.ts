@@ -26,7 +26,7 @@ export const branding = {
   dangerColor: '#EF4444',
 
   // Logo paths (relative to /public directory)
-  logoPath: '/logos/alterna-logo.svg',
+  logoPath: '/talentLogo.svg',
   logoDarkPath: '/logos/alterna-logo-dark.svg',
   faviconPath: '/logos/favicon.ico',
 

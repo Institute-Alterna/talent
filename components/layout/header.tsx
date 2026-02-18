@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { MobileNav } from './sidebar';
+import { ThemeToggle } from '@/components/shared/theme-toggle';
 import { branding, strings } from '@/config';
 
 interface HeaderProps {
@@ -51,7 +52,7 @@ export function Header({ user, onSignOut }: HeaderProps) {
   const displayName = user.firstName || user.displayName || user.name || user.email || 'User';
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6">
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 md:px-6">
       {/* Mobile menu button */}
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetTrigger asChild>
@@ -64,7 +65,7 @@ export function Header({ user, onSignOut }: HeaderProps) {
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-72">
+        <SheetContent side="left" className="w-72 bg-background/95 backdrop-blur-xl">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
@@ -85,6 +86,9 @@ export function Header({ user, onSignOut }: HeaderProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
+      {/* Theme toggle */}
+      <ThemeToggle />
+
       {/* User menu */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -100,7 +104,7 @@ export function Header({ user, onSignOut }: HeaderProps) {
                   {user.title}
                 </span>
                 {user.isAdmin && (
-                  <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                  <Badge className="h-4 px-1 text-[10px] bg-primary/10 text-primary border-primary/20">
                     Admin
                   </Badge>
                 )}
