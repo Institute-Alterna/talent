@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { requireAccess } from '@/lib/api-helpers';
 import { getApplicationDetail } from '@/lib/services/applications';
 import { getUserById } from '@/lib/services/users';
 import { sendInterviewInvitation } from '@/lib/email';
@@ -48,22 +48,9 @@ export async function POST(
       );
     }
 
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Check app access permission
-    if (!session.user.hasAccess) {
-      return NextResponse.json(
-        { error: 'Forbidden - App access required' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAccess();
+    if (!auth.ok) return auth.error;
+    const { session } = auth;
 
     // Get application details
     const application = await getApplicationDetail(id);

@@ -271,7 +271,7 @@ describe('GET /api/applications/[id]/export-pdf', () => {
       expect(response.status).toBe(200);
       expect(response.headers.get('Content-Type')).toBe('application/pdf');
       expect(response.headers.get('Content-Disposition')).toContain('attachment');
-      expect(response.headers.get('Content-Disposition')).toContain('filename=');
+      expect(response.headers.get('Content-Disposition')).toContain('filename*=');
       expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
       expect(response.headers.get('Cache-Control')).toContain('no-cache');
     });

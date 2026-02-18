@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { requireAdmin } from '@/lib/api-helpers';
 import { getUsers, getUserStats } from '@/lib/services/users';
 
 /**
@@ -21,22 +21,8 @@ import { getUsers, getUserStats } from '@/lib/services/users';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Check admin permission
-    if (!session.user.isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.error;
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);

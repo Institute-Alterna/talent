@@ -18,7 +18,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { requireAccess } from '@/lib/api-helpers';
 import {
   generateCandidateReportPdf,
   generateAuditReportPdf,
@@ -59,16 +59,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Invalid application ID format' }, { status: 400 });
     }
 
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check app access permission (hiring managers and admins can export)
-    if (!session.user.hasAccess) {
-      return NextResponse.json({ error: 'Forbidden - App access required' }, { status: 403 });
-    }
+    const auth = await requireAccess();
+    if (!auth.ok) return auth.error;
+    const { session } = auth;
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -130,7 +123,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       status: 200,
       headers: {
         'Content-Type': result.contentType,
-        'Content-Disposition': `attachment; filename="${result.filename}"`,
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(result.filename)}`,
         'Content-Length': result.size.toString(),
         // Security headers
         'X-Content-Type-Options': 'nosniff',

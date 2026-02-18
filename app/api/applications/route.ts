@@ -18,28 +18,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { getApplications, getApplicationStats, getApplicationsForPipeline } from '@/lib/services/applications';
 import { Stage, Status } from '@/lib/generated/prisma/client';
 import { sanitizeForLog, ALLOWED_SORT_FIELDS } from '@/lib/security';
 import { isValidUUID } from '@/lib/utils';
-
-/**
- * Valid stage values
- */
-const VALID_STAGES: Stage[] = [
-  'APPLICATION',
-  'GENERAL_COMPETENCIES',
-  'SPECIALIZED_COMPETENCIES',
-  'INTERVIEW',
-  'AGREEMENT',
-  'SIGNED',
-];
-
-/**
- * Valid status values
- */
-const VALID_STATUSES: Status[] = ['ACTIVE', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'];
+import { requireAccess } from '@/lib/api-helpers';
+import { VALID_STAGES, VALID_STATUSES } from '@/lib/constants';
 
 /**
  * GET /api/applications
@@ -49,22 +33,8 @@ const VALID_STATUSES: Status[] = ['ACTIVE', 'ACCEPTED', 'REJECTED', 'WITHDRAWN']
  */
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Check app access permission
-    if (!session.user.hasAccess) {
-      return NextResponse.json(
-        { error: 'Forbidden - App access required' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAccess();
+    if (!auth.ok) return auth.error;
 
     // Parse query parameters
     const { searchParams } = new URL(request.url);

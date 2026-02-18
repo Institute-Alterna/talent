@@ -711,7 +711,17 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
         </div>
 
         {/* Stats Cards */}
-        {stats && (
+        {isLoading ? (
+          <div className="grid gap-4 md:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="pt-6">
+                  <div className="h-8 w-16 bg-muted animate-pulse rounded" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : stats ? (
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -762,7 +772,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
               </CardContent>
             </Card>
           </div>
-        )}
+        ) : null}
 
         {/* Filters */}
         <Card>

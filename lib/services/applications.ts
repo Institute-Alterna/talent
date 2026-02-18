@@ -10,6 +10,7 @@ import { db } from '@/lib/db';
 import { Prisma, Stage, Status } from '@/lib/generated/prisma/client';
 import { recruitment } from '@/config/recruitment';
 import { validateSortField, validateSortOrder } from '@/lib/security';
+import { calcMissingFields } from '@/lib/utils';
 import type {
   Application,
   ApplicationListItem,
@@ -185,14 +186,6 @@ export async function getApplicationsForPipeline(filters?: {
   };
 
   for (const app of applications) {
-    // Calculate missing fields
-    const missingFields: string[] = [];
-    if (app.hasResume && !app.resumeUrl) missingFields.push('Resume');
-    if (app.hasAcademicBg && !app.academicBackground) missingFields.push('Academic Background');
-    if (app.hasVideoIntro && !app.videoLink) missingFields.push('Video Introduction');
-    if (app.hasPreviousExp && !app.previousExperience) missingFields.push('Previous Experience');
-    if (app.hasOtherFile && !app.otherFileUrl) missingFields.push('Other File');
-
     const card: ApplicationCard = {
       id: app.id,
       personId: app.personId,
@@ -209,7 +202,7 @@ export async function getApplicationsForPipeline(filters?: {
         generalCompetenciesScore: app.person.generalCompetenciesScore,
       },
       personApplicationCount: app.person._count.applications,
-      missingFields,
+      missingFields: calcMissingFields(app),
     };
 
     applicationsByStage[app.currentStage].push(card);

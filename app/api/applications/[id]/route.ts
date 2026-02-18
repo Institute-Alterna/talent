@@ -9,13 +9,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import {
   getApplicationDetail,
   updateApplication,
   updateApplicationStatus,
   deleteApplication,
 } from '@/lib/services/applications';
+import { calcMissingFields } from '@/lib/utils';
 import {
   logRecordViewed,
   logStageChange,
@@ -25,27 +25,12 @@ import {
 import { sanitizeForLog, sanitizeText } from '@/lib/security';
 import { Stage, Status } from '@/lib/generated/prisma/client';
 import { isValidUUID, isValidURL } from '@/lib/utils';
+import { requireAccess, requireAdmin } from '@/lib/api-helpers';
+import { VALID_STAGES, VALID_STATUSES } from '@/lib/constants';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
-
-/**
- * Valid stage values
- */
-const VALID_STAGES: Stage[] = [
-  'APPLICATION',
-  'GENERAL_COMPETENCIES',
-  'SPECIALIZED_COMPETENCIES',
-  'INTERVIEW',
-  'AGREEMENT',
-  'SIGNED',
-];
-
-/**
- * Valid status values
- */
-const VALID_STATUSES: Status[] = ['ACTIVE', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'];
 
 /**
  * GET /api/applications/[id]
@@ -68,22 +53,9 @@ export async function GET(
       );
     }
 
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Check app access permission
-    if (!session.user.hasAccess) {
-      return NextResponse.json(
-        { error: 'Forbidden - App access required' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAccess();
+    if (!auth.ok) return auth.error;
+    const { session } = auth;
 
     // Fetch application with full details
     const application = await getApplicationDetail(id);
@@ -104,17 +76,9 @@ export async function GET(
       );
     }
 
-    // Calculate missing fields
-    const missingFields: string[] = [];
-    if (application.hasResume && !application.resumeUrl) missingFields.push('Resume');
-    if (application.hasAcademicBg && !application.academicBackground) missingFields.push('Academic Background');
-    if (application.hasVideoIntro && !application.videoLink) missingFields.push('Video Introduction');
-    if (application.hasPreviousExp && !application.previousExperience) missingFields.push('Previous Experience');
-    if (application.hasOtherFile && !application.otherFileUrl) missingFields.push('Other File');
-
     return NextResponse.json({
       application,
-      missingFields,
+      missingFields: calcMissingFields(application),
     });
   } catch (error) {
     console.error('Error fetching application:', sanitizeForLog(error instanceof Error ? error.message : 'Unknown error'));
@@ -146,22 +110,9 @@ export async function PATCH(
       );
     }
 
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Check app access permission
-    if (!session.user.hasAccess) {
-      return NextResponse.json(
-        { error: 'Forbidden - App access required' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAccess();
+    if (!auth.ok) return auth.error;
+    const { session } = auth;
 
     // Get existing application
     const existingApp = await getApplicationDetail(id);
@@ -356,22 +307,9 @@ export async function DELETE(
       );
     }
 
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Admin only
-    if (!session.user.isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.error;
+    const { session } = auth;
 
     // Get existing application
     const existingApp = await getApplicationDetail(id);

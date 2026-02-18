@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { requireAdmin } from '@/lib/api-helpers';
 import { getAllAuditLogs, getAuditActors } from '@/lib/audit';
 import { sanitizeForLog } from '@/lib/security';
 import { ActionType } from '@/lib/generated/prisma/client';
@@ -37,19 +37,8 @@ const VALID_ACTION_TYPES: ActionType[] = [
  */
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Check admin permission
-    if (!session.user.isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.error;
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;

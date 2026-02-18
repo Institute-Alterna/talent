@@ -16,7 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { requireAdmin } from '@/lib/api-helpers';
 import {
   getApplicationDetail,
   updateApplicationStatus,
@@ -59,22 +59,9 @@ export async function POST(
       );
     }
 
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Admin only
-    if (!session.user.isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.error;
+    const { session } = auth;
 
     // Ensure we have the user's database ID
     if (!session.user.dbUserId) {

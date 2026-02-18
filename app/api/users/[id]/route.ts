@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { requireAuth, requireAdmin } from '@/lib/api-helpers';
 import { getUserById, updateUser, deleteUser } from '@/lib/services/users';
 import { Clearance } from '@/lib/generated/prisma/client';
 
@@ -28,14 +28,9 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireAuth();
+    if (!auth.ok) return auth.error;
+    const { session } = auth;
 
     // Users can view their own profile, admins can view any user
     const isOwnProfile = session.user.dbUserId === id;
@@ -77,14 +72,9 @@ export async function PUT(
   try {
     const { id } = await params;
 
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const auth = await requireAuth();
+    if (!auth.ok) return auth.error;
+    const { session } = auth;
 
     const body = await request.json();
     const isOwnProfile = session.user.dbUserId === id;
@@ -188,22 +178,9 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Admin only
-    if (!session.user.isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.error;
+    const { session } = auth;
 
     // Cannot delete self
     if (session.user.dbUserId === id) {

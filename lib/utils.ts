@@ -131,3 +131,25 @@ export function getCountryName(code: string | null | undefined): string {
   const upper = code.toUpperCase().trim();
   return COUNTRY_CODES[upper] || code;
 }
+
+/**
+ * Calculate which expected fields are missing from an application.
+ *
+ * Compares the "has*" flags (what the applicant indicated they'd submit)
+ * against the actual stored values to detect unfulfilled submissions.
+ */
+export function calcMissingFields(app: {
+  hasResume: boolean; resumeUrl: string | null;
+  hasAcademicBg: boolean; academicBackground: string | null;
+  hasVideoIntro: boolean; videoLink: string | null;
+  hasPreviousExp: boolean; previousExperience: string | null;
+  hasOtherFile: boolean; otherFileUrl: string | null;
+}): string[] {
+  const missing: string[] = [];
+  if (app.hasResume && !app.resumeUrl) missing.push('Resume');
+  if (app.hasAcademicBg && !app.academicBackground) missing.push('Academic Background');
+  if (app.hasVideoIntro && !app.videoLink) missing.push('Video Introduction');
+  if (app.hasPreviousExp && !app.previousExperience) missing.push('Previous Experience');
+  if (app.hasOtherFile && !app.otherFileUrl) missing.push('Other File');
+  return missing;
+}

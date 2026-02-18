@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { requireAccess } from '@/lib/api-helpers';
 import { getPersons, getPersonStats } from '@/lib/services/persons';
 import { sanitizeForLog } from '@/lib/security';
 
@@ -26,22 +26,8 @@ import { sanitizeForLog } from '@/lib/security';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Check app access permission
-    if (!session.user.hasAccess) {
-      return NextResponse.json(
-        { error: 'Forbidden - App access required' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAccess();
+    if (!auth.ok) return auth.error;
 
     // Parse query parameters with safe defaults
     const { searchParams } = new URL(request.url);

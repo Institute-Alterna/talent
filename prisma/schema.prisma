@@ -264,6 +264,8 @@ model Application {
   @@index([currentStage])
   @@index([position])
   @@index([createdAt])
+  @@index([status, currentStage])
+  @@index([personId, status])
 }
 
 /// Recruitment pipeline stages

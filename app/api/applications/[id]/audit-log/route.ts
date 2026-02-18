@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { requireAdmin } from '@/lib/api-helpers';
 import { getApplicationById } from '@/lib/services/applications';
 import { getAuditLogsForApplication } from '@/lib/audit';
 import { getEmailLogsForApplication } from '@/lib/email';
@@ -46,22 +46,8 @@ export async function GET(
       );
     }
 
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Admin only for full audit logs
-    if (!session.user.isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden - Admin access required' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireAdmin();
+    if (!auth.ok) return auth.error;
 
     // Verify application exists
     const application = await getApplicationById(id);
