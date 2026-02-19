@@ -96,27 +96,27 @@ export const EMAIL_TEMPLATE_META: Record<
     description: 'Confirmation email sent when application is submitted',
   },
   [EMAIL_TEMPLATES.GC_INVITATION]: {
-    subject: 'Complete Your Assessment at {{ORGANIZATION_SHORT_NAME}}',
-    description: 'Invitation to complete general competencies assessment',
+    subject: 'Complete Your Questionnaire at {{ORGANIZATION_SHORT_NAME}}',
+    description: 'Invitation to complete general competencies questionnaire',
   },
   [EMAIL_TEMPLATES.SC_INVITATION]: {
-    subject: 'Role-Specific Assessment for {{POSITION}}',
+    subject: '{{POSITION}} Role-Specific Assessment',
     description: 'Invitation to complete specialized competencies assessment',
   },
   [EMAIL_TEMPLATES.INTERVIEW_INVITATION]: {
-    subject: 'Schedule Your Interview for {{POSITION}}',
+    subject: 'Interview Invitation for {{POSITION}}',
     description: 'Interview scheduling invitation with calendar link',
   },
   [EMAIL_TEMPLATES.OFFER_LETTER]: {
-    subject: 'Application Update at {{ORGANIZATION_NAME}}',
+    subject: 'Application Update at {{ORGANIZATION_SHORT_NAME}}',
     description: 'Job offer with agreement details',
   },
   [EMAIL_TEMPLATES.REJECTION]: {
-    subject: 'Application Update at {{ORGANIZATION_NAME}}',
+    subject: 'Application Update at {{ORGANIZATION_SHORT_NAME}}',
     description: 'Final rejection notification',
   },
   [EMAIL_TEMPLATES.ACCOUNT_CREATED]: {
-    subject: 'Welcome to {{ORGANIZATION_NAME}}',
+    subject: 'Welcome to {{ORGANIZATION_SHORT_NAME}}',
     description: 'Onboarding email with account credentials',
   },
 };

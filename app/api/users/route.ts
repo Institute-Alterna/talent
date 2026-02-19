@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       },
     }, {
       headers: {
-        'Cache-Control': 'private, max-age=120, stale-while-revalidate=300',
+        'Cache-Control': 'private, no-cache',
       },
     });
   } catch (error) {

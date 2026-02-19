@@ -19,6 +19,7 @@ import type {
   CreateApplicationData,
   UpdateApplicationData,
   ApplicationStats,
+  AttentionBreakdown,
   ApplicationFilters,
   ApplicationsListResponse,
 } from '@/types/application';
@@ -530,43 +531,14 @@ export async function getApplicationStats(filters?: {
     byPosition[item.position] = item._count;
   }
 
-  // Count applications awaiting action — matches dashboard logic:
-  // - APPLICATION stage where GC not completed
-  // - SPECIALIZED_COMPETENCIES stage where SC assessment not submitted
-  // - INTERVIEW stage where no interview has been completed
-  // - AGREEMENT stage (pending offer/agreement)
-  const awaitingAction = await db.application.count({
-    where: {
-      status: 'ACTIVE',
-      OR: [
-        {
-          currentStage: 'APPLICATION',
-          person: { generalCompetenciesCompleted: false },
-        },
-        {
-          currentStage: 'SPECIALIZED_COMPETENCIES',
-          assessments: { none: { assessmentType: 'SPECIALIZED_COMPETENCIES' } },
-        },
-        {
-          currentStage: 'INTERVIEW',
-          interviews: { none: { completedAt: { not: null } } },
-        },
-        {
-          currentStage: 'AGREEMENT',
-        },
-      ],
-    },
-  });
-
-  // Recent activity (applications updated in last 7 days)
+  // Attention breakdown and recent activity in parallel
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const recentActivity = await db.application.count({
-    where: {
-      updatedAt: { gte: sevenDaysAgo },
-    },
-  });
+  const [breakdown, recentActivity] = await Promise.all([
+    getAttentionBreakdown({ position: filters?.position }),
+    db.application.count({ where: { updatedAt: { gte: sevenDaysAgo } } }),
+  ]);
 
   return {
     total,
@@ -574,8 +546,56 @@ export async function getApplicationStats(filters?: {
     byStage,
     byStatus,
     byPosition,
-    awaitingAction,
+    awaitingAction: breakdown.total,
+    breakdown,
     recentActivity,
+  };
+}
+
+/**
+ * Get the attention breakdown for active applications.
+ *
+ * Canonical logic — must match `needsAttention` in `getApplicationsForPipeline`:
+ * - APPLICATION stage where person has not completed GC
+ * - SPECIALIZED_COMPETENCIES stage where no SC assessment has been submitted
+ * - INTERVIEW stage where no interview has been scheduled (none at all)
+ * - AGREEMENT stage (all apps — pending offer / countersignature)
+ *
+ * @param filters - Optional position filter (status is always ACTIVE)
+ * @returns Per-category counts and overall total
+ */
+export async function getAttentionBreakdown(filters?: {
+  position?: string;
+}): Promise<AttentionBreakdown> {
+  const base: Prisma.ApplicationWhereInput = {
+    status: 'ACTIVE',
+    ...(filters?.position ? { position: filters.position } : {}),
+  };
+
+  const [awaitingGC, awaitingSC, pendingInterviews, pendingAgreement] = await Promise.all([
+    db.application.count({
+      where: { ...base, currentStage: 'APPLICATION', person: { generalCompetenciesCompleted: false } },
+    }),
+    db.application.count({
+      where: { ...base, currentStage: 'SPECIALIZED_COMPETENCIES', assessments: { none: { assessmentType: 'SPECIALIZED_COMPETENCIES' } } },
+    }),
+    // No completed interview yet — matches needsAttention card logic
+    // (app.interviews only selects completedAt rows, so length === 0 means no completion)
+    db.application.count({
+      where: { ...base, currentStage: 'INTERVIEW', interviews: { none: { completedAt: { not: null } } } },
+    }),
+    // All AGREEMENT-stage apps need action (offer / agreement pending)
+    db.application.count({
+      where: { ...base, currentStage: 'AGREEMENT' },
+    }),
+  ]);
+
+  return {
+    awaitingGC,
+    awaitingSC,
+    pendingInterviews,
+    pendingAgreement,
+    total: awaitingGC + awaitingSC + pendingInterviews + pendingAgreement,
   };
 }
 

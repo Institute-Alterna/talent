@@ -209,7 +209,7 @@ Schema is the source of truth — refer to `prisma/schema.prisma` directly.
 - Assessment: `{{GC_ASSESSMENT_LINK}}`, `{{SC_ASSESSMENT_LINK}}`
 - Interview: `{{INTERVIEWER_NAME}}`, `{{SCHEDULING_LINK}}`, `{{INTERVIEW_DURATION}}`
 - Onboarding: `{{ALTERNA_EMAIL}}`, `{{TEMPORARY_PASSWORD}}`, `{{START_DATE}}`
-- Branding: `{{ORGANIZATION_NAME}}`, `{{LOGO_URL}}`, `{{PRIMARY_COLOR}}`
+- Branding: `{{ORGANIZATION_SHORT_NAME}}`, `{{LOGO_URL}}`, `{{PRIMARY_COLOR}}`
 
 **Service:** Rate-limited queue, HTML-to-text conversion, retry logic (max 3), comprehensive logging.
 

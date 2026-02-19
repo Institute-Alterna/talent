@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json(pipelineData, {
         headers: {
-          'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+          'Cache-Control': 'private, max-age=15',
         },
       });
     }
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
       stats,
     }, {
       headers: {
-        'Cache-Control': 'private, max-age=15, stale-while-revalidate=30',
+        'Cache-Control': 'private, max-age=15',
       },
     });
   } catch (error) {

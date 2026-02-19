@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAccess } from '@/lib/api-helpers';
 import { db } from '@/lib/db';
 import { getRecentAuditLogs } from '@/lib/audit';
+import { getAttentionBreakdown } from '@/lib/services/applications';
 import { sanitizeForLog } from '@/lib/security';
 
 /**
@@ -47,13 +48,8 @@ export async function GET(request: NextRequest) {
       applicationsByStatus,
       // Applications this week
       applicationsThisWeek,
-      // Pending interviews (applications in INTERVIEW stage without completed interview)
-      pendingInterviews,
-      // Applications awaiting action (various conditions)
-      awaitingGC,
-      awaitingSC,
-      // Applications in AGREEMENT stage without decision
-      pendingAgreement,
+      // Attention breakdown (GC / SC / interviews / agreement) — single source of truth
+      attentionBreakdown,
       // Recent audit logs
       recentActivity,
       // Top positions
@@ -77,49 +73,8 @@ export async function GET(request: NextRequest) {
           createdAt: { gte: oneWeekAgo },
         },
       }),
-      db.application.count({
-        where: {
-          status: 'ACTIVE',
-          currentStage: 'INTERVIEW',
-          interviews: {
-            none: {
-              completedAt: { not: null },
-            },
-          },
-        },
-      }),
-      // Applications waiting for GC (person hasn't completed GC)
-      db.application.count({
-        where: {
-          status: 'ACTIVE',
-          currentStage: 'APPLICATION',
-          person: {
-            generalCompetenciesCompleted: false,
-          },
-        },
-      }),
-      // Applications waiting for SC
-      db.application.count({
-        where: {
-          status: 'ACTIVE',
-          currentStage: 'SPECIALIZED_COMPETENCIES',
-          assessments: {
-            none: {
-              assessmentType: 'SPECIALIZED_COMPETENCIES',
-            },
-          },
-        },
-      }),
-      // Applications in AGREEMENT stage awaiting decision
-      db.application.count({
-        where: {
-          status: 'ACTIVE',
-          currentStage: 'AGREEMENT',
-          decisions: {
-            none: {},
-          },
-        },
-      }),
+      // Shared attention breakdown — matches needsAttention logic in pipeline cards
+      getAttentionBreakdown(),
       getRecentAuditLogs({ limit: 10, excludeActionTypes: ['VIEW'] }),
       // Top positions by application count
       db.application.groupBy({
@@ -165,7 +120,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate awaiting action total
-    const awaitingAction = awaitingGC + awaitingSC + pendingInterviews + pendingAgreement;
+    const awaitingAction = attentionBreakdown.total;
 
     // Format top positions
     const positions = topPositions.map(item => ({
@@ -200,13 +155,13 @@ export async function GET(request: NextRequest) {
         totalActiveApplications,
         totalPersons,
         applicationsThisWeek,
-        pendingInterviews,
+        pendingInterviews: attentionBreakdown.pendingInterviews,
         awaitingAction,
         breakdown: {
-          awaitingGC,
-          awaitingSC,
-          pendingInterviews,
-          pendingAgreement,
+          awaitingGC: attentionBreakdown.awaitingGC,
+          awaitingSC: attentionBreakdown.awaitingSC,
+          pendingInterviews: attentionBreakdown.pendingInterviews,
+          pendingAgreement: attentionBreakdown.pendingAgreement,
         },
       },
       byStage,
@@ -216,7 +171,7 @@ export async function GET(request: NextRequest) {
       generatedAt: new Date().toISOString(),
     }, {
       headers: {
-        'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=120',
+        'Cache-Control': 'private, no-cache',
       },
     });
   } catch (error) {

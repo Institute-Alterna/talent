@@ -51,6 +51,13 @@ interface PipelineResponse {
     byStatus: Record<Status, number>;
     byPosition: Record<string, number>;
     awaitingAction: number;
+    breakdown: {
+      awaitingGC: number;
+      awaitingSC: number;
+      pendingInterviews: number;
+      pendingAgreement: number;
+      total: number;
+    };
     recentActivity: number;
   };
 }
@@ -155,7 +162,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   }, [isDecisionProcessing, sendingEmailTemplate, isSchedulingInterview, isReschedulingInterview, isCompletingInterview]);
 
   // Fetch pipeline data
-  const fetchPipelineData = React.useCallback(async () => {
+  const fetchPipelineData = React.useCallback(async (force?: boolean) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -166,7 +173,9 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
         ...(positionFilter !== 'all' && { position: positionFilter }),
       });
 
-      const response = await fetch(`/api/applications?${params.toString()}`);
+      const response = await fetch(`/api/applications?${params.toString()}`, {
+        ...(force && { cache: 'no-store' }),
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch pipeline data');
       }
@@ -187,13 +196,14 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   }, [statusFilter, positionFilter, toast]);
 
   // Fetch application detail
-  const fetchApplicationDetail = React.useCallback(async (id: string) => {
+  const fetchApplicationDetail = React.useCallback(async (id: string, force?: boolean) => {
     try {
       setIsDetailLoading(true);
 
+      const cacheOpt = force ? { cache: 'no-store' as const } : {};
       const [appResponse, auditResponse] = await Promise.all([
-        fetch(`/api/applications/${id}`),
-        isAdmin ? fetch(`/api/applications/${id}/audit-log`) : Promise.resolve(null),
+        fetch(`/api/applications/${id}`, cacheOpt),
+        isAdmin ? fetch(`/api/applications/${id}/audit-log`, cacheOpt) : Promise.resolve(null),
       ]);
 
       if (!appResponse.ok) {
@@ -268,7 +278,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Refresh the detail
-      fetchApplicationDetail(selectedApplicationId);
+      fetchApplicationDetail(selectedApplicationId, true);
     } catch (err) {
       toast({
         title: 'Error',
@@ -390,8 +400,8 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Refresh the detail and pipeline
-      await fetchApplicationDetail(selectedApplicationId);
-      fetchPipelineData();
+      await fetchApplicationDetail(selectedApplicationId, true);
+      fetchPipelineData(true);
 
       setIsScheduleInterviewDialogOpen(false);
     } catch (err) {
@@ -431,8 +441,8 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Refresh the detail and pipeline
-      await fetchApplicationDetail(selectedApplicationId);
-      fetchPipelineData();
+      await fetchApplicationDetail(selectedApplicationId, true);
+      fetchPipelineData(true);
 
       setIsRescheduleInterviewDialogOpen(false);
     } catch (err) {
@@ -471,7 +481,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Refresh the detail
-      await fetchApplicationDetail(selectedApplicationId);
+      await fetchApplicationDetail(selectedApplicationId, true);
 
       setIsCompleteInterviewDialogOpen(false);
     } catch (err) {
@@ -523,8 +533,8 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Refresh the detail and pipeline
-      await fetchApplicationDetail(selectedApplicationId);
-      fetchPipelineData();
+      await fetchApplicationDetail(selectedApplicationId, true);
+      fetchPipelineData(true);
 
       setIsDecisionDialogOpen(false);
     } catch (err) {
@@ -632,7 +642,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       });
 
       // Refresh the pipeline
-      fetchPipelineData();
+      fetchPipelineData(true);
     } catch (err) {
       toast({
         title: 'Error',
@@ -665,7 +675,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       });
 
       // Refresh the pipeline
-      fetchPipelineData();
+      fetchPipelineData(true);
     } catch (err) {
       toast({
         title: 'Error',
@@ -683,19 +693,11 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     return Object.keys(stats.byPosition).sort();
   }, [stats]);
 
-  // Compute attention breakdown from pipeline data
+  // Derive attention breakdown from server stats — single source of truth
   const attentionBreakdown = React.useMemo(() => {
-    if (!pipelineData) return { awaitingGC: 0, awaitingSC: 0, pendingInterviews: 0, pendingAgreement: 0, total: 0 };
-    const allCards = Object.values(pipelineData).flat();
-    const attentionCards = allCards.filter((c) => c.needsAttention);
-    return {
-      awaitingGC: attentionCards.filter((c) => c.currentStage === 'APPLICATION').length,
-      awaitingSC: attentionCards.filter((c) => c.currentStage === 'SPECIALIZED_COMPETENCIES').length,
-      pendingInterviews: attentionCards.filter((c) => c.currentStage === 'INTERVIEW').length,
-      pendingAgreement: attentionCards.filter((c) => c.currentStage === 'AGREEMENT').length,
-      total: attentionCards.length,
-    };
-  }, [pipelineData]);
+    if (!stats?.breakdown) return { awaitingGC: 0, awaitingSC: 0, pendingInterviews: 0, pendingAgreement: 0, total: 0 };
+    return stats.breakdown;
+  }, [stats]);
 
   // Filter applications by search query and needs attention (client-side filtering)
   const filteredPipelineData = React.useMemo(() => {
@@ -839,7 +841,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
             </Tooltip>
 
             {/* Refresh */}
-            <Button variant="outline" className="h-9" onClick={() => fetchPipelineData()} disabled={isLoading}>
+            <Button variant="outline" className="h-9" onClick={() => fetchPipelineData(true)} disabled={isLoading}>
               <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
 
@@ -858,7 +860,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
         {error ? (
           <div className="text-center py-8">
             <p className="text-destructive mb-4">{error}</p>
-            <Button onClick={() => fetchPipelineData()}>
+            <Button onClick={() => fetchPipelineData(true)}>
               Try Again
             </Button>
           </div>
@@ -890,7 +892,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
             <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
               <span className="text-sm font-medium text-muted-foreground">Recruitment Pipeline</span>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-8" onClick={() => fetchPipelineData()} disabled={isLoading}>
+                <Button variant="outline" size="sm" className="h-8" onClick={() => fetchPipelineData(true)} disabled={isLoading}>
                   <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
                 </Button>
                 <Button variant="outline" size="sm" className="h-8" onClick={() => setIsFullscreen(false)}>

@@ -63,20 +63,32 @@ jest.mock('@/lib/security', () => ({
   sanitizeForLog: jest.fn((s) => s),
 }));
 
+// Mock the applications service — provides getAttentionBreakdown used by dashboard route
+jest.mock('@/lib/services/applications', () => ({
+  getAttentionBreakdown: jest.fn(),
+}));
+
 // Import after mocks are set up
 import { GET } from '@/app/api/dashboard/route';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { getRecentAuditLogs } from '@/lib/audit';
+import { getAttentionBreakdown } from '@/lib/services/applications';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockAuth = auth as jest.MockedFunction<any>;
 const mockDb = db as jest.Mocked<typeof db>;
 const mockGetRecentAuditLogs = getRecentAuditLogs as jest.MockedFunction<typeof getRecentAuditLogs>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockGetAttentionBreakdown = getAttentionBreakdown as jest.MockedFunction<any>;
+
+const zeroBreakdown = { awaitingGC: 0, awaitingSC: 0, pendingInterviews: 0, pendingAgreement: 0, total: 0 };
 
 describe('Dashboard API Routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Default: getAttentionBreakdown returns zeros (overridden per test as needed)
+    mockGetAttentionBreakdown.mockResolvedValue(zeroBreakdown);
   });
 
   describe('GET /api/dashboard', () => {
@@ -119,14 +131,19 @@ describe('Dashboard API Routes', () => {
         expires: new Date(Date.now() + 86400000).toISOString(),
       });
 
-      // Mock application counts
+      // Mock application counts (totalActiveApplications, applicationsThisWeek)
       (mockDb.application.count as jest.Mock)
         .mockResolvedValueOnce(15)  // totalActiveApplications
-        .mockResolvedValueOnce(5)   // applicationsThisWeek
-        .mockResolvedValueOnce(2)   // pendingInterviews
-        .mockResolvedValueOnce(3)   // awaitingGC
-        .mockResolvedValueOnce(1)   // awaitingSC
-        .mockResolvedValueOnce(2);  // pendingAgreement
+        .mockResolvedValueOnce(5);  // applicationsThisWeek
+
+      // Mock attention breakdown via shared service function
+      mockGetAttentionBreakdown.mockResolvedValueOnce({
+        awaitingGC: 3,
+        awaitingSC: 1,
+        pendingInterviews: 2,
+        pendingAgreement: 2,
+        total: 8,
+      });
 
       // Mock person count
       (mockDb.person.count as jest.Mock).mockResolvedValueOnce(12);
@@ -178,7 +195,9 @@ describe('Dashboard API Routes', () => {
       expect(data.metrics.totalActiveApplications).toBe(15);
       expect(data.metrics.totalPersons).toBe(12);
       expect(data.metrics.pendingInterviews).toBe(2);
-      expect(data.metrics.awaitingAction).toBe(8); // 3 + 1 + 2 + 2
+      expect(data.metrics.awaitingAction).toBe(8); // awaitingGC(3) + awaitingSC(1) + pendingInterviews(2) + pendingAgreement(2)
+      expect(data.metrics.breakdown.awaitingGC).toBe(3);
+      expect(data.metrics.breakdown.pendingAgreement).toBe(2);
       expect(data.byStage).toBeDefined();
       expect(data.byStatus).toBeDefined();
       expect(data.recentActivity).toHaveLength(1);

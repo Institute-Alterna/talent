@@ -309,9 +309,14 @@ describe('Email Template Files', () => {
     expect(template).not.toBeNull();
 
     // All templates should have common variables
+    expect(template).toContain('{{PERSON_FIRST_NAME}}');
     expect(template).toContain('{{ORGANIZATION_SHORT_NAME}}');
-    expect(template).toContain('{{SENT_DATE}}');
     expect(template).toContain('{{SENT_TIME}}');
+
+    // All templates except onboarding should have non-discrimination notice
+    if (!templateName.startsWith('onboarding/')) {
+      expect(template).toContain('{{ORGANIZATION_SHORT_NAME}} is an equal opportunity provider');
+    }
 
     // All templates should have basic HTML structure
     expect(template).toContain('<!DOCTYPE html>');

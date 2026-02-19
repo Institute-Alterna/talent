@@ -55,6 +55,10 @@ export async function GET(
     return NextResponse.json({
       application,
       missingFields: calcMissingFields(application),
+    }, {
+      headers: {
+        'Cache-Control': 'private, max-age=30',
+      },
     });
   } catch (error) {
     console.error('Error fetching application:', sanitizeForLog(error instanceof Error ? error.message : 'Unknown error'));

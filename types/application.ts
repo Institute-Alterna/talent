@@ -209,6 +209,18 @@ export interface ScheduleInterviewData {
 }
 
 /**
+ * Breakdown of applications requiring attention, by category.
+ * Shared between the pipeline stats and dashboard metrics.
+ */
+export interface AttentionBreakdown {
+  awaitingGC: number;
+  awaitingSC: number;
+  pendingInterviews: number;
+  pendingAgreement: number;
+  total: number;
+}
+
+/**
  * Application statistics for dashboard
  */
 export interface ApplicationStats {
@@ -218,6 +230,7 @@ export interface ApplicationStats {
   byStatus: Record<Status, number>;
   byPosition: Record<string, number>;
   awaitingAction: number;
+  breakdown: AttentionBreakdown;
   recentActivity: number;
 }
 

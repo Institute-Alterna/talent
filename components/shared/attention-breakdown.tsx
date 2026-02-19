@@ -25,14 +25,9 @@ import {
 } from '@/components/ui/sheet';
 import { AlertTriangle } from 'lucide-react';
 import { MetricCard } from './metric-card';
+import type { AttentionBreakdown } from '@/types/application';
 
-export interface AttentionBreakdown {
-  awaitingGC: number;
-  awaitingSC: number;
-  pendingInterviews: number;
-  pendingAgreement: number;
-  total: number;
-}
+export type { AttentionBreakdown };
 
 interface AttentionBreakdownPanelProps {
   breakdown: AttentionBreakdown;
