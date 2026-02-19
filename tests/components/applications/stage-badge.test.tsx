@@ -31,7 +31,7 @@ describe('StageBadge', () => {
     });
 
     it('should return correct name for SPECIALIZED_COMPETENCIES stage', () => {
-      expect(getStageName(Stage.SPECIALIZED_COMPETENCIES)).toBe('Specialized Competencies');
+      expect(getStageName(Stage.SPECIALIZED_COMPETENCIES)).toBe('Specialised Competencies');
     });
 
     it('should return correct name for INTERVIEW stage', () => {

@@ -19,13 +19,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  verifyWebhook,
-  getClientIP,
-  webhookRateLimiter,
-  getRateLimitHeaders,
   extractPersonData,
   extractApplicationData,
-  type TallyWebhookPayload,
+  parseAndVerifyWebhook,
+  webhookErrorResponse,
+  webhookOptionsResponse,
 } from '@/lib/webhooks';
 import { findOrCreatePerson, hasPassedGeneralCompetencies } from '@/lib/services/persons';
 import {
@@ -33,6 +31,7 @@ import {
   getApplicationByTallySubmissionId,
   advanceApplicationStage,
   updateApplicationStatus,
+  countOtherActiveApplicationsAtStage,
 } from '@/lib/services/applications';
 import {
   logWebhookReceived,
@@ -41,14 +40,8 @@ import {
   logStageChange,
   logStatusChange,
 } from '@/lib/audit';
+import { sendGCInvitation } from '@/lib/email';
 import { sanitizeForLog } from '@/lib/security';
-
-/**
- * Webhook error response
- */
-function errorResponse(message: string, status: number, headers?: Record<string, string>) {
-  return NextResponse.json({ error: message }, { status, headers });
-}
 
 /**
  * POST /api/webhooks/tally/application
@@ -56,43 +49,10 @@ function errorResponse(message: string, status: number, headers?: Record<string,
  * Handle new application submissions from Tally
  */
 export async function POST(request: NextRequest) {
-  const ip = getClientIP(request.headers);
-
-  // Check rate limit
-  const rateLimitResult = webhookRateLimiter(ip || 'unknown');
-  const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
-
-  if (!rateLimitResult.allowed) {
-    return errorResponse('Rate limit exceeded', 429, rateLimitHeaders);
-  }
-
-  // Read raw body for signature verification
-  let rawBody: string;
-  try {
-    rawBody = await request.text();
-  } catch {
-    return errorResponse('Failed to read request body', 400, rateLimitHeaders);
-  }
-
-  // Verify webhook signature and IP
-  const verification = verifyWebhook(rawBody, request.headers);
-  if (!verification.valid) {
-    console.error('[Webhook] Verification failed:', verification.error);
-    return errorResponse(verification.error || 'Verification failed', 401, rateLimitHeaders);
-  }
-
-  // Parse JSON payload
-  let payload: TallyWebhookPayload;
-  try {
-    payload = JSON.parse(rawBody);
-  } catch {
-    return errorResponse('Invalid JSON payload', 400, rateLimitHeaders);
-  }
-
-  // Validate payload structure
-  if (!payload.data?.submissionId || !payload.data?.fields) {
-    return errorResponse('Invalid payload structure', 400, rateLimitHeaders);
-  }
+  // Verify, parse, and validate webhook request
+  const parsed = await parseAndVerifyWebhook(request, '[Webhook]');
+  if (!parsed.ok) return parsed.error;
+  const { payload, ip, rateLimitHeaders } = parsed;
 
   const { submissionId, formId, formName } = payload.data;
 
@@ -131,7 +91,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to extract person data';
     console.error('[Webhook] Person extraction error:', message);
-    return errorResponse(message, 400, rateLimitHeaders);
+    return webhookErrorResponse(message, 400, rateLimitHeaders);
   }
 
   // Find or create person
@@ -157,7 +117,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to extract application data';
     console.error('[Webhook] Application extraction error:', message);
-    return errorResponse(message, 400, rateLimitHeaders);
+    return webhookErrorResponse(message, 400, rateLimitHeaders);
   }
 
   // Create application
@@ -180,12 +140,46 @@ export async function POST(request: NextRequest) {
   let statusMessage: string;
 
   if (!person.generalCompetenciesCompleted) {
-    // Person hasn't taken GC yet - they need to take it
+    // Person hasn't taken GC yet - advance to GENERAL_COMPETENCIES and send invite
     nextStep = 'send_gc_assessment';
-    statusMessage = 'Application received. General competencies assessment email will be sent.';
+    statusMessage = 'Application received. General competencies assessment pending.';
 
-    // TODO: In Phase 6c, trigger email send here
-    // await sendEmail(person.email, 'general-competencies-invitation', { ... });
+    // Advance application to GENERAL_COMPETENCIES stage
+    await advanceApplicationStage(application.id, 'GENERAL_COMPETENCIES');
+    await logStageChange(
+      application.id,
+      person.id,
+      'APPLICATION',
+      'GENERAL_COMPETENCIES',
+      undefined,
+      'Auto-advanced: GCQ invite sent on application receipt'
+    );
+
+    // Deduplicate: only send the email if no other active app for this person
+    // is already at GENERAL_COMPETENCIES (they would have already received the invite)
+    const othersAtGC = await countOtherActiveApplicationsAtStage(
+      person.id,
+      'GENERAL_COMPETENCIES',
+      application.id
+    );
+
+    if (othersAtGC === 0) {
+      try {
+        await sendGCInvitation(
+          person.id,
+          application.id,
+          person.email,
+          person.firstName,
+          application.position
+        );
+      } catch (emailError) {
+        // Email failure is non-fatal — recorded in EmailLog, admin can resend manually
+        console.error(
+          '[Webhook] Failed to send GCQ invite:',
+          emailError instanceof Error ? emailError.message : emailError
+        );
+      }
+    }
   } else {
     // Person has already completed GC
     const passedGC = await hasPassedGeneralCompetencies(person.id);
@@ -193,7 +187,7 @@ export async function POST(request: NextRequest) {
     if (passedGC) {
       // GC passed - advance to next stage
       nextStep = 'advance_to_specialized';
-      statusMessage = 'Application received. Advancing to specialized competencies stage.';
+      statusMessage = 'Application received. Advancing to specialised competencies stage.';
 
       // Advance the application stage
       await advanceApplicationStage(application.id, 'SPECIALIZED_COMPETENCIES');
@@ -263,12 +257,5 @@ export async function POST(request: NextRequest) {
  * Handle OPTIONS requests (CORS preflight)
  */
 export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, x-webhook-secret, Authorization',
-    },
-  });
+  return webhookOptionsResponse();
 }

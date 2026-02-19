@@ -44,6 +44,7 @@ jest.mock('@/lib/services/applications', () => ({
   getApplicationByTallySubmissionId: jest.fn(),
   advanceApplicationStage: jest.fn(),
   updateApplicationStatus: jest.fn(),
+  countOtherActiveApplicationsAtStage: jest.fn(),
 }));
 
 jest.mock('@/lib/audit', () => ({
@@ -54,13 +55,19 @@ jest.mock('@/lib/audit', () => ({
   logStatusChange: jest.fn(),
 }));
 
+jest.mock('@/lib/email', () => ({
+  sendGCInvitation: jest.fn().mockResolvedValue({ success: true }),
+}));
+
 import { findOrCreatePerson, hasPassedGeneralCompetencies } from '@/lib/services/persons';
 import {
   createApplication,
   getApplicationByTallySubmissionId,
   advanceApplicationStage,
   updateApplicationStatus,
+  countOtherActiveApplicationsAtStage,
 } from '@/lib/services/applications';
+import { sendGCInvitation } from '@/lib/email';
 
 // Helper to set NODE_ENV without TypeScript errors
 const setNodeEnv = (env: string) => {
@@ -112,7 +119,7 @@ describe('POST /api/webhooks/tally/application', () => {
       const payload = createApplicationPayload();
       const signature = generateWebhookSignature(payload, webhookSecret);
 
-      const mockPerson = { id: 'person-123', email: 'test@example.com' };
+      const mockPerson = { id: 'person-123', email: 'test@example.com', firstName: 'John', lastName: 'Doe' };
       const mockApplication = {
         id: 'app-123',
         personId: 'person-123',
@@ -137,6 +144,7 @@ describe('POST /api/webhooks/tally/application', () => {
         created: true,
       });
       (createApplication as jest.Mock).mockResolvedValue(mockApplication);
+      (countOtherActiveApplicationsAtStage as jest.Mock).mockResolvedValue(0);
 
       const request = createRequest(payload, signature);
       const response = await POST(request);
@@ -148,6 +156,16 @@ describe('POST /api/webhooks/tally/application', () => {
       expect(data.data.applicationId).toBe('app-123');
       expect(data.data.personCreated).toBe(true);
       expect(data.data.nextStep).toBe('send_gc_assessment');
+      // Should auto-advance to GENERAL_COMPETENCIES
+      expect(advanceApplicationStage).toHaveBeenCalledWith('app-123', 'GENERAL_COMPETENCIES');
+      // Should send GCQ invitation
+      expect(sendGCInvitation).toHaveBeenCalledWith(
+        'person-123',
+        'app-123',
+        'test@example.com',
+        'John',
+        'Software Developer'
+      );
     });
 
     it('links application to existing person', async () => {
@@ -183,6 +201,7 @@ describe('POST /api/webhooks/tally/application', () => {
         created: false,
       });
       (createApplication as jest.Mock).mockResolvedValue(mockApplication);
+      (countOtherActiveApplicationsAtStage as jest.Mock).mockResolvedValue(0);
 
       const request = createRequest(payload, signature);
       const response = await POST(request);
@@ -278,6 +297,85 @@ describe('POST /api/webhooks/tally/application', () => {
       expect(response.status).toBe(200);
       expect(data.data.nextStep).toBe('reject');
       expect(updateApplicationStatus).toHaveBeenCalledWith('app-rejected', 'REJECTED');
+    });
+
+    it('skips GCQ email when another active app already at GENERAL_COMPETENCIES', async () => {
+      const payload = createApplicationPayload();
+      const signature = generateWebhookSignature(payload, webhookSecret);
+
+      const mockPerson = {
+        id: 'person-dedup',
+        email: 'dedup@example.com',
+        firstName: 'Test',
+        generalCompetenciesCompleted: false,
+      };
+      const mockApplication = {
+        id: 'app-dedup',
+        personId: 'person-dedup',
+        position: 'Software Developer',
+        currentStage: 'APPLICATION',
+        status: 'ACTIVE',
+        hasResume: false, hasAcademicBg: false, hasVideoIntro: false,
+        hasPreviousExp: false, hasOtherFile: false,
+        resumeUrl: null, academicBackground: null, videoLink: null,
+        previousExperience: null, otherFileUrl: null,
+      };
+
+      (getApplicationByTallySubmissionId as jest.Mock).mockResolvedValue(null);
+      (findOrCreatePerson as jest.Mock).mockResolvedValue({ person: mockPerson, created: false });
+      (createApplication as jest.Mock).mockResolvedValue(mockApplication);
+      // Another active application already at GC stage
+      (countOtherActiveApplicationsAtStage as jest.Mock).mockResolvedValue(1);
+
+      const request = createRequest(payload, signature);
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.data.nextStep).toBe('send_gc_assessment');
+      // Stage should still be advanced
+      expect(advanceApplicationStage).toHaveBeenCalledWith('app-dedup', 'GENERAL_COMPETENCIES');
+      // But email should NOT be sent (dedup)
+      expect(sendGCInvitation).not.toHaveBeenCalled();
+    });
+
+    it('does not fail webhook when GCQ email fails', async () => {
+      const payload = createApplicationPayload();
+      const signature = generateWebhookSignature(payload, webhookSecret);
+
+      const mockPerson = {
+        id: 'person-email-fail',
+        email: 'fail@example.com',
+        firstName: 'Test',
+        generalCompetenciesCompleted: false,
+      };
+      const mockApplication = {
+        id: 'app-email-fail',
+        personId: 'person-email-fail',
+        position: 'Software Developer',
+        currentStage: 'APPLICATION',
+        status: 'ACTIVE',
+        hasResume: false, hasAcademicBg: false, hasVideoIntro: false,
+        hasPreviousExp: false, hasOtherFile: false,
+        resumeUrl: null, academicBackground: null, videoLink: null,
+        previousExperience: null, otherFileUrl: null,
+      };
+
+      (getApplicationByTallySubmissionId as jest.Mock).mockResolvedValue(null);
+      (findOrCreatePerson as jest.Mock).mockResolvedValue({ person: mockPerson, created: false });
+      (createApplication as jest.Mock).mockResolvedValue(mockApplication);
+      (countOtherActiveApplicationsAtStage as jest.Mock).mockResolvedValue(0);
+      // Email send throws
+      (sendGCInvitation as jest.Mock).mockRejectedValue(new Error('SMTP connection failed'));
+
+      const request = createRequest(payload, signature);
+      const response = await POST(request);
+      const data = await response.json();
+
+      // Webhook should still succeed (200)
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.nextStep).toBe('send_gc_assessment');
     });
   });
 
@@ -460,6 +558,7 @@ describe('POST /api/webhooks/tally/application', () => {
         created: true,
       });
       (createApplication as jest.Mock).mockResolvedValue(mockApplication);
+      (countOtherActiveApplicationsAtStage as jest.Mock).mockResolvedValue(0);
 
       const request = createRequest(payload, signature);
       const response = await POST(request);

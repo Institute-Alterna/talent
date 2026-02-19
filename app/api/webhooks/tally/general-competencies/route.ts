@@ -21,14 +21,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  verifyWebhook,
-  getClientIP,
-  webhookRateLimiter,
-  getRateLimitHeaders,
   extractGCAssessmentData,
-  type TallyWebhookPayload,
+  parseAndVerifyWebhook,
+  webhookErrorResponse,
+  webhookOptionsResponse,
 } from '@/lib/webhooks';
 import { db } from '@/lib/db';
+import { Prisma } from '@/lib/generated/prisma/client';
 import {
   getPersonById,
   updateGeneralCompetencies,
@@ -48,70 +47,30 @@ import { recruitment } from '@/config/recruitment';
 import { sanitizeForLog } from '@/lib/security';
 
 /**
- * Webhook error response
- */
-function errorResponse(message: string, status: number, headers?: Record<string, string>) {
-  return NextResponse.json({ error: message }, { status, headers });
-}
-
-/**
  * POST /api/webhooks/tally/general-competencies
  *
  * Handle GC assessment completion from Tally
  */
 export async function POST(request: NextRequest) {
-  const ip = getClientIP(request.headers);
-
-  // Check rate limit
-  const rateLimitResult = webhookRateLimiter(ip || 'unknown');
-  const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
-
-  if (!rateLimitResult.allowed) {
-    return errorResponse('Rate limit exceeded', 429, rateLimitHeaders);
-  }
-
-  // Read raw body for signature verification
-  let rawBody: string;
-  try {
-    rawBody = await request.text();
-  } catch {
-    return errorResponse('Failed to read request body', 400, rateLimitHeaders);
-  }
-
-  // Verify webhook signature and IP
-  const verification = verifyWebhook(rawBody, request.headers);
-  if (!verification.valid) {
-    console.error('[Webhook GC] Verification failed:', verification.error);
-    return errorResponse(verification.error || 'Verification failed', 401, rateLimitHeaders);
-  }
-
-  // Parse JSON payload
-  let payload: TallyWebhookPayload;
-  try {
-    payload = JSON.parse(rawBody);
-  } catch {
-    return errorResponse('Invalid JSON payload', 400, rateLimitHeaders);
-  }
-
-  // Validate payload structure
-  if (!payload.data?.submissionId || !payload.data?.fields) {
-    return errorResponse('Invalid payload structure', 400, rateLimitHeaders);
-  }
+  // Verify, parse, and validate webhook request
+  const parsed = await parseAndVerifyWebhook(request, '[Webhook GC]');
+  if (!parsed.ok) return parsed.error;
+  const { payload, ip, rateLimitHeaders } = parsed;
 
   const { submissionId, formId, formName } = payload.data;
 
-  // Check for duplicate submission (idempotency)
-  const existingAssessment = await db.assessment.findUnique({
+  // Check for exact duplicate submission (same submissionId = already processed)
+  const exactDuplicate = await db.assessment.findUnique({
     where: { tallySubmissionId: submissionId },
   });
 
-  if (existingAssessment) {
+  if (exactDuplicate) {
     console.log(`[Webhook GC] Duplicate submission ignored: ${sanitizeForLog(submissionId)}`);
     return NextResponse.json(
       {
         success: true,
         message: 'Duplicate submission - already processed',
-        assessmentId: existingAssessment.id,
+        assessmentId: exactDuplicate.id,
       },
       { headers: rateLimitHeaders }
     );
@@ -124,7 +83,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to extract assessment data';
     console.error('[Webhook GC] Extraction error:', message);
-    return errorResponse(message, 400, rateLimitHeaders);
+    return webhookErrorResponse(message, 400, rateLimitHeaders);
   }
 
   const { personId, score, rawData, tallySubmissionId } = assessmentData;
@@ -147,7 +106,7 @@ export async function POST(request: NextRequest) {
   const person = await getPersonById(personId);
   if (!person) {
     console.error(`[Webhook GC] Person not found: ${sanitizeForLog(personId)}`);
-    return errorResponse(`Person not found: ${personId}`, 404, rateLimitHeaders);
+    return webhookErrorResponse('Person not found', 404, rateLimitHeaders);
   }
 
   // Check if person already completed GC
@@ -166,18 +125,26 @@ export async function POST(request: NextRequest) {
     generalCompetenciesPassedAt: passed ? new Date() : undefined,
   });
 
-  // Create Assessment record
-  const assessment = await db.assessment.create({
-    data: {
-      personId,
-      assessmentType: 'GENERAL_COMPETENCIES',
-      score,
-      passed,
-      threshold,
-      completedAt: new Date(),
-      rawData,
-      tallySubmissionId,
-    },
+  // Overwrite any previous GC assessment for this person — a re-submission
+  // (e.g. error correction) should replace the old record entirely.
+  // Wrap in a transaction so we never lose data if the process crashes mid-way.
+  const assessment = await db.$transaction(async (tx) => {
+    await tx.assessment.deleteMany({
+      where: { personId, assessmentType: 'GENERAL_COMPETENCIES' },
+    });
+
+    return tx.assessment.create({
+      data: {
+        personId,
+        assessmentType: 'GENERAL_COMPETENCIES',
+        score,
+        passed,
+        threshold,
+        completedAt: new Date(),
+        rawData: rawData as unknown as Prisma.InputJsonValue,
+        tallySubmissionId,
+      },
+    });
   });
 
   await logAssessmentCompleted(personId, null, 'General Competencies', score, passed);
@@ -265,12 +232,5 @@ export async function POST(request: NextRequest) {
  * Handle OPTIONS requests (CORS preflight)
  */
 export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, x-webhook-secret, Authorization',
-    },
-  });
+  return webhookOptionsResponse();
 }

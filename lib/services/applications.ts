@@ -205,7 +205,7 @@ export async function getApplicationsForPipeline(filters?: {
   for (const app of applications) {
     // Determine if this application needs attention
     const needsAttention = app.status === 'ACTIVE' && (
-      (app.currentStage === 'APPLICATION' && !app.person.generalCompetenciesCompleted) ||
+      ((app.currentStage === 'APPLICATION' || app.currentStage === 'GENERAL_COMPETENCIES') && !app.person.generalCompetenciesCompleted) ||
       (app.currentStage === 'SPECIALIZED_COMPETENCIES' && app.assessments.length === 0) ||
       (app.currentStage === 'INTERVIEW' && app.interviews.length === 0) ||
       (app.currentStage === 'AGREEMENT')
@@ -282,6 +282,12 @@ export async function getApplicationDetail(id: string): Promise<ApplicationDetai
           generalCompetenciesCompleted: true,
           generalCompetenciesScore: true,
           generalCompetenciesPassedAt: true,
+          assessments: {
+            where: { assessmentType: 'GENERAL_COMPETENCIES' },
+            select: { id: true, score: true, passed: true, threshold: true, completedAt: true, rawData: true },
+            orderBy: { completedAt: 'desc' },
+            take: 1,
+          },
         },
       },
       assessments: {
@@ -460,6 +466,33 @@ export async function deleteApplication(id: string): Promise<void> {
 }
 
 /**
+ * Count active applications for a person at a given stage,
+ * excluding a specific application.
+ *
+ * Used for email deduplication: e.g. only send GCQ invite
+ * if no other active application is already at GENERAL_COMPETENCIES.
+ *
+ * @param personId - Person ID
+ * @param stage - Pipeline stage to check
+ * @param excludeApplicationId - Application ID to exclude from count
+ * @returns Count of matching applications
+ */
+export async function countOtherActiveApplicationsAtStage(
+  personId: string,
+  stage: Stage,
+  excludeApplicationId: string
+): Promise<number> {
+  return db.application.count({
+    where: {
+      personId,
+      status: 'ACTIVE',
+      currentStage: stage,
+      id: { not: excludeApplicationId },
+    },
+  });
+}
+
+/**
  * Get application statistics
  *
  * @param filters - Optional filters
@@ -558,7 +591,7 @@ export async function getApplicationStats(filters?: {
  * Canonical logic — must match `needsAttention` in `getApplicationsForPipeline`:
  * - APPLICATION stage where person has not completed GC
  * - SPECIALIZED_COMPETENCIES stage where no SC assessment has been submitted
- * - INTERVIEW stage where no interview has been scheduled (none at all)
+ * - INTERVIEW stage where no interview has been completed
  * - AGREEMENT stage (all apps — pending offer / countersignature)
  *
  * @param filters - Optional position filter (status is always ACTIVE)
@@ -574,7 +607,7 @@ export async function getAttentionBreakdown(filters?: {
 
   const [awaitingGC, awaitingSC, pendingInterviews, pendingAgreement] = await Promise.all([
     db.application.count({
-      where: { ...base, currentStage: 'APPLICATION', person: { generalCompetenciesCompleted: false } },
+      where: { ...base, currentStage: { in: ['APPLICATION', 'GENERAL_COMPETENCIES'] }, person: { generalCompetenciesCompleted: false } },
     }),
     db.application.count({
       where: { ...base, currentStage: 'SPECIALIZED_COMPETENCIES', assessments: { none: { assessmentType: 'SPECIALIZED_COMPETENCIES' } } },
@@ -644,6 +677,11 @@ export async function getApplicationsByPersonId(personId: string): Promise<Appli
  * for a person.
  *
  * Used when GC assessment is completed to advance all relevant applications.
+ *
+ * APPLICATION is included defensively: an application may remain in this
+ * stage if the GC invitation email was skipped or failed, so the person
+ * completed the assessment before the app was auto-advanced to
+ * GENERAL_COMPETENCIES. Including it ensures no application is left behind.
  *
  * @param personId - Person ID
  * @returns Array of applications

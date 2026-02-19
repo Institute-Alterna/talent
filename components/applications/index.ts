@@ -13,3 +13,4 @@ export { WithdrawDialog, type WithdrawDialogProps } from './withdraw-dialog';
 export { DecisionDialog, type DecisionDialogProps, type DecisionData } from './decision-dialog';
 export { InterviewDialog, type InterviewDialogProps, type InterviewDialogData, type Interviewer } from './interview-dialog';
 export { CompleteInterviewDialog, type CompleteInterviewDialogProps, type CompleteInterviewData } from './complete-interview-dialog';
+export { GCQResponsesDialog } from './gcq-responses-dialog';

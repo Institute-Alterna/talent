@@ -117,18 +117,19 @@ export const PACKAGE_CHECKBOX_IDS = {
 
 /**
  * Field key mappings for general competencies assessment
+ *
+ * These match the real Tally GCQ form field key prefixes.
+ * Tally may append UUIDs as suffixes to hidden/calculated keys.
  */
 export const GC_ASSESSMENT_FIELD_KEYS = {
   personId: 'question_PzkEpx', // Hidden field with person ID (who)
   name: 'question_Z2DVAV', // Hidden field for verification
-  score: 'question_Q7k02g', // Calculated total score
+  score: 'question_Q7k02g', // Calculated composite score
 
-  // Section scores (optional detailed tracking)
-  environmentScore: 'question_eaykXq',
-  communicationsScore: 'question_W8Qx7J',
-  collaborationScore: 'question_a2k7M9',
-  learnScore: 'question_pD582V',
-  behaviourScore: 'question_yJgVa0',
+  // Section scores (calculated fields)
+  cultureScore: 'question_LdPQ1J',
+  situationalScore: 'question_pLDlxP',
+  digitalScore: 'question_J2ON0d',
 } as const;
 
 /**
@@ -362,18 +363,35 @@ export function extractApplicationData(
 }
 
 /**
+ * Sub-scores from the GC assessment
+ *
+ * Matches the three calculated section scores in the Tally GCQ form:
+ * - cultureScore: culture-fit questions
+ * - situationalScore: situational-judgement questions
+ * - digitalScore: digital-literacy questions
+ */
+export interface GCSubscores {
+  cultureScore?: number;
+  situationalScore?: number;
+  digitalScore?: number;
+}
+
+/**
+ * GC assessment raw data — new format includes full Tally fields.
+ * Consumers must handle both old (flat sub-scores) and new format.
+ */
+export interface GCRawData {
+  subscores: GCSubscores;
+  fields: TallyField[];
+}
+
+/**
  * GC assessment result data
  */
 export interface GCAssessmentResult {
   personId: string;
   score: number;
-  rawData: {
-    environmentScore?: number;
-    communicationsScore?: number;
-    collaborationScore?: number;
-    learnScore?: number;
-    behaviourScore?: number;
-  };
+  rawData: GCRawData;
   tallySubmissionId: string;
 }
 
@@ -401,24 +419,25 @@ export function extractGCAssessmentData(payload: TallyWebhookPayload): GCAssessm
   }
 
   // Extract section scores for detailed tracking
-  const rawData = {
-    environmentScore: getNumberValue(
-      findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.environmentScore)
+  const subscores: GCSubscores = {
+    cultureScore: getNumberValue(
+      findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.cultureScore)
     ),
-    communicationsScore: getNumberValue(
-      findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.communicationsScore)
+    situationalScore: getNumberValue(
+      findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.situationalScore)
     ),
-    collaborationScore: getNumberValue(
-      findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.collaborationScore)
+    digitalScore: getNumberValue(
+      findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.digitalScore)
     ),
-    learnScore: getNumberValue(findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.learnScore)),
-    behaviourScore: getNumberValue(findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.behaviourScore)),
   };
 
   return {
     personId,
     score,
-    rawData,
+    rawData: {
+      subscores,
+      fields: payload.data.fields,
+    },
     tallySubmissionId: submissionId,
   };
 }

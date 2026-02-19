@@ -25,6 +25,8 @@ export {
   type TallyFileUpload,
   type TallyCheckboxValue,
   type GCAssessmentResult,
+  type GCSubscores,
+  type GCRawData,
   type SCAssessmentResult,
   // Field key mappings
   APPLICATION_FIELD_KEYS,
@@ -43,6 +45,14 @@ export {
   extractSCAssessmentData,
   validateRequiredFields,
 } from './tally-mapper';
+
+// Shared webhook helpers
+export {
+  webhookErrorResponse,
+  webhookOptionsResponse,
+  parseAndVerifyWebhook,
+  type WebhookParseResult,
+} from './helpers';
 
 // Rate limiting
 export {

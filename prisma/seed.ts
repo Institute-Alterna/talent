@@ -395,10 +395,162 @@ async function main() {
   // Create Assessments
   console.log('Creating fictional assessment records...');
 
+  // ----- Sample GCQ fields matching real Tally GCQ form structure -----
+  // Field types: HIDDEN_FIELDS, CALCULATED_FIELDS, MULTIPLE_CHOICE, LINEAR_SCALE
+  // Scores: composite score + 3 subscores (culture, situational, digital)
+  // MULTIPLE_CHOICE value is an array of selected option IDs (strings)
+
+  /** Options shared across many situational questions */
+  const MC_OPTIONS = {
+    identityVerification: [
+      { id: 'd5658b27', text: 'Yes' },
+      { id: 'ea89239d', text: 'No' },
+    ],
+    feedback: [
+      { id: '063e278d', text: 'Schedule a meeting sometime next week to walk through it together' },
+      { id: 'a80629e7', text: 'Leave comments on the project and record a short video message about it' },
+      { id: '0de83576', text: 'Send messages in the Slack channel listing your feedback' },
+      { id: '5b2af09d', text: 'Wait until the next chance to bring it up over a meeting' },
+    ],
+    lateDeliverable: [
+      { id: '7fa6b914', text: 'Update the project timeline with the reason and expected resolution, with no further comment' },
+      { id: '00d1f7dc', text: 'Wait until someone asks about the status before giving the bad news' },
+      { id: '1981ecf3', text: 'Send a message explaining the reason and expected resolution, then update the project timeline' },
+      { id: '5399b3be', text: 'Send a private message to your teammates and let them decide what to do about it' },
+    ],
+    vagueInstructions: [
+      { id: '17384316', text: 'Start the task with what you understand and figure it out as you go' },
+      { id: '9e3568a1', text: 'Wait until their time matches with yours to hop on a quick call to clarify' },
+      { id: 'c7e5ef28', text: 'Send a message asking for clarification and begin what you can' },
+      { id: 'abe4309b', text: 'Look for more information about what it could have meant online' },
+    ],
+    statusUpdate: [
+      { id: 'd201939e', text: 'Type fast and keep the key points and next steps concise' },
+      { id: '0fd635b6', text: 'Dump a voice memo onto AI and ask it to write it for you' },
+      { id: '09c9e47f', text: 'Ask AI to gather the current status data and write it from there' },
+      { id: '6df7fa15', text: 'Ask someone else to help you write the update' },
+    ],
+    dataError: [
+      { id: '3bc939fa', text: 'Delete the original message and upload the corrected version immediately' },
+      { id: 'c5dc1dc1', text: 'Flag exactly what changed and update the original document' },
+      { id: '6336b72e', text: 'Wait to see if anyone catches the error before saying anything' },
+      { id: '9a0c714e', text: 'Let a teammate know about the corrected data' },
+    ],
+    phishingEmail: [
+      { id: '18f41187', text: 'The address on the browser bar once you click the link' },
+      { id: '960ea02f', text: 'The email address that sent the message' },
+      { id: 'a4401fd4', text: 'Whether your account details are correct' },
+      { id: 'ea6735dc', text: 'Whether it looks like a real Google email' },
+    ],
+    sharedPassword: [
+      { id: '3b48a6d3', text: 'Send the password through private messages' },
+      { id: '53a3b271', text: 'Send the password through the team\'s channel' },
+      { id: 'ef46f6c8', text: 'Use a password manager\'s sharing link, even if it\'s on an external service' },
+      { id: '089ad11c', text: 'Call them to share the password over the phone' },
+    ],
+    bluntFeedback: [
+      { id: 'db5968a9', text: 'Reply with context defending your decisions' },
+      { id: '1ebc7b0c', text: 'Implement the changes you believe align best' },
+      { id: '6a5dcfbb', text: 'Sit with it, and reply acknowledging you\'ve reviewed it and will follow up with any questions' },
+      { id: 'f996cf5a', text: 'Delegate the changes to that teammate and work together on it' },
+    ],
+    outdatedDocs: [
+      { id: 'a1a64bf6', text: 'It makes writing status updates more challenging' },
+      { id: '9c2d4469', text: 'Anyone not in the daily conversations can\'t understand the project\'s real status' },
+      { id: '6776d7ac', text: 'It looks unprofessional and messy' },
+      { id: '6da92b14', text: 'The team will need more meetings to stay aligned' },
+    ],
+  };
+
+  function buildGCQFields(opts: {
+    personId: string;
+    name: string;
+    score: number;
+    culture: number;
+    situational: number;
+    digital: number;
+    /** LINEAR_SCALE values for the 10 culture questions (1-5 each) */
+    scales: number[];
+    /** Selected option IDs for the situational MC questions */
+    situationalAnswers: string[];
+    /** Selected option IDs for the digital MC questions */
+    digitalAnswers: string[];
+  }) {
+    return [
+      // Hidden fields
+      { key: 'question_PzkEpx_9997dff6', label: 'who', type: 'HIDDEN_FIELDS', value: opts.personId },
+      { key: 'question_Z2DVAV_ed354dcb', label: 'name', type: 'HIDDEN_FIELDS', value: opts.name },
+
+      // Calculated scores
+      { key: 'question_Q7k02g_fd603e44', label: 'score', type: 'CALCULATED_FIELDS', value: opts.score },
+      { key: 'question_LdPQ1J_20114bac', label: 'cultureScore', type: 'CALCULATED_FIELDS', value: opts.culture },
+      { key: 'question_pLDlxP_32ad58ef', label: 'situationalScore', type: 'CALCULATED_FIELDS', value: opts.situational },
+      { key: 'question_J2ON0d_a9d6570e', label: 'digitalScore', type: 'CALCULATED_FIELDS', value: opts.digital },
+
+      // Identity verification (MC)
+      {
+        key: 'question_N7dVx0', label: 'Identity Verification', type: 'MULTIPLE_CHOICE',
+        value: ['d5658b27'], options: MC_OPTIONS.identityVerification,
+      },
+
+      // ── Culture (LINEAR_SCALE) ──
+      { key: 'question_1r91Pb', label: 'When I\'m given a task with a reasonable deadline', type: 'LINEAR_SCALE', value: opts.scales[0] },
+      { key: 'question_MAE9K8', label: 'When designing something others will use', type: 'LINEAR_SCALE', value: opts.scales[1] },
+      { key: 'question_J2ONKX', label: 'When working on a project with many moving parts', type: 'LINEAR_SCALE', value: opts.scales[2] },
+      { key: 'question_g59RjJ', label: 'When building a resource or tool for others', type: 'LINEAR_SCALE', value: opts.scales[3] },
+      { key: 'question_ylJWZd', label: 'When I face a repetitive or time-consuming task', type: 'LINEAR_SCALE', value: opts.scales[4] },
+      { key: 'question_Xe4Klz', label: 'When I make progress on a task or hit a blocker', type: 'LINEAR_SCALE', value: opts.scales[5] },
+      { key: 'question_8dZ0or', label: 'When I have an idea that could improve how the team works', type: 'LINEAR_SCALE', value: opts.scales[6] },
+      { key: 'question_0EeprA', label: 'When a topic needs to be discussed with the team', type: 'LINEAR_SCALE', value: opts.scales[7] },
+      { key: 'question_zK7aXg', label: 'When I notice something going wrong on a project I\'m part of', type: 'LINEAR_SCALE', value: opts.scales[8] },
+      { key: 'question_5dZyKQ', label: 'When I finish a piece of work I\'m proud of', type: 'LINEAR_SCALE', value: opts.scales[9] },
+
+      // ── Situational (MULTIPLE_CHOICE) ──
+      {
+        key: 'question_Xe4KDj', label: 'You need to give detailed feedback on a teammate\'s work on a project. This isn\'t urgent.',
+        type: 'MULTIPLE_CHOICE', value: [opts.situationalAnswers[0]], options: MC_OPTIONS.feedback,
+      },
+      {
+        key: 'question_8dZ0KO', label: 'A deliverable you are in charge of is going to be two days late.',
+        type: 'MULTIPLE_CHOICE', value: [opts.situationalAnswers[1]], options: MC_OPTIONS.lateDeliverable,
+      },
+      {
+        key: 'question_0EepxN', label: 'You receive vague instructions for a complex task from a teammate in a different time zone.',
+        type: 'MULTIPLE_CHOICE', value: [opts.situationalAnswers[2]], options: MC_OPTIONS.vagueInstructions,
+      },
+      {
+        key: 'question_zK7aqa', label: 'You must write a short status update in the next 5 minutes because you will not be available until tomorrow.',
+        type: 'MULTIPLE_CHOICE', value: [opts.situationalAnswers[3]], options: MC_OPTIONS.statusUpdate,
+      },
+      {
+        key: 'question_5dZyz6', label: 'You shared data that you did not notice had a significant error. This data will be important for a decision later on.',
+        type: 'MULTIPLE_CHOICE', value: [opts.situationalAnswers[4]], options: MC_OPTIONS.dataError,
+      },
+      {
+        key: 'question_DV7lVq', label: 'A teammate sends you a video message walking through your work with blunt but valid feedback. You feel a bit defensive.',
+        type: 'MULTIPLE_CHOICE', value: [opts.situationalAnswers[5]], options: MC_OPTIONS.bluntFeedback,
+      },
+      {
+        key: 'question_lN6PNB', label: 'Your team communicates well, but your documentation and tasks are consistently out of date. What\'s the biggest risk?',
+        type: 'MULTIPLE_CHOICE', value: [opts.situationalAnswers[6]], options: MC_OPTIONS.outdatedDocs,
+      },
+
+      // ── Digital (MULTIPLE_CHOICE) ──
+      {
+        key: 'question_OA7WA7', label: 'You receive an email that appears to be from Google with a link. What\'s the first you check?',
+        type: 'MULTIPLE_CHOICE', value: [opts.digitalAnswers[0]], options: MC_OPTIONS.phishingEmail,
+      },
+      {
+        key: 'question_ylJWD4', label: 'A teammate asks you to share the login for a shared account with the rest of the team.',
+        type: 'MULTIPLE_CHOICE', value: [opts.digitalAnswers[1]], options: MC_OPTIONS.sharedPassword,
+      },
+    ];
+  }
+
   // General Competencies assessments (linked to Person)
   await prisma.assessment.createMany({
     data: [
-      // Person 2 (Maria): Passed GC
+      // Person 2 (Maria): Passed GC — strong across the board
       {
         personId: person2.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
@@ -408,14 +560,17 @@ async function main() {
         completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         tallySubmissionId: 'tally-gc-002',
         rawData: {
-          environmentScore: 860,
-          communicationsScore: 840,
-          collaborationScore: 855,
-          learnScore: 865,
-          behaviourScore: 830,
+          subscores: { cultureScore: 310, situationalScore: 290, digitalScore: 250 },
+          fields: buildGCQFields({
+            personId: person2.id, name: 'Maria Hernandez',
+            score: 850, culture: 310, situational: 290, digital: 250,
+            scales: [4, 5, 4, 4, 3, 4, 5, 4, 4, 5],
+            situationalAnswers: ['a80629e7', '1981ecf3', 'c7e5ef28', 'd201939e', 'c5dc1dc1', '6a5dcfbb', '9c2d4469'],
+            digitalAnswers: ['960ea02f', 'ef46f6c8'],
+          }),
         },
       },
-      // Person 3 (Jan): Passed GC
+      // Person 3 (Jan): Passed GC — highest scorer
       {
         personId: person3.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
@@ -425,14 +580,17 @@ async function main() {
         completedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
         tallySubmissionId: 'tally-gc-003',
         rawData: {
-          environmentScore: 935,
-          communicationsScore: 910,
-          collaborationScore: 925,
-          learnScore: 940,
-          behaviourScore: 890,
+          subscores: { cultureScore: 340, situationalScore: 320, digitalScore: 260 },
+          fields: buildGCQFields({
+            personId: person3.id, name: 'Jan Won Young',
+            score: 920, culture: 340, situational: 320, digital: 260,
+            scales: [5, 5, 5, 4, 5, 5, 4, 5, 5, 5],
+            situationalAnswers: ['a80629e7', '1981ecf3', 'c7e5ef28', 'd201939e', 'c5dc1dc1', '6a5dcfbb', '9c2d4469'],
+            digitalAnswers: ['960ea02f', 'ef46f6c8'],
+          }),
         },
       },
-      // Person 4 (Diego): Passed GC
+      // Person 4 (Diego): Passed GC — solid but not perfect
       {
         personId: person4.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
@@ -442,14 +600,17 @@ async function main() {
         completedAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
         tallySubmissionId: 'tally-gc-004',
         rawData: {
-          environmentScore: 900,
-          communicationsScore: 875,
-          collaborationScore: 890,
-          learnScore: 895,
-          behaviourScore: 865,
+          subscores: { cultureScore: 325, situationalScore: 300, digitalScore: 260 },
+          fields: buildGCQFields({
+            personId: person4.id, name: 'Diego Ramirez',
+            score: 885, culture: 325, situational: 300, digital: 260,
+            scales: [4, 5, 4, 5, 3, 4, 4, 4, 5, 4],
+            situationalAnswers: ['063e278d', '1981ecf3', 'c7e5ef28', 'd201939e', 'c5dc1dc1', '1ebc7b0c', '9c2d4469'],
+            digitalAnswers: ['960ea02f', 'ef46f6c8'],
+          }),
         },
       },
-      // Person 5 (Pedro): Failed GC
+      // Person 5 (Pedro): Failed GC — low scores across the board
       {
         personId: person5.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
@@ -459,14 +620,17 @@ async function main() {
         completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         tallySubmissionId: 'tally-gc-005',
         rawData: {
-          environmentScore: 640,
-          communicationsScore: 660,
-          collaborationScore: 655,
-          learnScore: 645,
-          behaviourScore: 650,
+          subscores: { cultureScore: 220, situationalScore: 230, digitalScore: 200 },
+          fields: buildGCQFields({
+            personId: person5.id, name: 'Pedro Santos',
+            score: 650, culture: 220, situational: 230, digital: 200,
+            scales: [2, 3, 2, 2, 3, 2, 3, 2, 2, 3],
+            situationalAnswers: ['063e278d', '7fa6b914', '17384316', '0fd635b6', '3bc939fa', 'db5968a9', 'a1a64bf6'],
+            digitalAnswers: ['18f41187', '3b48a6d3'],
+          }),
         },
       },
-      // Person 6 (Sarah): Failed GC (awaiting rejection decision)
+      // Person 6 (Sarah): Failed GC — borderline, awaiting rejection decision
       {
         personId: person6.id,
         assessmentType: AssessmentType.GENERAL_COMPETENCIES,
@@ -476,17 +640,20 @@ async function main() {
         completedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
         tallySubmissionId: 'tally-gc-006',
         rawData: {
-          environmentScore: 715,
-          communicationsScore: 730,
-          collaborationScore: 720,
-          learnScore: 710,
-          behaviourScore: 725,
+          subscores: { cultureScore: 260, situationalScore: 250, digitalScore: 210 },
+          fields: buildGCQFields({
+            personId: person6.id, name: 'Sarah Chen',
+            score: 720, culture: 260, situational: 250, digital: 210,
+            scales: [3, 4, 3, 3, 3, 3, 4, 3, 3, 4],
+            situationalAnswers: ['a80629e7', '1981ecf3', '17384316', 'd201939e', '9a0c714e', '6a5dcfbb', '6da92b14'],
+            digitalAnswers: ['960ea02f', '3b48a6d3'],
+          }),
         },
       },
     ],
   });
 
-  // Specialized Competencies assessments (linked to Application)
+  // Specialised Competencies assessments (linked to Application)
   await prisma.assessment.createMany({
     data: [
       // Application 3 (Jan's Chief People Officer): Passed SC
@@ -600,7 +767,7 @@ async function main() {
         personId: person2.id,
         applicationId: app2.id,
         userId: adminUser.id,
-        action: 'Stage changed to Specialized Competencies',
+        action: 'Stage changed to Specialised Competencies',
         actionType: ActionType.STAGE_CHANGE,
         details: { from: 'GENERAL_COMPETENCIES', to: 'SPECIALIZED_COMPETENCIES' },
         createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),

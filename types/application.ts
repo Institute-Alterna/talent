@@ -100,7 +100,22 @@ export interface ApplicationDetail extends Application {
 export type PersonDetailForApplication = Omit<
   Person,
   'tallyRespondentId' | 'oktaUserId' | 'createdAt' | 'updatedAt'
->;
+> & {
+  /** Person's GC assessment (most recent), if any */
+  assessments?: GCAssessmentSummary[];
+};
+
+/**
+ * Summary of a GC assessment for display in application detail
+ */
+export interface GCAssessmentSummary {
+  id: string;
+  score: Decimal;
+  passed: boolean;
+  threshold: Decimal;
+  completedAt: Date;
+  rawData: unknown;
+}
 
 /**
  * Assessment detail for application view

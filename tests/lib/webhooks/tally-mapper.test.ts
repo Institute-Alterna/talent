@@ -319,13 +319,14 @@ describe('Tally Field Mapper', () => {
         submissionId: 'sub-gc-1',
         respondentId: 'resp-123',
         formId: 'form-gc',
-        formName: 'General Competencies Assessment',
+        formName: 'General Competencies Questionnaire',
         createdAt: '2024-01-01T00:00:00Z',
         fields: [
-          { key: `${GC_ASSESSMENT_FIELD_KEYS.personId}_suffix`, label: 'Who', type: 'HIDDEN_FIELDS', value: 'person-123' },
-          { key: `${GC_ASSESSMENT_FIELD_KEYS.score}_calc`, label: 'Score', type: 'CALCULATED', value: 85 },
-          { key: `${GC_ASSESSMENT_FIELD_KEYS.environmentScore}_calc`, label: 'Env', type: 'CALCULATED', value: 90 },
-          { key: `${GC_ASSESSMENT_FIELD_KEYS.communicationsScore}_calc`, label: 'Comm', type: 'CALCULATED', value: 80 },
+          { key: `${GC_ASSESSMENT_FIELD_KEYS.personId}_suffix`, label: 'who', type: 'HIDDEN_FIELDS', value: 'person-123' },
+          { key: `${GC_ASSESSMENT_FIELD_KEYS.score}_calc`, label: 'score', type: 'CALCULATED_FIELDS', value: 85 },
+          { key: `${GC_ASSESSMENT_FIELD_KEYS.cultureScore}_calc`, label: 'cultureScore', type: 'CALCULATED_FIELDS', value: 30 },
+          { key: `${GC_ASSESSMENT_FIELD_KEYS.situationalScore}_calc`, label: 'situationalScore', type: 'CALCULATED_FIELDS', value: 28 },
+          { key: `${GC_ASSESSMENT_FIELD_KEYS.digitalScore}_calc`, label: 'digitalScore', type: 'CALCULATED_FIELDS', value: 27 },
         ],
       },
     };
@@ -337,11 +338,12 @@ describe('Tally Field Mapper', () => {
         personId: 'person-123',
         score: 85,
         rawData: {
-          environmentScore: 90,
-          communicationsScore: 80,
-          collaborationScore: undefined,
-          learnScore: undefined,
-          behaviourScore: undefined,
+          subscores: {
+            cultureScore: 30,
+            situationalScore: 28,
+            digitalScore: 27,
+          },
+          fields: validPayload.data.fields,
         },
         tallySubmissionId: 'sub-gc-1',
       });

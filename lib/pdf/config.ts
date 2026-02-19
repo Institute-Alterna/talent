@@ -250,7 +250,7 @@ export const pdfLabels = {
   assessments: {
     sectionTitle: 'Assessments',
     generalCompetencies: 'General Competencies',
-    specializedCompetencies: 'Specialized Competencies',
+    specializedCompetencies: 'Specialised Competencies',
     score: 'Score',
     threshold: 'Threshold',
     result: 'Result',
@@ -323,7 +323,7 @@ export const pdfLabels = {
   stage: {
     APPLICATION: 'Application',
     GENERAL_COMPETENCIES: 'General Competencies',
-    SPECIALIZED_COMPETENCIES: 'Specialized Competencies',
+    SPECIALIZED_COMPETENCIES: 'Specialised Competencies',
     INTERVIEW: 'Interview',
     AGREEMENT: 'Agreement',
     SIGNED: 'Signed',

@@ -10,7 +10,7 @@ export const recruitment = {
   stages: [
     { id: 'APPLICATION', name: 'Application', order: 1 },
     { id: 'GENERAL_COMPETENCIES', name: 'General Competencies', order: 2 },
-    { id: 'SPECIALIZED_COMPETENCIES', name: 'Specialized Competencies', order: 3 },
+    { id: 'SPECIALIZED_COMPETENCIES', name: 'Specialised Competencies', order: 3 },
     { id: 'INTERVIEW', name: 'Interview', order: 4 },
     { id: 'AGREEMENT', name: 'Agreement', order: 5 },
     { id: 'SIGNED', name: 'Signed', order: 6 },

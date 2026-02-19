@@ -20,12 +20,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  verifyWebhook,
-  getClientIP,
-  webhookRateLimiter,
-  getRateLimitHeaders,
   extractSCAssessmentData,
-  type TallyWebhookPayload,
+  parseAndVerifyWebhook,
+  webhookErrorResponse,
+  webhookOptionsResponse,
 } from '@/lib/webhooks';
 import { db } from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
@@ -44,55 +42,15 @@ import { recruitment } from '@/config/recruitment';
 import { sanitizeForLog } from '@/lib/security';
 
 /**
- * Webhook error response
- */
-function errorResponse(message: string, status: number, headers?: Record<string, string>) {
-  return NextResponse.json({ error: message }, { status, headers });
-}
-
-/**
  * POST /api/webhooks/tally/specialized-competencies
  *
- * Handle specialized competencies assessment completion from Tally
+ * Handle specialised competencies assessment completion from Tally
  */
 export async function POST(request: NextRequest) {
-  const ip = getClientIP(request.headers);
-
-  // Check rate limit
-  const rateLimitResult = webhookRateLimiter(ip || 'unknown');
-  const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
-
-  if (!rateLimitResult.allowed) {
-    return errorResponse('Rate limit exceeded', 429, rateLimitHeaders);
-  }
-
-  // Read raw body for signature verification
-  let rawBody: string;
-  try {
-    rawBody = await request.text();
-  } catch {
-    return errorResponse('Failed to read request body', 400, rateLimitHeaders);
-  }
-
-  // Verify webhook signature and IP
-  const verification = verifyWebhook(rawBody, request.headers);
-  if (!verification.valid) {
-    console.error('[Webhook SC] Verification failed:', verification.error);
-    return errorResponse(verification.error || 'Verification failed', 401, rateLimitHeaders);
-  }
-
-  // Parse JSON payload
-  let payload: TallyWebhookPayload;
-  try {
-    payload = JSON.parse(rawBody);
-  } catch {
-    return errorResponse('Invalid JSON payload', 400, rateLimitHeaders);
-  }
-
-  // Validate payload structure
-  if (!payload.data?.submissionId || !payload.data?.fields) {
-    return errorResponse('Invalid payload structure', 400, rateLimitHeaders);
-  }
+  // Verify, parse, and validate webhook request
+  const parsed = await parseAndVerifyWebhook(request, '[Webhook SC]');
+  if (!parsed.ok) return parsed.error;
+  const { payload, ip, rateLimitHeaders } = parsed;
 
   const { submissionId, formId, formName } = payload.data;
 
@@ -120,7 +78,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to extract assessment data';
     console.error('[Webhook SC] Extraction error:', message);
-    return errorResponse(message, 400, rateLimitHeaders);
+    return webhookErrorResponse(message, 400, rateLimitHeaders);
   }
 
   const { applicationId, score, rawData, tallySubmissionId } = assessmentData;
@@ -143,7 +101,7 @@ export async function POST(request: NextRequest) {
   const application = await getApplicationById(applicationId);
   if (!application) {
     console.error(`[Webhook SC] Application not found: ${sanitizeForLog(applicationId)}`);
-    return errorResponse(`Application not found: ${applicationId}`, 404, rateLimitHeaders);
+    return webhookErrorResponse('Application not found', 404, rateLimitHeaders);
   }
 
   // Verify application is in correct stage
@@ -154,8 +112,8 @@ export async function POST(request: NextRequest) {
     console.error(
       `[Webhook SC] Application ${sanitizeForLog(applicationId)} is in ${sanitizeForLog(application.currentStage)} stage, expected SPECIALIZED_COMPETENCIES`
     );
-    return errorResponse(
-      `Application is not in the correct stage for specialized assessment`,
+    return webhookErrorResponse(
+      `Application is not in the correct stage for specialised assessment`,
       400,
       rateLimitHeaders
     );
@@ -164,7 +122,7 @@ export async function POST(request: NextRequest) {
   // Verify application is still active
   if (application.status !== 'ACTIVE') {
     console.error(`[Webhook SC] Application ${sanitizeForLog(applicationId)} is ${sanitizeForLog(application.status)}, not ACTIVE`);
-    return errorResponse(`Application is not active`, 400, rateLimitHeaders);
+    return webhookErrorResponse('Application is not active', 400, rateLimitHeaders);
   }
 
   // Determine pass/fail
@@ -188,7 +146,7 @@ export async function POST(request: NextRequest) {
   await logAssessmentCompleted(
     application.personId,
     applicationId,
-    'Specialized Competencies',
+    'Specialised Competencies',
     score,
     passed
   );
@@ -239,8 +197,8 @@ export async function POST(request: NextRequest) {
     {
       success: true,
       message: passed
-        ? 'Specialized competencies passed - application advanced to interview stage'
-        : 'Specialized competencies not passed - application rejected',
+        ? 'Specialised competencies passed - application advanced to interview stage'
+        : 'Specialised competencies not passed - application rejected',
       data: {
         assessmentId: assessment.id,
         applicationId,
@@ -260,12 +218,5 @@ export async function POST(request: NextRequest) {
  * Handle OPTIONS requests (CORS preflight)
  */
 export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, x-webhook-secret, Authorization',
-    },
-  });
+  return webhookOptionsResponse();
 }

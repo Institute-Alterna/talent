@@ -59,7 +59,10 @@ import {
   ExternalLink,
   Clock,
   Loader2,
+  ClipboardList,
 } from 'lucide-react';
+import { GCQResponsesDialog } from './gcq-responses-dialog';
+import { GC_SUBSCORE_ENTRIES, extractGCSubscores, hasGCFields } from '@/lib/gc-utils';
 
 /**
  * Application detail data structure
@@ -98,6 +101,14 @@ export interface ApplicationDetailData {
     generalCompetenciesCompleted: boolean;
     generalCompetenciesScore: string | null;
     generalCompetenciesPassedAt: string | null;
+    assessments?: Array<{
+      id: string;
+      score: string;
+      passed: boolean;
+      threshold: string;
+      completedAt: string;
+      rawData: unknown;
+    }>;
   };
   assessments: Array<{
     id: string;
@@ -362,6 +373,36 @@ function SendEmailButton({
   );
 }
 
+/** Button + lazy dialog for viewing full GCQ responses. */
+function GCQViewResponsesButton({
+  rawData,
+  candidateName,
+}: {
+  rawData: unknown;
+  candidateName?: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        className="text-xs h-7 mt-2 w-full"
+        onClick={() => setOpen(true)}
+      >
+        <ClipboardList className="h-3 w-3 mr-1" />
+        View Responses
+      </Button>
+      <GCQResponsesDialog
+        rawData={rawData}
+        open={open}
+        onOpenChange={setOpen}
+        candidateName={candidateName}
+      />
+    </>
+  );
+}
+
 /** Convert audit logs to timeline items. */
 function buildTimelineItems(auditLogs?: ApplicationDetailProps['auditLogs']): TimelineItem[] {
   return (auditLogs || []).map(log => ({
@@ -622,6 +663,43 @@ function RightPanel({
                       <span>{formatDateShort(person.generalCompetenciesPassedAt)}</span>
                     </div>
                   )}
+
+                  {/* Sub-scores breakdown */}
+                  {(() => {
+                    const gcAssessment = person.assessments?.[0];
+                    if (!gcAssessment?.rawData) return null;
+
+                    const subscores = extractGCSubscores(gcAssessment.rawData);
+                    if (!subscores) return null;
+
+                    return (
+                      <div className="border-t pt-2 mt-2 space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Sub-scores</p>
+                        {GC_SUBSCORE_ENTRIES.map(({ label, key }) => {
+                          const val = subscores[key];
+                          if (val === undefined) return null;
+                          return (
+                            <div key={key} className="flex justify-between text-xs">
+                              <span className="text-muted-foreground">{label}</span>
+                              <span className="font-medium">{String(val)}</span>
+                            </div>
+                          );
+                        })}
+                        {hasGCFields(gcAssessment.rawData) && (
+                          <GCQViewResponsesButton
+                            rawData={gcAssessment.rawData}
+                            candidateName={[
+                              person.firstName,
+                              person.middleName,
+                              person.lastName,
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
+                          />
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="text-center py-2">
@@ -655,7 +733,7 @@ function RightPanel({
           return (
             <>
               <div className="flex items-center justify-between mb-3">
-                <h4 className="font-medium text-sm">Specialized Competencies</h4>
+                <h4 className="font-medium text-sm">Specialised Competencies</h4>
                 {scAssessment ? (
                   <Badge variant={scAssessment.passed ? 'default' : 'destructive'} className="text-xs">
                     {scAssessment.passed ? (

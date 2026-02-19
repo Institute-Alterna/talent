@@ -35,7 +35,7 @@ export const strings = {
   stages: {
     application: 'Application',
     generalCompetencies: 'General Competencies',
-    specializedCompetencies: 'Specialized Competencies',
+    specializedCompetencies: 'Specialised Competencies',
     interview: 'Interview',
     agreement: 'Agreement',
     signed: 'Signed',
