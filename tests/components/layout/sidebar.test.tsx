@@ -42,9 +42,9 @@ describe('Sidebar', () => {
       expect(screen.getByRole('navigation')).toBeInTheDocument();
     });
 
-    it('displays the app name when not collapsed', () => {
+    it('displays the wordmark when not collapsed', () => {
       render(<Sidebar />);
-      expect(screen.getByText('Talent Management')).toBeInTheDocument();
+      expect(screen.getByRole('img', { name: 'Talent Management' })).toBeInTheDocument();
     });
 
     it('displays navigation links', () => {

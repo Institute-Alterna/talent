@@ -13,7 +13,7 @@ import {
   
   createInvalidPayload,
   generateWebhookSignature,
-} from '@/__tests__/fixtures/tally-webhooks';
+} from '@/tests/fixtures/tally-webhooks';
 import { clearAllRateLimits, APPLICATION_FIELD_KEYS } from '@/lib/webhooks';
 
 // Mock the database and services

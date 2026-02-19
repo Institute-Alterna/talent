@@ -5,6 +5,7 @@
  *
  * Client-side login form with loading state animation.
  * Renders a full-screen opaque background (white in light mode, black in dark mode).
+ * Uses an inline SVG wordmark with currentColor for automatic dark/light mode switching.
  */
 
 import { useTransition } from 'react';
@@ -12,6 +13,7 @@ import { Loader2 } from 'lucide-react';
 import { signInWithOkta } from '@/app/actions';
 import { branding, strings } from '@/config';
 import { Button } from '@/components/ui/button';
+import { Wordmark } from '@/components/shared/wordmark';
 
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
@@ -25,14 +27,9 @@ export function LoginForm() {
   return (
     <div className="flex min-h-screen items-center justify-center md:justify-start bg-white dark:bg-black">
       <div className="w-full max-w-sm space-y-8 px-8 md:ml-[12vw]">
-        {/* Content */}
-        <div className="space-y-2 text-center md:text-left">
-          <h2 className="text-2xl font-semibold tracking-tight text-black dark:text-white">
-            {branding.appName}
-          </h2>
-          <p className="text-neutral-500 dark:text-neutral-400">
-            {branding.organisationShortName}
-          </p>
+        {/* Wordmark — inline SVG uses currentColor, adapts to dark/light mode */}
+        <div className="flex justify-center md:justify-start">
+          <Wordmark className="h-12 w-auto text-black dark:text-white" />
         </div>
 
         {/* Sign-in form */}

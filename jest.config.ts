@@ -35,7 +35,7 @@ const config: Config = {
 
   // Where to look for test files
   testMatch: [
-    '**/__tests__/**/*.(test|spec).(ts|tsx|js|jsx)',
+    '**/tests/**/*.(test|spec).(ts|tsx|js|jsx)',
     '**/*.(test|spec).(ts|tsx|js|jsx)',
   ],
 

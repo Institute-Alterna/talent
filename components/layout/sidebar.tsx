@@ -18,7 +18,8 @@ import Link from 'next/link';
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { footerRandomText } from "@institute-alterna/footer-quotes"
-import { strings, branding } from '@/config';
+import { strings } from '@/config';
+import { Wordmark } from '@/components/shared/wordmark';
 import {
   LayoutDashboard,
   Users,
@@ -119,17 +120,7 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
             collapsed ? 'justify-center' : 'gap-2'
           )}
         >
-          <div
-            className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-bold"
-            aria-hidden="true"
-          >
-            {branding.organisationShortName.charAt(0)}
-          </div>
-          {!collapsed && (
-            <span className="font-semibold text-foreground">
-              {branding.appName}
-            </span>
-          )}
+          <Wordmark className={cn('h-7 w-auto text-foreground', collapsed && 'h-6')} />
         </div>
 
         {/* Navigation */}

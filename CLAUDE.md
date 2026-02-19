@@ -95,7 +95,8 @@ components/
 │   ├── metric-card.tsx          # Compact metric display card
 │   ├── role-badge.tsx           # Admin/HiringManager/NoAccess badge
 │   ├── theme-selector.tsx
-│   └── theme-toggle.tsx
+│   ├── theme-toggle.tsx
+│   └── wordmark.tsx              # Inline SVG wordmark (brand "A" + "Talent" text)
 ├── ui/                       # shadcn/ui primitives
 └── users/
     ├── user-detail-dialog.tsx
@@ -143,7 +144,7 @@ types/
 ├── application.ts
 ├── person.ts
 └── user.ts
-__tests__/
+tests/
 ├── app/api/                  # API route tests
 ├── components/               # Component tests
 ├── fixtures/                 # Test data

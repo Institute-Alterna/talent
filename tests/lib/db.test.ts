@@ -13,7 +13,7 @@
  * making these tests fast and isolated.
  *
  * Integration tests that verify actual database connectivity are in
- * __tests__/lib/db.integration.test.ts
+ * tests/lib/db.integration.test.ts
  */
 
 import { parseDbUrl } from '@/lib/db-utils';

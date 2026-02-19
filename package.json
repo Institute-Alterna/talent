@@ -15,7 +15,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:integration": "tsx --test __tests__/**/*.integration.test.ts",
+    "test:integration": "tsx --test tests/**/*.integration.test.ts",
     "test:all": "npm run test && npm run test:integration",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",

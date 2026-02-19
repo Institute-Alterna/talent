@@ -37,26 +37,16 @@ describe('Home Page (Login)', () => {
   it('renders without crashing', async () => {
     const HomeComponent = await Home();
     render(HomeComponent);
-    // CardTitle renders as a div, not a heading, so we check for the text
-    expect(screen.getByText(branding.appName)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: branding.appName })).toBeInTheDocument();
   });
 
   /**
-   * Test: Displays the app name from branding config
+   * Test: Displays the wordmark SVG with accessible label
    */
-  it('displays the app name from branding config', async () => {
+  it('displays the wordmark with accessible label', async () => {
     const HomeComponent = await Home();
     render(HomeComponent);
-    expect(screen.getByText(branding.appName)).toBeInTheDocument();
-  });
-
-  /**
-   * Test: Displays the organization name
-   */
-  it('displays the organization name', async () => {
-    const HomeComponent = await Home();
-    render(HomeComponent);
-    expect(screen.getByText(branding.organisationShortName)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: branding.appName })).toBeInTheDocument();
   });
 
   /**

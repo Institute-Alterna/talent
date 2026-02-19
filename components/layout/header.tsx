@@ -35,7 +35,8 @@ import {
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { MobileNav } from './sidebar';
-import { branding, strings } from '@/config';
+import { strings } from '@/config';
+import { Wordmark } from '@/components/shared/wordmark';
 
 interface HeaderProps {
   user: {
@@ -81,11 +82,8 @@ export function Header({ user, onSignOut }: HeaderProps) {
           </SheetTrigger>
           <SheetContent side="left" className="w-72 bg-background/95 backdrop-blur-xl">
             <SheetHeader>
-              <SheetTitle className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold">
-                  {branding.organisationShortName.charAt(0)}
-                </div>
-                {branding.appName}
+              <SheetTitle>
+                <Wordmark className="h-7 w-auto text-foreground" />
               </SheetTitle>
             </SheetHeader>
             <div className="mt-6">
