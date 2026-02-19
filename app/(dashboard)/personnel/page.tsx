@@ -7,7 +7,6 @@
 
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import { strings } from '@/config';
 import { getUsers, getUserStats } from '@/lib/services/users';
 import { UsersPageClient } from './page-client';
 
@@ -30,21 +29,10 @@ export default async function UsersPage() {
   ]);
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{strings.personnel.title}</h1>
-        <p className="text-muted-foreground">
-          Manage personnel and permissions
-        </p>
-      </div>
-
-      {/* Client Component with Interactive Features */}
-      <UsersPageClient
-        initialUsers={users}
-        initialStats={stats}
-        currentUserId={session.user.dbUserId}
-      />
-    </div>
+    <UsersPageClient
+      initialUsers={users}
+      initialStats={stats}
+      currentUserId={session.user.dbUserId}
+    />
   );
 }

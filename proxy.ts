@@ -12,7 +12,7 @@
  * - /dashboard/* - Requires authentication
  * - /candidates/* - Requires authentication
  * - /settings/* - Requires authentication
- * - /users/* - Requires authentication (admin check done in page)
+ * - /personnel/* - Requires authentication (admin check done in page)
  */
 
 import NextAuth from 'next-auth';
@@ -29,6 +29,7 @@ export const config = {
     '/dashboard/:path*',
     '/candidates/:path*',
     '/settings/:path*',
-    '/users/:path*',
+    '/personnel/:path*',
+    '/log/:path*',
   ],
 };

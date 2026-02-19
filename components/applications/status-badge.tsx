@@ -36,7 +36,7 @@ const STATUS_CONFIG: Record<Status, { label: string; variant: 'default' | 'secon
   WITHDRAWN: {
     label: 'Withdrawn',
     variant: 'secondary',
-    className: 'bg-gray-400 hover:bg-gray-500 text-white',
+    className: 'bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white',
   },
 };
 

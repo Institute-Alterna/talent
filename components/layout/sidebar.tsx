@@ -4,17 +4,18 @@
  * Sidebar Navigation Component
  *
  * Responsive sidebar for the dashboard layout:
- * - Desktop: Fixed sidebar on the left
+ * - Desktop: Fixed sidebar on the left with animated active indicator
  * - Mobile: Collapsible sheet (drawer) triggered by menu button
  *
  * Features:
  * - Navigation links to main sections
- * - Active state indication
+ * - Animated accent bar that slides between active items
  * - Admin-only sections (Users)
  */
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { footerRandomText } from "@institute-alterna/footer-quotes"
 import { strings, branding } from '@/config';
@@ -52,13 +53,13 @@ const navItems: NavItem[] = [
     icon: UserCircle,
   },
   {
-    href: '/users',
+    href: '/personnel',
     label: strings.nav.personnel,
     icon: Users,
     adminOnly: true,
   },
   {
-    href: '/audit-log',
+    href: '/log',
     label: strings.auditLog.title,
     icon: ScrollText,
     adminOnly: true,
@@ -77,16 +78,37 @@ interface SidebarProps {
 
 export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
   const pathname = usePathname();
+  const navRef = useRef<HTMLElement>(null);
+  const [indicatorStyle, setIndicatorStyle] = useState<{ top: number; height: number } | null>(null);
 
   const filteredNavItems = navItems.filter(
     (item) => !item.adminOnly || isAdmin
   );
 
+  const updateIndicator = useCallback(() => {
+    if (!navRef.current) return;
+    const activeLink = navRef.current.querySelector<HTMLAnchorElement>('[aria-current="page"]');
+    if (activeLink) {
+      const navRect = navRef.current.getBoundingClientRect();
+      const linkRect = activeLink.getBoundingClientRect();
+      setIndicatorStyle({
+        top: linkRect.top - navRect.top,
+        height: linkRect.height,
+      });
+    } else {
+      setIndicatorStyle(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    updateIndicator();
+  }, [pathname, updateIndicator]);
+
   return (
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          'flex h-full flex-col border-r bg-card',
+          'flex h-full flex-col border-r border-border/50 bg-background/80 backdrop-blur-xl',
           collapsed ? 'w-16' : 'w-64'
         )}
       >
@@ -98,7 +120,7 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
           )}
         >
           <div
-            className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-bold"
+            className="flex h-8 w-8 items-center justify-center rounded-md bg-gradient-to-br from-primary to-primary/80 text-primary-foreground font-bold"
             aria-hidden="true"
           >
             {branding.organisationShortName.charAt(0)}
@@ -111,7 +133,17 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1 p-2" aria-label="Main navigation">
+        <nav ref={navRef} className="relative flex-1 space-y-1 p-2" aria-label="Main navigation">
+          {/* Animated active indicator bar */}
+          {indicatorStyle && (
+            <div
+              className="absolute left-0 w-[3px] rounded-full bg-primary transition-all duration-300 ease-in-out"
+              style={{
+                top: indicatorStyle.top + 6,
+                height: indicatorStyle.height - 12,
+              }}
+            />
+          )}
           {filteredNavItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -121,11 +153,11 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
               <Link
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  'hover:bg-accent hover:text-accent-foreground',
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200',
+                  'hover:bg-accent/40 hover:text-foreground',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   isActive
-                    ? 'bg-accent text-accent-foreground'
+                    ? 'bg-accent/50 text-foreground'
                     : 'text-muted-foreground',
                   collapsed && 'justify-center px-2'
                 )}
@@ -152,7 +184,7 @@ export function Sidebar({ isAdmin = false, collapsed = false }: SidebarProps) {
         {/* Footer */}
         <div
           className={cn(
-            'border-t p-4 text-xs text-muted-foreground',
+            'border-t p-4 text-xs text-muted-foreground opacity-50',
             collapsed && 'text-center'
           )}
         >
@@ -203,12 +235,12 @@ export function MobileNav({
             href={item.href}
             onClick={onNavigate}
             className={cn(
-              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-              'hover:bg-accent hover:text-accent-foreground',
+              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200',
+              'hover:bg-accent/40 hover:text-foreground',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               isActive
-                ? 'bg-accent text-accent-foreground'
-                : 'text-muted-foreground'
+                ? 'bg-accent/50 text-foreground border-l-[3px] border-primary'
+                : 'text-muted-foreground border-l-[3px] border-transparent'
             )}
             aria-current={isActive ? 'page' : undefined}
           >

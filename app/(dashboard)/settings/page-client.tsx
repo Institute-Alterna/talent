@@ -15,9 +15,10 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { AlertCircle, Calendar, User, History, Check, Loader2, ExternalLink } from 'lucide-react';
+import { AlertCircle, Calendar, User, History, Check, Loader2, ExternalLink, Palette } from 'lucide-react';
 import { strings } from '@/config';
 import { formatDateTime } from '@/lib/utils';
+import { ThemeSelector } from '@/components/shared/theme-selector';
 import {
   fetchUserSettings,
   updateSchedulingLinkAction,
@@ -142,14 +143,6 @@ export function SettingsClient({ initialUser }: SettingsClientProps) {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{strings.settings.title}</h1>
-        <p className="text-muted-foreground">
-          Manage your profile and preferences
-        </p>
-      </div>
-
       {/* Scheduling Link Warning - only show if no scheduling link */}
       {!hasSchedulingLink && (
         <Card className="border-warning bg-warning/5">
@@ -328,6 +321,19 @@ export function SettingsClient({ initialUser }: SettingsClientProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Preferences Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="h-5 w-5" />
+            {strings.settings.appearance}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ThemeSelector />
+        </CardContent>
+      </Card>
 
       {/* Activity History */}
       <Card>

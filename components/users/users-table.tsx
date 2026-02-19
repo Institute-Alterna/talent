@@ -36,7 +36,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { MoreHorizontal, Shield, ShieldOff, Trash2, Calendar, Eye, CheckCircle2, XCircle, Clock, AlertTriangle, UserPlus, UserMinus, Ban } from 'lucide-react';
 import { strings } from '@/config';
-import { makeAdminAction, revokeAdminAction, deleteUserAction, grantAppAccessAction, revokeAppAccessAction } from '@/app/(dashboard)/users/actions';
+import { makeAdminAction, revokeAdminAction, deleteUserAction, grantAppAccessAction, revokeAppAccessAction } from '@/app/(dashboard)/personnel/actions';
 import type { UserListItem } from '@/types/user';
 import type { OktaStatus } from '@/lib/generated/prisma/client';
 
@@ -237,7 +237,7 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
     <>
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="bg-muted/50 hover:bg-muted/50">
             <TableHead>Name</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Title</TableHead>

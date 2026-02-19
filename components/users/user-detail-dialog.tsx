@@ -23,7 +23,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { strings } from '@/config';
 import { formatDateTime } from '@/lib/utils';
-import { updateUserAction, fetchUser } from '@/app/(dashboard)/users/actions';
+import { updateUserAction, fetchUser } from '@/app/(dashboard)/personnel/actions';
 import type { UserListItem, User } from '@/types/user';
 
 interface UserDetailDialogProps {

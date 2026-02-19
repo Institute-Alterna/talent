@@ -8,8 +8,8 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -18,23 +18,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   PipelineBoard,
   PipelineBoardData,
-  ApplicationDetail,
-  ApplicationDetailData,
+  type ApplicationDetailData,
   ApplicationCardData,
-  ScheduleInterviewDialog,
-  RescheduleInterviewDialog,
-  CompleteInterviewDialog,
 } from '@/components/applications';
-import { WithdrawDialog } from '@/components/applications/withdraw-dialog';
-import { DecisionDialog } from '@/components/applications/decision-dialog';
-import { strings } from '@/config';
 import { Stage, Status } from '@/lib/generated/prisma/client';
-import { Search, RefreshCw, Filter, Users, Briefcase } from 'lucide-react';
+import { Search, RefreshCw, Maximize2, Minimize2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useMediaQuery } from '@/hooks';
+import { cn } from '@/lib/utils';
+
+// Lazy-load heavy dialog components — only needed on user interaction
+const ApplicationDetail = React.lazy(() => import('@/components/applications/application-detail').then(m => ({ default: m.ApplicationDetail })));
+const ScheduleInterviewDialog = React.lazy(() => import('@/components/applications/schedule-interview-dialog').then(m => ({ default: m.ScheduleInterviewDialog })));
+const RescheduleInterviewDialog = React.lazy(() => import('@/components/applications/reschedule-interview-dialog').then(m => ({ default: m.RescheduleInterviewDialog })));
+const CompleteInterviewDialog = React.lazy(() => import('@/components/applications/complete-interview-dialog').then(m => ({ default: m.CompleteInterviewDialog })));
+const WithdrawDialog = React.lazy(() => import('@/components/applications/withdraw-dialog').then(m => ({ default: m.WithdrawDialog })));
+const DecisionDialog = React.lazy(() => import('@/components/applications/decision-dialog').then(m => ({ default: m.DecisionDialog })));
 
 interface CandidatesPageClientProps {
   isAdmin: boolean;
@@ -81,6 +85,9 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<string>('ACTIVE');
   const [positionFilter, setPositionFilter] = React.useState<string>('all');
+  const [needsAttentionFilter, setNeedsAttentionFilter] = React.useState(false);
+  const [showAttentionBreakdown, setShowAttentionBreakdown] = React.useState(false);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   // Detail modal
   const [selectedApplicationId, setSelectedApplicationId] = React.useState<string | null>(null);
@@ -123,6 +130,17 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
   // Email loading state
   const [sendingEmailTemplate, setSendingEmailTemplate] = React.useState<string | null>(null);
+
+  // Fullscreen pipeline (desktop only)
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+  // Exit fullscreen on Escape
+  React.useEffect(() => {
+    if (!isFullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsFullscreen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isFullscreen]);
 
   // Browser warning for page refresh during operations
   React.useEffect(() => {
@@ -667,20 +685,43 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     return Object.keys(stats.byPosition).sort();
   }, [stats]);
 
-  // Filter applications by search query (client-side filtering)
+  // Compute attention breakdown from pipeline data
+  const attentionBreakdown = React.useMemo(() => {
+    if (!pipelineData) return { awaitingGC: 0, awaitingSC: 0, pendingInterviews: 0, pendingAgreement: 0, total: 0 };
+    const allCards = Object.values(pipelineData).flat();
+    const attentionCards = allCards.filter((c) => c.needsAttention);
+    return {
+      awaitingGC: attentionCards.filter((c) => c.currentStage === 'APPLICATION').length,
+      awaitingSC: attentionCards.filter((c) => c.currentStage === 'SPECIALIZED_COMPETENCIES').length,
+      pendingInterviews: attentionCards.filter((c) => c.currentStage === 'INTERVIEW').length,
+      pendingAgreement: attentionCards.filter((c) => c.currentStage === 'AGREEMENT').length,
+      total: attentionCards.length,
+    };
+  }, [pipelineData]);
+
+  // Filter applications by search query and needs attention (client-side filtering)
   const filteredPipelineData = React.useMemo(() => {
-    if (!pipelineData || !searchQuery.trim()) return pipelineData;
+    if (!pipelineData) return pipelineData;
+    if (!searchQuery.trim() && !needsAttentionFilter) return pipelineData;
 
     const query = searchQuery.toLowerCase();
     const filterFn = (app: ApplicationCardData) => {
-      const searchFields = [
-        app.person.firstName,
-        app.person.lastName,
-        app.person.email,
-        app.position,
-      ].map(f => f.toLowerCase());
+      // Needs attention filter
+      if (needsAttentionFilter && !app.needsAttention) return false;
 
-      return searchFields.some(f => f.includes(query));
+      // Search filter
+      if (query) {
+        const searchFields = [
+          app.person.firstName,
+          app.person.lastName,
+          app.person.email,
+          app.position,
+        ].map(f => f.toLowerCase());
+
+        if (!searchFields.some(f => f.includes(query))) return false;
+      }
+
+      return true;
     };
 
     return {
@@ -691,161 +732,177 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       AGREEMENT: pipelineData.AGREEMENT.filter(filterFn),
       SIGNED: pipelineData.SIGNED.filter(filterFn),
     };
-  }, [pipelineData, searchQuery]);
+  }, [pipelineData, searchQuery, needsAttentionFilter]);
 
   return (
     <TooltipProvider>
-      <div className="space-y-6">
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{strings.nav.candidates}</h1>
-            <p className="text-muted-foreground">
-              Manage candidate applications through the recruitment pipeline
-            </p>
-          </div>
-          <Button onClick={() => fetchPipelineData()} disabled={isLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-
-        {/* Stats Cards */}
-        {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-4">
+      <div className="space-y-4">
+        {/* Compact Stats Row */}
+        {isLoading && !stats ? (
+          <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i}>
-                <CardContent className="pt-6">
-                  <div className="h-8 w-16 bg-muted animate-pulse rounded" />
-                </CardContent>
-              </Card>
+              <div key={i} className="rounded-lg border bg-card p-3">
+                <div className="h-5 w-16 bg-muted animate-pulse rounded" />
+              </div>
             ))}
           </div>
         ) : stats ? (
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total}</div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.active} active
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Awaiting Action</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.awaitingAction}</div>
-                <p className="text-xs text-muted-foreground">
-                  Need attention
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">In Interview Stage</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.byStage?.INTERVIEW || 0}</div>
-                <p className="text-xs text-muted-foreground">
-                  Ready for interviews
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
-                <RefreshCw className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.recentActivity}</div>
-                <p className="text-xs text-muted-foreground">
-                  In the last 7 days
-                </p>
-              </CardContent>
-            </Card>
+          <div className={cn('grid gap-3 grid-cols-2 md:grid-cols-4 transition-opacity duration-200', isLoading && 'opacity-60')}>
+            <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Applications</span>
+              <span className="text-lg font-semibold tabular-nums">{stats.total}</span>
+            </div>
+            <button
+              type="button"
+              className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between text-left w-full cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={() => setShowAttentionBreakdown(true)}
+              disabled={attentionBreakdown.total === 0}
+            >
+              <span className="text-xs text-muted-foreground">Awaiting Action</span>
+              <span className="text-lg font-semibold tabular-nums">{stats.awaitingAction}</span>
+            </button>
+            <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Interview</span>
+              <span className="text-lg font-semibold tabular-nums">{stats.byStage?.INTERVIEW || 0}</span>
+            </div>
+            <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Recent (7d)</span>
+              <span className="text-lg font-semibold tabular-nums">{stats.recentActivity}</span>
+            </div>
           </div>
         ) : null}
 
-        {/* Filters */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-4">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="text-base">Filters</CardTitle>
+        {/* Filters Row */}
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+          {/* Search — full width on mobile */}
+          <div className="w-full sm:flex-1 sm:min-w-[180px] sm:max-w-sm">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 h-9"
+              />
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-4">
-              {/* Search */}
-              <div className="flex-1 min-w-[200px] max-w-sm">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name or email..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-              </div>
+          </div>
 
-              {/* Status Filter */}
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="ACTIVE">Active</SelectItem>
-                  <SelectItem value="ACCEPTED">Accepted</SelectItem>
-                  <SelectItem value="REJECTED">Rejected</SelectItem>
-                  <SelectItem value="WITHDRAWN">Withdrawn</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Filter buttons row */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[130px] h-9">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="ACCEPTED">Accepted</SelectItem>
+                <SelectItem value="REJECTED">Rejected</SelectItem>
+                <SelectItem value="WITHDRAWN">Withdrawn</SelectItem>
+              </SelectContent>
+            </Select>
 
-              {/* Position Filter */}
-              <Select value={positionFilter} onValueChange={setPositionFilter}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Position" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Positions</SelectItem>
-                  {positions.map((position) => (
-                    <SelectItem key={position} value={position}>
-                      {position}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Position Filter */}
+            <Select value={positionFilter} onValueChange={setPositionFilter}>
+              <SelectTrigger className="w-[150px] h-9">
+                <SelectValue placeholder="Position" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Positions</SelectItem>
+                {positions.map((position) => (
+                  <SelectItem key={position} value={position}>
+                    {position}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Needs Attention toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={needsAttentionFilter ? 'default' : 'outline'}
+                  size="icon"
+                  className={cn(
+                    'size-9',
+                    needsAttentionFilter
+                      ? 'bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700'
+                      : ''
+                  )}
+                  onClick={() => setNeedsAttentionFilter(v => !v)}
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{needsAttentionFilter ? 'Clear attention filter' : 'View applications that need attention'}</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Refresh */}
+            <Button variant="outline" className="h-9" onClick={() => fetchPipelineData()} disabled={isLoading}>
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
+
+            {/* Fullscreen toggle (desktop only) */}
+            <Button
+              variant="outline"
+              className="h-9 hidden lg:flex"
+              onClick={() => setIsFullscreen(true)}
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
 
         {/* Pipeline Board */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recruitment Pipeline</CardTitle>
-            <CardDescription>
-              Applications organized by recruitment stage
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {error ? (
-              <div className="text-center py-8">
-                <p className="text-destructive mb-4">{error}</p>
-                <Button onClick={() => fetchPipelineData()}>
-                  Try Again
+        {error ? (
+          <div className="text-center py-8">
+            <p className="text-destructive mb-4">{error}</p>
+            <Button onClick={() => fetchPipelineData()}>
+              Try Again
+            </Button>
+          </div>
+        ) : (
+          <PipelineBoard
+            data={filteredPipelineData || {
+              APPLICATION: [],
+              GENERAL_COMPETENCIES: [],
+              SPECIALIZED_COMPETENCIES: [],
+              INTERVIEW: [],
+              AGREEMENT: [],
+              SIGNED: [],
+            }}
+            onViewApplication={handleViewApplication}
+            onSendEmail={handleViewApplication}
+            onScheduleInterview={handleViewApplication}
+            onExportPdf={handleExportPdf}
+            onWithdraw={handleWithdrawClick}
+            exportingPdfId={exportingPdfId}
+            isAdmin={isAdmin}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* Fullscreen Pipeline Overlay (desktop only) */}
+        {isFullscreen && (
+          <div className="fixed inset-0 z-50 bg-background flex flex-col">
+            {/* Fullscreen header */}
+            <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
+              <span className="text-sm font-medium text-muted-foreground">Recruitment Pipeline</span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-8" onClick={() => fetchPipelineData()} disabled={isLoading}>
+                  <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                </Button>
+                <Button variant="outline" size="sm" className="h-8" onClick={() => setIsFullscreen(false)}>
+                  <Minimize2 className="h-3.5 w-3.5" />
+                  <span className="ml-1.5 text-xs">Esc</span>
                 </Button>
               </div>
-            ) : (
+            </div>
+            {/* Full-size pipeline */}
+            <div className="flex-1 overflow-auto p-4">
               <PipelineBoard
                 data={filteredPipelineData || {
                   APPLICATION: [],
@@ -864,85 +921,176 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
                 isAdmin={isAdmin}
                 isLoading={isLoading}
               />
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          </div>
+        )}
 
-        {/* Application Detail Modal */}
-        <ApplicationDetail
-          application={selectedApplication}
-          auditLogs={auditLogs}
-          isOpen={!!selectedApplicationId}
-          onClose={handleCloseDetail}
-          onSendEmail={handleSendEmail}
-          onScheduleInterview={handleScheduleInterview}
-          onRescheduleInterview={handleRescheduleInterview}
-          onCompleteInterview={handleCompleteInterview}
-          onMakeDecision={handleMakeDecision}
-          isAdmin={isAdmin}
-          isLoading={isDetailLoading}
-          sendingEmailTemplate={sendingEmailTemplate}
-          isSchedulingInterview={isSchedulingInterview}
-          isReschedulingInterview={isReschedulingInterview}
-          isCompletingInterview={isCompletingInterview}
-          isDecisionProcessing={isDecisionProcessing}
-        />
+        {/* Lazy-loaded modal/dialog components — each in own Suspense to avoid cross-unmounting */}
+        <React.Suspense fallback={null}>
+          {!!selectedApplicationId && (
+            <ApplicationDetail
+              application={selectedApplication}
+              auditLogs={auditLogs}
+              isOpen={!!selectedApplicationId}
+              onClose={handleCloseDetail}
+              onSendEmail={handleSendEmail}
+              onScheduleInterview={handleScheduleInterview}
+              onRescheduleInterview={handleRescheduleInterview}
+              onCompleteInterview={handleCompleteInterview}
+              onMakeDecision={handleMakeDecision}
+              isAdmin={isAdmin}
+              isLoading={isDetailLoading}
+              sendingEmailTemplate={sendingEmailTemplate}
+              isSchedulingInterview={isSchedulingInterview}
+              isReschedulingInterview={isReschedulingInterview}
+              isCompletingInterview={isCompletingInterview}
+              isDecisionProcessing={isDecisionProcessing}
+            />
+          )}
+        </React.Suspense>
 
-        {/* Withdraw Application Dialog */}
-        <WithdrawDialog
-          isOpen={!!withdrawApplicationId}
-          onClose={handleWithdrawClose}
-          onDeny={handleDenyApplication}
-          onDelete={handleDeleteApplication}
-          applicationName={withdrawApplicationName}
-          isProcessing={isWithdrawProcessing}
-        />
+        <React.Suspense fallback={null}>
+          {!!withdrawApplicationId && (
+            <WithdrawDialog
+              isOpen={!!withdrawApplicationId}
+              onClose={handleWithdrawClose}
+              onDeny={handleDenyApplication}
+              onDelete={handleDeleteApplication}
+              applicationName={withdrawApplicationName}
+              isProcessing={isWithdrawProcessing}
+            />
+          )}
+        </React.Suspense>
 
-        {/* Decision Dialog */}
-        <DecisionDialog
-          isOpen={isDecisionDialogOpen}
-          onClose={() => setIsDecisionDialogOpen(false)}
-          onConfirm={handleDecisionConfirm}
-          decision={decisionType}
-          applicationName={decisionApplicationName}
-          isProcessing={isDecisionProcessing}
-        />
+        <React.Suspense fallback={null}>
+          {isDecisionDialogOpen && (
+            <DecisionDialog
+              isOpen={isDecisionDialogOpen}
+              onClose={() => setIsDecisionDialogOpen(false)}
+              onConfirm={handleDecisionConfirm}
+              decision={decisionType}
+              applicationName={decisionApplicationName}
+              isProcessing={isDecisionProcessing}
+            />
+          )}
+        </React.Suspense>
 
-        {/* Schedule Interview Dialog */}
-        <ScheduleInterviewDialog
-          isOpen={isScheduleInterviewDialogOpen}
-          onClose={() => setIsScheduleInterviewDialogOpen(false)}
-          onConfirm={handleScheduleInterviewConfirm}
-          applicationName={interviewApplicationName}
-          interviewers={interviewers}
-          currentUserId={currentUserId}
-          isProcessing={isSchedulingInterview}
-          isLoadingInterviewers={isLoadingInterviewers}
-        />
+        <React.Suspense fallback={null}>
+          {isScheduleInterviewDialogOpen && (
+            <ScheduleInterviewDialog
+              isOpen={isScheduleInterviewDialogOpen}
+              onClose={() => setIsScheduleInterviewDialogOpen(false)}
+              onConfirm={handleScheduleInterviewConfirm}
+              applicationName={interviewApplicationName}
+              interviewers={interviewers}
+              currentUserId={currentUserId}
+              isProcessing={isSchedulingInterview}
+              isLoadingInterviewers={isLoadingInterviewers}
+            />
+          )}
+        </React.Suspense>
 
-        {/* Reschedule Interview Dialog */}
-        <RescheduleInterviewDialog
-          isOpen={isRescheduleInterviewDialogOpen}
-          onClose={() => setIsRescheduleInterviewDialogOpen(false)}
-          onConfirm={handleRescheduleInterviewConfirm}
-          applicationName={interviewApplicationName}
-          candidateEmail={selectedApplication?.person.email || ''}
-          candidateName={`${selectedApplication?.person.firstName || ''} ${selectedApplication?.person.lastName || ''}`}
-          interviewers={interviewers}
-          currentInterviewerId={selectedApplication?.interviews[0]?.interviewerId}
-          isProcessing={isReschedulingInterview}
-          isLoadingInterviewers={isLoadingInterviewers}
-        />
+        <React.Suspense fallback={null}>
+          {isRescheduleInterviewDialogOpen && (
+            <RescheduleInterviewDialog
+              isOpen={isRescheduleInterviewDialogOpen}
+              onClose={() => setIsRescheduleInterviewDialogOpen(false)}
+              onConfirm={handleRescheduleInterviewConfirm}
+              applicationName={interviewApplicationName}
+              candidateEmail={selectedApplication?.person.email || ''}
+              candidateName={`${selectedApplication?.person.firstName || ''} ${selectedApplication?.person.lastName || ''}`}
+              interviewers={interviewers}
+              currentInterviewerId={selectedApplication?.interviews[0]?.interviewerId}
+              isProcessing={isReschedulingInterview}
+              isLoadingInterviewers={isLoadingInterviewers}
+            />
+          )}
+        </React.Suspense>
 
-        {/* Complete Interview Dialog */}
-        <CompleteInterviewDialog
-          isOpen={isCompleteInterviewDialogOpen}
-          onClose={() => setIsCompleteInterviewDialogOpen(false)}
-          onConfirm={handleCompleteInterviewConfirm}
-          applicationName={interviewApplicationName}
-          interviewerName={selectedApplication?.interviews[0]?.interviewer?.displayName || 'Unknown'}
-          isProcessing={isCompletingInterview}
-        />
+        <React.Suspense fallback={null}>
+          {isCompleteInterviewDialogOpen && (
+            <CompleteInterviewDialog
+              isOpen={isCompleteInterviewDialogOpen}
+              onClose={() => setIsCompleteInterviewDialogOpen(false)}
+              onConfirm={handleCompleteInterviewConfirm}
+              applicationName={interviewApplicationName}
+              interviewerName={selectedApplication?.interviews[0]?.interviewer?.displayName || 'Unknown'}
+              isProcessing={isCompletingInterview}
+            />
+          )}
+        </React.Suspense>
+
+        {/* Needs Attention breakdown — Dialog on desktop, Sheet on mobile */}
+        {attentionBreakdown.total > 0 && (() => {
+          const breakdownContent = (
+            <div className="space-y-4">
+              <div className="grid gap-3">
+                {attentionBreakdown.awaitingGC > 0 && (
+                  <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Awaiting General Competencies</span>
+                    <span className="text-lg font-semibold tabular-nums">{attentionBreakdown.awaitingGC}</span>
+                  </div>
+                )}
+                {attentionBreakdown.awaitingSC > 0 && (
+                  <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Awaiting Specialised Competencies</span>
+                    <span className="text-lg font-semibold tabular-nums">{attentionBreakdown.awaitingSC}</span>
+                  </div>
+                )}
+                {attentionBreakdown.pendingInterviews > 0 && (
+                  <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Pending Interviews</span>
+                    <span className="text-lg font-semibold tabular-nums">{attentionBreakdown.pendingInterviews}</span>
+                  </div>
+                )}
+                {attentionBreakdown.pendingAgreement > 0 && (
+                  <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Pending Agreement</span>
+                    <span className="text-lg font-semibold tabular-nums">{attentionBreakdown.pendingAgreement}</span>
+                  </div>
+                )}
+              </div>
+              <Button
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700"
+                onClick={() => {
+                  setNeedsAttentionFilter(true);
+                  setShowAttentionBreakdown(false);
+                }}
+              >
+                <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
+                Filter to Attention Only
+              </Button>
+            </div>
+          );
+
+          return isDesktop ? (
+            <Dialog open={showAttentionBreakdown} onOpenChange={setShowAttentionBreakdown}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Needs Attention</DialogTitle>
+                  <DialogDescription>
+                    {attentionBreakdown.total} application{attentionBreakdown.total !== 1 ? 's' : ''} requiring attention
+                  </DialogDescription>
+                </DialogHeader>
+                {breakdownContent}
+              </DialogContent>
+            </Dialog>
+          ) : (
+            <Sheet open={showAttentionBreakdown} onOpenChange={setShowAttentionBreakdown}>
+              <SheetContent side="bottom" className="rounded-t-xl">
+                <SheetHeader>
+                  <SheetTitle>Needs Attention</SheetTitle>
+                  <SheetDescription>
+                    {attentionBreakdown.total} application{attentionBreakdown.total !== 1 ? 's' : ''} requiring attention
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="px-4 pb-6 pt-2">
+                  {breakdownContent}
+                </div>
+              </SheetContent>
+            </Sheet>
+          );
+        })()}
       </div>
     </TooltipProvider>
   );

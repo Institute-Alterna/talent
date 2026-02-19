@@ -52,7 +52,7 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto">
-          <div className="container mx-auto p-4 md:p-6">{children}</div>
+          <div className="p-4 md:p-6 lg:p-8 animate-[fade-in_200ms_ease-out]">{children}</div>
         </main>
       </div>
 

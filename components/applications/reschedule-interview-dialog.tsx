@@ -158,14 +158,14 @@ export function RescheduleInterviewDialog({
           )}
 
           {/* Warning about candidate notification */}
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 dark:bg-amber-950/50 dark:border-amber-800">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5 dark:text-amber-400" />
               <div className="space-y-2">
-                <p className="text-sm font-medium text-amber-900">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
                   {strings.interview.rescheduleWarning}
                 </p>
-                <p className="text-xs text-amber-700">
+                <p className="text-xs text-amber-700 dark:text-amber-400">
                   {strings.interview.contactCandidateWarning}
                 </p>
                 <a href={mailtoLink}>

@@ -111,7 +111,7 @@ export async function updateUserAction(
     }
 
     const user = await updateUser(id, data);
-    revalidatePath('/users');
+    revalidatePath('/personnel');
     return { success: true, data: { user } };
   } catch (error) {
     console.error('Error updating user:', error);
@@ -140,7 +140,7 @@ export async function deleteUserAction(id: string): Promise<ActionResult<void>> 
     }
 
     await deleteUser(id);
-    revalidatePath('/users');
+    revalidatePath('/personnel');
     return { success: true };
   } catch (error) {
     console.error('Error deleting user:', error);
@@ -187,7 +187,7 @@ export async function syncFromOktaAction(): Promise<ActionResult<{ synced: numbe
       console.log(`[Sync] Seed data cleaned: ${seedCleanupResult.usersRemoved} users, ${seedCleanupResult.personsRemoved} persons, ${seedCleanupResult.applicationsRemoved} applications removed`);
     }
 
-    revalidatePath('/users');
+    revalidatePath('/personnel');
     revalidatePath('/candidates');
     revalidatePath('/dashboard');
     return { success: true, data: { synced, removed, seedDataCleaned } };
@@ -239,7 +239,7 @@ export async function makeAdminAction(id: string): Promise<ActionResult<{ user: 
     // Update local database - admin always has app access
     const updatedUser = await updateUser(id, { isAdmin: true, hasAppAccess: true });
     
-    revalidatePath('/users');
+    revalidatePath('/personnel');
     
     // Return updated user for UI update
     return { 
@@ -314,7 +314,7 @@ export async function revokeAdminAction(id: string): Promise<ActionResult<{ user
     // Update local database - no longer admin but still has app access as hiring manager
     const updatedUser = await updateUser(id, { isAdmin: false, hasAppAccess: true });
     
-    revalidatePath('/users');
+    revalidatePath('/personnel');
     
     return { 
       success: true, 
@@ -375,7 +375,7 @@ export async function grantAppAccessAction(id: string): Promise<ActionResult<{ u
     // Update local database to reflect the change
     const updatedUser = await updateUser(id, { hasAppAccess: true });
 
-    revalidatePath('/users');
+    revalidatePath('/personnel');
     
     return { 
       success: true, 
@@ -442,7 +442,7 @@ export async function revokeAppAccessAction(id: string): Promise<ActionResult<{ 
     // Update local database - no longer admin and no app access
     const updatedUser = await updateUser(id, { isAdmin: false, hasAppAccess: false });
 
-    revalidatePath('/users');
+    revalidatePath('/personnel');
     
     return { 
       success: true, 

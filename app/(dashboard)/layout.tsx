@@ -13,7 +13,8 @@
  * Routes using this layout:
  * - /dashboard
  * - /candidates
- * - /users (admin only)
+ * - /personnel (admin only)
+ * - /log (admin only)
  * - /settings
  */
 

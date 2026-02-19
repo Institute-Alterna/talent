@@ -157,14 +157,14 @@ export function ScheduleInterviewDialog({
 
           {/* No interviewers available */}
           {hasNoInterviewers ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3 dark:bg-amber-950/50 dark:border-amber-800">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5 dark:text-amber-400" />
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-amber-900">
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
                     {strings.interview.noInterviewersAvailable}
                   </p>
-                  <p className="text-sm text-amber-700">
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
                     {strings.interview.noInterviewersHelp}
                   </p>
                   <Link href="/settings">

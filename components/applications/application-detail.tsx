@@ -3,9 +3,9 @@
 /**
  * Application Detail Component
  *
- * Displays full application details in a dialog/modal with 70/30 split layout:
- * - Left (70%): Personal info, documents, academic background, previous experience, activity timeline
- * - Right (30%): Assessments, interview, decision
+ * Responsive application detail view:
+ * - Desktop (lg+): Dialog with 70/30 split layout
+ * - Mobile: Bottom sheet drawer with tabbed navigation (Profile, Assessment, Activity)
  *
  * Shows loading skeleton immediately for instant feedback, then populates content.
  */
@@ -18,6 +18,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -29,6 +37,7 @@ import { Timeline, TimelineItem, mapActionTypeToTimelineType } from '@/component
 import { Stage, Status } from '@/lib/generated/prisma/client';
 import { formatDateShort, formatDateTime, getCountryName } from '@/lib/utils';
 import { recruitment, formatScoreDisplay, strings } from '@/config';
+import { useMediaQuery } from '@/hooks';
 import {
   Tooltip,
   TooltipContent,
@@ -247,13 +256,16 @@ function MissingFieldsAlert({ application }: { application: ApplicationDetailDat
   if (missingFields.length === 0) return null;
 
   return (
-    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-3 mb-4">
       <div className="flex items-start gap-2">
         <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
         <div>
-          <p className="font-medium text-amber-800 text-sm">Missing Documents</p>
-          <p className="text-amber-700 text-sm mt-1">
-            The applicant indicated they would submit: {missingFields.join(', ')}, but these were not received.
+          <p className="font-medium text-amber-800 dark:text-amber-200 text-sm">Missing Documents</p>
+          <p className="text-amber-700 dark:text-amber-200 text-sm mt-1">
+            {missingFields.length === 1
+              ? `${missingFields[0]} was expected but has not been received.`
+              : `${missingFields.join(', ')} were expected but have not been received.`
+            }
           </p>
         </div>
       </div>
@@ -309,7 +321,7 @@ function DocumentLink({
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h4 className="font-medium text-sm text-muted-foreground mb-3">{children}</h4>
+    <h4 className="uppercase tracking-wider text-[11px] font-medium text-muted-foreground mb-3">{children}</h4>
   );
 }
 
@@ -967,6 +979,146 @@ function RightPanel({
 }
 
 /**
+ * Profile tab content — personal info, documents, academic background, previous experience
+ */
+function ProfileTab({ application }: { application: ApplicationDetailData }) {
+  const { person } = application;
+  const hasDocuments = application.resumeUrl || application.videoLink || application.otherFileUrl;
+
+  return (
+    <div className="space-y-6">
+      <MissingFieldsAlert application={application} />
+
+      {/* Personal Information */}
+      <div>
+        <SectionTitle>Personal Information</SectionTitle>
+        <div className="grid grid-cols-1 gap-4">
+          <InfoItem icon={User} label="Full Name">
+            {person.firstName} {person.middleName} {person.lastName}
+          </InfoItem>
+          <InfoItem icon={Mail} label="Email">
+            <a href={`mailto:${person.email}`} className="text-primary hover:underline">
+              {person.email}
+            </a>
+          </InfoItem>
+          {person.secondaryEmail && (
+            <InfoItem icon={Mail} label="Secondary Email">
+              <a href={`mailto:${person.secondaryEmail}`} className="text-primary hover:underline">
+                {person.secondaryEmail}
+              </a>
+            </InfoItem>
+          )}
+          {person.phoneNumber && (
+            <InfoItem icon={Phone} label="Phone">
+              {person.phoneNumber}
+            </InfoItem>
+          )}
+          {(person.city || person.state || person.country) && (
+            <InfoItem icon={MapPin} label="Location">
+              {[
+                person.city,
+                person.state,
+                person.country && person.country.length === 2
+                  ? getCountryName(person.country)
+                  : person.country,
+              ].filter(Boolean).join(', ')}
+            </InfoItem>
+          )}
+          {person.portfolioLink && (
+            <InfoItem icon={LinkIcon} label="Portfolio">
+              <a
+                href={person.portfolioLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline flex items-center gap-1"
+              >
+                View Portfolio <ExternalLink className="h-3 w-3" />
+              </a>
+            </InfoItem>
+          )}
+          {person.educationLevel && (
+            <InfoItem icon={GraduationCap} label="Education">
+              {person.educationLevel}
+            </InfoItem>
+          )}
+        </div>
+      </div>
+
+      {/* Documents */}
+      {hasDocuments && (
+        <>
+          <Separator />
+          <div>
+            <SectionTitle>Documents</SectionTitle>
+            <div className="space-y-2">
+              {application.resumeUrl && (
+                <DocumentLink icon={FileText} label="Resume" url={application.resumeUrl} />
+              )}
+              {application.videoLink && (
+                <DocumentLink icon={Video} label="Video Introduction" url={application.videoLink} />
+              )}
+              {application.otherFileUrl && (
+                <DocumentLink icon={FileText} label="Other File" url={application.otherFileUrl} />
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Academic Background */}
+      {application.academicBackground && (
+        <>
+          <Separator />
+          <div>
+            <SectionTitle>Academic Background</SectionTitle>
+            <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded-lg p-3">
+              {application.academicBackground}
+            </p>
+          </div>
+        </>
+      )}
+
+      {/* Previous Experience */}
+      {application.previousExperience && (
+        <>
+          <Separator />
+          <div>
+            <SectionTitle>Previous Experience</SectionTitle>
+            <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded-lg p-3">
+              {application.previousExperience}
+            </p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Activity tab content — audit log timeline
+ */
+function ActivityTab({ auditLogs }: { auditLogs?: ApplicationDetailProps['auditLogs'] }) {
+  const timelineItems: TimelineItem[] = (auditLogs || []).map(log => ({
+    id: log.id,
+    title: log.action,
+    timestamp: log.createdAt,
+    type: mapActionTypeToTimelineType(log.actionType),
+    user: log.user ? { name: log.user.displayName } : undefined,
+  }));
+
+  return (
+    <div>
+      <SectionTitle>Activity</SectionTitle>
+      {timelineItems.length > 0 ? (
+        <Timeline items={timelineItems} />
+      ) : (
+        <p className="text-sm text-muted-foreground">No activity recorded yet</p>
+      )}
+    </div>
+  );
+}
+
+/**
  * Main Application Detail Component
  */
 export function ApplicationDetail({
@@ -987,6 +1139,8 @@ export function ApplicationDetail({
   isCompletingInterview,
   isDecisionProcessing,
 }: ApplicationDetailProps) {
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
+
   // Always render the dialog when open - show skeleton while loading
   const showSkeleton = isLoading || !application;
 
@@ -995,77 +1149,155 @@ export function ApplicationDetail({
     ? [application.person.firstName, application.person.middleName, application.person.lastName].filter(Boolean).join(' ')
     : 'Loading...';
 
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] sm:max-w-6xl h-[90vh] flex flex-col p-0">
-        {/* Header */}
-        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-            <div>
-              <DialogTitle className="text-2xl font-bold">
-                {showSkeleton ? 'Loading...' : displayName}
-              </DialogTitle>
-              {/* Use div instead of DialogDescription when loading to avoid div-in-p hydration error */}
-              {showSkeleton ? (
-                <div className="flex flex-wrap items-center gap-2 mt-1.5 text-muted-foreground text-sm">
-                  <Skeleton className="h-5 w-20" />
-                  <Skeleton className="h-5 w-20" />
-                  <Skeleton className="h-4 w-32" />
-                </div>
-              ) : (
-                <DialogDescription className="flex flex-wrap items-center gap-2 mt-1.5">
-                  <StageBadge stage={application.currentStage} />
-                  <StatusBadge status={application.status} />
-                  <span className="text-muted-foreground">•</span>
-                  <span>{application.position}</span>
-                  <span className="text-muted-foreground">•</span>
-                  <span>Applied {formatDateShort(application.createdAt)}</span>
-                </DialogDescription>
-              )}
-            </div>
-          </div>
-        </DialogHeader>
+  const headerDescription = showSkeleton ? (
+    <div className="flex flex-wrap items-center gap-2 mt-1.5 text-muted-foreground text-sm">
+      <Skeleton className="h-5 w-20" />
+      <Skeleton className="h-5 w-20" />
+      <Skeleton className="h-4 w-32" />
+    </div>
+  ) : (
+    <div className="flex flex-wrap items-center gap-2 mt-1.5 text-sm">
+      <StageBadge stage={application.currentStage} />
+      <StatusBadge status={application.status} />
+      <span className="text-muted-foreground">•</span>
+      <span>{application.position}</span>
+      <span className="text-muted-foreground hidden sm:inline">•</span>
+      <span className="hidden sm:inline">Applied {formatDateShort(application.createdAt)}</span>
+    </div>
+  );
 
-        {/* Content - 70/30 Split */}
-        <div className="flex-1 overflow-hidden">
-          {showSkeleton ? (
-            <div className="p-6 h-full">
-              <DetailSkeleton />
-            </div>
-          ) : (
-            <div className="flex flex-col lg:flex-row h-full">
-              {/* Left Panel - 70% */}
-              <ScrollArea className="flex-1 lg:w-[70%]">
-                <div className="p-6">
-                  <LeftPanel application={application} auditLogs={auditLogs} />
-                </div>
-              </ScrollArea>
-
-              {/* Right Panel - 30% */}
-              <div className="lg:w-[30%] lg:min-w-[300px] border-t lg:border-t-0 lg:border-l bg-muted/30">
-                <ScrollArea className="h-full">
-                  <div className="p-6">
-                    <RightPanel
-                      application={application}
-                      onSendEmail={onSendEmail}
-                      onScheduleInterview={onScheduleInterview}
-                      onRescheduleInterview={onRescheduleInterview}
-                      onCompleteInterview={onCompleteInterview}
-                      onMakeDecision={onMakeDecision}
-                      isAdmin={isAdmin}
-                      sendingEmailTemplate={sendingEmailTemplate}
-                      isSchedulingInterview={isSchedulingInterview}
-                      isReschedulingInterview={isReschedulingInterview}
-                      isCompletingInterview={isCompletingInterview}
-                      isDecisionProcessing={isDecisionProcessing}
-                    />
-                  </div>
-                </ScrollArea>
+  // Desktop: Dialog with 70/30 split
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-[95vw] sm:max-w-6xl h-[90vh] flex flex-col p-0 rounded-2xl shadow-2xl">
+          {/* Header */}
+          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div>
+                <DialogTitle className="text-2xl font-bold">
+                  {showSkeleton ? 'Loading...' : displayName}
+                </DialogTitle>
+                {showSkeleton ? (
+                  headerDescription
+                ) : (
+                  <DialogDescription className="flex flex-wrap items-center gap-2 mt-1.5">
+                    <StageBadge stage={application.currentStage} />
+                    <StatusBadge status={application.status} />
+                    <span className="text-muted-foreground">•</span>
+                    <span>{application.position}</span>
+                    <span className="text-muted-foreground">•</span>
+                    <span>Applied {formatDateShort(application.createdAt)}</span>
+                  </DialogDescription>
+                )}
               </div>
             </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+          </DialogHeader>
+
+          {/* Content - 70/30 Split */}
+          <div className="flex-1 overflow-hidden">
+            {showSkeleton ? (
+              <div className="p-6 h-full">
+                <DetailSkeleton />
+              </div>
+            ) : (
+              <div className="flex flex-col lg:flex-row h-full">
+                {/* Left Panel - 70% */}
+                <ScrollArea className="flex-1 lg:w-[70%]">
+                  <div className="p-6">
+                    <LeftPanel application={application} auditLogs={auditLogs} />
+                  </div>
+                </ScrollArea>
+
+                {/* Right Panel - 30% */}
+                <div className="lg:w-[30%] lg:min-w-[300px] border-t lg:border-t-0 lg:border-l bg-muted/30">
+                  <ScrollArea className="h-full">
+                    <div className="p-6">
+                      <RightPanel
+                        application={application}
+                        onSendEmail={onSendEmail}
+                        onScheduleInterview={onScheduleInterview}
+                        onRescheduleInterview={onRescheduleInterview}
+                        onCompleteInterview={onCompleteInterview}
+                        onMakeDecision={onMakeDecision}
+                        isAdmin={isAdmin}
+                        sendingEmailTemplate={sendingEmailTemplate}
+                        isSchedulingInterview={isSchedulingInterview}
+                        isReschedulingInterview={isReschedulingInterview}
+                        isCompletingInterview={isCompletingInterview}
+                        isDecisionProcessing={isDecisionProcessing}
+                      />
+                    </div>
+                  </ScrollArea>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Mobile: Bottom sheet with tabs
+  return (
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent side="bottom" className="h-[92vh] rounded-t-2xl flex flex-col p-0">
+        {/* Header */}
+        <SheetHeader className="px-4 pt-4 pb-2 border-b shrink-0">
+          <SheetTitle className="text-lg font-bold text-left leading-tight">
+            {showSkeleton ? 'Loading...' : displayName}
+          </SheetTitle>
+          <SheetDescription asChild>
+            {headerDescription}
+          </SheetDescription>
+        </SheetHeader>
+
+        {/* Tabbed Content */}
+        {showSkeleton ? (
+          <div className="p-4 flex-1 overflow-auto">
+            <DetailSkeleton />
+          </div>
+        ) : (
+          <Tabs defaultValue="profile" className="flex-1 flex flex-col overflow-hidden">
+            <TabsList className="mx-4 mt-3 w-auto">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="assessment">Assessment</TabsTrigger>
+              <TabsTrigger value="activity">Activity</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="profile" className="flex-1 overflow-auto mt-0">
+              <div className="p-4">
+                <ProfileTab application={application} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="assessment" className="flex-1 overflow-auto mt-0">
+              <div className="p-4">
+                <RightPanel
+                  application={application}
+                  onSendEmail={onSendEmail}
+                  onScheduleInterview={onScheduleInterview}
+                  onRescheduleInterview={onRescheduleInterview}
+                  onCompleteInterview={onCompleteInterview}
+                  onMakeDecision={onMakeDecision}
+                  isAdmin={isAdmin}
+                  sendingEmailTemplate={sendingEmailTemplate}
+                  isSchedulingInterview={isSchedulingInterview}
+                  isReschedulingInterview={isReschedulingInterview}
+                  isCompletingInterview={isCompletingInterview}
+                  isDecisionProcessing={isDecisionProcessing}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="activity" className="flex-1 overflow-auto mt-0">
+              <div className="p-4">
+                <ActivityTab auditLogs={auditLogs} />
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }

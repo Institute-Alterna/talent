@@ -9,26 +9,23 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Timeline, TimelineItem, mapActionTypeToTimelineType } from '@/components/ui/timeline';
-import { PipelineChart } from '@/components/dashboard';
 import { strings } from '@/config';
 import { Stage } from '@/lib/generated/prisma/client';
 import {
-  Briefcase,
-  Clock,
-  Calendar,
-  TrendingUp,
   RefreshCw,
   ArrowRight,
   AlertCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useMediaQuery } from '@/hooks';
 
-interface DashboardPageClientProps {
-  displayName: string;
-}
+// Lazy-load recharts-heavy PipelineChart — only rendered when data is available
+const PipelineChart = React.lazy(() => import('@/components/dashboard/pipeline-chart').then(m => ({ default: m.PipelineChart })));
 
 interface DashboardResponse {
   metrics: {
@@ -41,6 +38,7 @@ interface DashboardResponse {
       awaitingGC: number;
       awaitingSC: number;
       pendingInterviews: number;
+      pendingAgreement: number;
     };
   };
   byStage: Record<Stage, number>;
@@ -70,11 +68,13 @@ interface DashboardResponse {
 }
 
 
-export function DashboardPageClient({ displayName }: DashboardPageClientProps) {
+export function DashboardPageClient() {
   const { toast } = useToast();
   const [data, setData] = React.useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [showBreakdown, setShowBreakdown] = React.useState(false);
+  const isDesktop = useMediaQuery('(min-width: 768px)');
 
   // Use ref for toast to avoid dependency issues in useCallback
   const toastRef = React.useRef(toast);
@@ -124,231 +124,209 @@ export function DashboardPageClient({ displayName }: DashboardPageClientProps) {
   }));
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{strings.dashboard.title}</h1>
-          <p className="text-muted-foreground">
-            {strings.dashboard.welcome}, {displayName}
-          </p>
+    <div className="space-y-4">
+      {/* Error State */}
+      {error && (
+        <div className="rounded-lg border border-destructive bg-destructive/5 px-4 py-3">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <p className="text-sm">{error}</p>
+            <Button variant="outline" size="sm" onClick={fetchDashboardData} className="ml-auto h-7 text-xs">
+              Try Again
+            </Button>
+          </div>
         </div>
-        <Button onClick={fetchDashboardData} disabled={isLoading} variant="outline">
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
+      )}
+
+      {/* Compact Metrics Row — 5 columns on desktop, refresh button stretches to card height */}
+      <div className="grid gap-3 grid-cols-[1fr_1fr] md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+        <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">{strings.metrics.totalCandidates}</span>
+          <span className="text-lg font-semibold tabular-nums">
+            {isLoading ? '-' : data?.metrics.totalActiveApplications || 0}
+          </span>
+        </div>
+
+        {/* Awaiting Action — click to show breakdown */}
+        <button
+          type="button"
+          className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between text-left w-full cursor-pointer hover:bg-accent/50 transition-colors"
+          onClick={() => setShowBreakdown(true)}
+          disabled={!data || data.metrics.awaitingAction === 0}
+        >
+          <span className="text-xs text-muted-foreground">
+            {strings.metrics.awaitingAction}
+          </span>
+          <span className="text-lg font-semibold tabular-nums">
+            {isLoading ? '-' : data?.metrics.awaitingAction || 0}
+          </span>
+        </button>
+
+        <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">{strings.metrics.thisWeek}</span>
+          <span className="text-lg font-semibold tabular-nums">
+            {isLoading ? '-' : data?.metrics.applicationsThisWeek || 0}
+          </span>
+        </div>
+        <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">{strings.interview.pending}</span>
+          <span className="text-lg font-semibold tabular-nums">
+            {isLoading ? '-' : data?.metrics.pendingInterviews || 0}
+          </span>
+        </div>
+
+        {/* Refresh button — stretches to full card height via grid */}
+        <Button
+          variant="outline"
+          className="h-full px-3 col-span-2 md:col-span-1"
+          onClick={fetchDashboardData}
+          disabled={isLoading}
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
-      {/* Error State */}
-      {error && (
-        <Card className="border-destructive">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-5 w-5" />
-              <p>{error}</p>
-              <Button variant="outline" size="sm" onClick={fetchDashboardData} className="ml-auto">
-                Try Again
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {strings.metrics.totalCandidates}
-            </CardTitle>
-            <Briefcase className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '-' : data?.metrics.totalActiveApplications || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Active in pipeline
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {strings.metrics.awaitingAction}
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '-' : data?.metrics.awaitingAction || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Need attention
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {strings.metrics.thisWeek}
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '-' : data?.metrics.applicationsThisWeek || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              New applications
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {strings.interview.pending}
-            </CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {isLoading ? '-' : data?.metrics.pendingInterviews || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Interviews pending
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Pipeline Overview */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>{strings.dashboard.pipeline}</CardTitle>
-                <CardDescription>
-                  Candidates by stage
-                </CardDescription>
-              </div>
-              <Link href="/candidates">
-                <Button variant="ghost" size="sm">
-                  View All <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex h-[300px] items-center justify-center">
-                <div className="h-[200px] w-[200px] animate-pulse rounded-full bg-muted" />
-              </div>
-            ) : (
-              <PipelineChart data={data?.byStage as Record<Stage, number>} />
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{strings.dashboard.recentActivity}</CardTitle>
-            <CardDescription>
-              Latest updates in the system
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="animate-pulse flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-muted" />
-                    <div className="flex-1">
-                      <div className="h-4 bg-muted rounded w-3/4 mb-2" />
-                      <div className="h-3 bg-muted rounded w-1/2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : activityItems.length > 0 ? (
-              <Timeline items={activityItems} maxItems={5} />
-            ) : (
-              <div className="flex h-[200px] items-center justify-center text-muted-foreground">
-                {strings.dashboard.noActivity}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Awaiting Action Breakdown */}
-      {data && data.metrics.awaitingAction > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-500" />
-              Actions Required
-            </CardTitle>
-            <CardDescription>
-              Applications that need your attention
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
+      {/* Awaiting Action breakdown — Dialog on desktop, Sheet on mobile */}
+      {data && data.metrics.awaitingAction > 0 && (() => {
+        const breakdownContent = (
+          <div className="space-y-4">
+            <div className="grid gap-3">
               {data.metrics.breakdown.awaitingGC > 0 && (
-                <div className="border rounded-lg p-4">
-                  <div className="text-2xl font-bold">{data.metrics.breakdown.awaitingGC}</div>
-                  <p className="text-sm text-muted-foreground">Awaiting General Competencies</p>
+                <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Awaiting General Competencies</span>
+                  <span className="text-lg font-semibold tabular-nums">{data.metrics.breakdown.awaitingGC}</span>
                 </div>
               )}
               {data.metrics.breakdown.awaitingSC > 0 && (
-                <div className="border rounded-lg p-4">
-                  <div className="text-2xl font-bold">{data.metrics.breakdown.awaitingSC}</div>
-                  <p className="text-sm text-muted-foreground">Awaiting Specialized Assessment</p>
+                <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Awaiting Specialised Competencies</span>
+                  <span className="text-lg font-semibold tabular-nums">{data.metrics.breakdown.awaitingSC}</span>
                 </div>
               )}
               {data.metrics.breakdown.pendingInterviews > 0 && (
-                <div className="border rounded-lg p-4">
-                  <div className="text-2xl font-bold">{data.metrics.breakdown.pendingInterviews}</div>
-                  <p className="text-sm text-muted-foreground">Pending Interviews</p>
+                <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Pending Interviews</span>
+                  <span className="text-lg font-semibold tabular-nums">{data.metrics.breakdown.pendingInterviews}</span>
+                </div>
+              )}
+              {data.metrics.breakdown.pendingAgreement > 0 && (
+                <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Pending Agreement</span>
+                  <span className="text-lg font-semibold tabular-nums">{data.metrics.breakdown.pendingAgreement}</span>
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <Link href="/candidates">
+              <Button
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700"
+                onClick={() => setShowBreakdown(false)}
+              >
+                <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
+                View in Candidates
+              </Button>
+            </Link>
+          </div>
+        );
 
-      {/* Top Positions */}
-      {data && data.positions.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Active Positions</CardTitle>
-            <CardDescription>
-              Positions with active applications
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {data.positions.map((pos) => (
-                <div
-                  key={pos.position}
-                  className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm"
-                >
-                  <span>{pos.position}</span>
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                    {pos.count}
-                  </span>
+        return isDesktop ? (
+          <Dialog open={showBreakdown} onOpenChange={setShowBreakdown}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Needs Attention</DialogTitle>
+                <DialogDescription>
+                  {data.metrics.awaitingAction} application{data.metrics.awaitingAction !== 1 ? 's' : ''} requiring attention
+                </DialogDescription>
+              </DialogHeader>
+              {breakdownContent}
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <Sheet open={showBreakdown} onOpenChange={setShowBreakdown}>
+            <SheetContent side="bottom" className="rounded-t-xl">
+              <SheetHeader>
+                <SheetTitle>Needs Attention</SheetTitle>
+                <SheetDescription>
+                  {data.metrics.awaitingAction} application{data.metrics.awaitingAction !== 1 ? 's' : ''} requiring attention
+                </SheetDescription>
+              </SheetHeader>
+              <div className="px-4 pb-6 pt-2">
+                {breakdownContent}
+              </div>
+            </SheetContent>
+          </Sheet>
+        );
+      })()}
+
+      {/* Pipeline + Activity */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Pipeline Overview */}
+        <div className="rounded-lg border bg-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium">{strings.dashboard.pipeline}</h3>
+            <Link href="/candidates">
+              <Button variant="link" size="sm" className="text-primary h-auto p-0 text-xs">
+                View All <ArrowRight className="ml-1 h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
+          {isLoading ? (
+            <div className="flex h-[280px] items-center justify-center">
+              <div className="h-[180px] w-[180px] animate-pulse rounded-full bg-muted" />
+            </div>
+          ) : (
+            <React.Suspense fallback={
+              <div className="flex h-[280px] items-center justify-center">
+                <div className="h-[180px] w-[180px] animate-pulse rounded-full bg-muted" />
+              </div>
+            }>
+              <PipelineChart data={data?.byStage as Record<Stage, number>} />
+            </React.Suspense>
+          )}
+        </div>
+
+        {/* Recent Activity */}
+        <div className="rounded-lg border bg-card p-4">
+          <h3 className="text-sm font-medium mb-3">{strings.dashboard.recentActivity}</h3>
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="animate-pulse flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-muted" />
+                  <div className="flex-1">
+                    <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-muted rounded w-1/2" />
+                  </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          ) : activityItems.length > 0 ? (
+            <Timeline items={activityItems} maxItems={5} />
+          ) : (
+            <div className="flex h-[200px] items-center justify-center text-muted-foreground text-sm">
+              {strings.dashboard.noActivity}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Active Positions — compact pills */}
+      {data && data.positions.length > 0 && (
+        <div className="rounded-lg border bg-card p-4">
+          <h3 className="text-sm font-medium mb-3">Active Positions</h3>
+          <div className="flex flex-wrap gap-2">
+            {data.positions.map((pos) => (
+              <div
+                key={pos.position}
+                className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm"
+              >
+                <span>{pos.position}</span>
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                  {pos.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

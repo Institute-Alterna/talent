@@ -55,7 +55,11 @@ export async function GET(request: NextRequest) {
         position,
       });
 
-      return NextResponse.json(pipelineData);
+      return NextResponse.json(pipelineData, {
+        headers: {
+          'Cache-Control': 'private, max-age=30, stale-while-revalidate=60',
+        },
+      });
     }
 
     // Standard list view
@@ -130,6 +134,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       ...applicationsResult,
       stats,
+    }, {
+      headers: {
+        'Cache-Control': 'private, max-age=15, stale-while-revalidate=30',
+      },
     });
   } catch (error) {
     console.error('Error fetching applications:', sanitizeForLog(error instanceof Error ? error.message : 'Unknown error'));

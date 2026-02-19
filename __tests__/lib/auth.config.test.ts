@@ -128,14 +128,14 @@ describe('Auth Configuration - Route Protection', () => {
       expect(result).toBe(false);
     });
 
-    it('blocks access to /users for unauthenticated users', async () => {
+    it('blocks access to /personnel for unauthenticated users', async () => {
       if (!mockAuthorized) {
         throw new Error('authorized callback not defined');
       }
 
       const result = await mockAuthorized({
         auth: null,
-        request: createMockRequest('/users'),
+        request: createMockRequest('/personnel'),
       } as any);
       expect(result).toBe(false);
     });
@@ -149,7 +149,7 @@ describe('Auth Configuration - Route Protection', () => {
         user: { email: 'test@example.com', name: 'Test User' },
       };
 
-      const protectedPaths = ['/dashboard', '/candidates', '/settings', '/users'];
+      const protectedPaths = ['/dashboard', '/candidates', '/settings', '/personnel', '/log'];
 
       for (const path of protectedPaths) {
         const result = await mockAuthorized({
@@ -169,7 +169,8 @@ describe('Auth Configuration - Route Protection', () => {
         '/dashboard/overview',
         '/candidates/123',
         '/settings/profile',
-        '/users/list',
+        '/personnel/list',
+        '/log/details',
       ];
 
       for (const path of nestedPaths) {

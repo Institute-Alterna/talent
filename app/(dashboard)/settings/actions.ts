@@ -129,7 +129,7 @@ export async function updateSchedulingLinkAction(
     });
 
     revalidatePath('/settings');
-    revalidatePath('/users');
+    revalidatePath('/personnel');
 
     return {
       success: true,

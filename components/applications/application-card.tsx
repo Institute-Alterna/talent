@@ -53,6 +53,7 @@ export interface ApplicationCardData {
   };
   missingFieldsCount?: number;
   hasCompletedInterview?: boolean;
+  needsAttention?: boolean;
 }
 
 interface ApplicationCardProps {
@@ -93,8 +94,9 @@ export function ApplicationCard({
   return (
     <Card
       className={cn(
-        'cursor-pointer hover:shadow-md transition-shadow py-3 min-h-[160px] flex flex-col',
-        application.status !== 'ACTIVE' && 'opacity-60',
+        'cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 border-border/50 py-3 min-h-[160px] flex flex-col',
+        application.status !== 'ACTIVE' && 'opacity-60 grayscale',
+        application.needsAttention && 'border-l-[3px] border-l-amber-500 dark:border-l-amber-400',
         className
       )}
       onClick={() => onView(application.id)}

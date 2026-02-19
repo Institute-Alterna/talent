@@ -52,6 +52,8 @@ export async function GET(request: NextRequest) {
       // Applications awaiting action (various conditions)
       awaitingGC,
       awaitingSC,
+      // Applications in AGREEMENT stage without decision
+      pendingAgreement,
       // Recent audit logs
       recentActivity,
       // Top positions
@@ -108,6 +110,16 @@ export async function GET(request: NextRequest) {
           },
         },
       }),
+      // Applications in AGREEMENT stage awaiting decision
+      db.application.count({
+        where: {
+          status: 'ACTIVE',
+          currentStage: 'AGREEMENT',
+          decisions: {
+            none: {},
+          },
+        },
+      }),
       getRecentAuditLogs({ limit: 10, excludeActionTypes: ['VIEW'] }),
       // Top positions by application count
       db.application.groupBy({
@@ -153,7 +165,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate awaiting action total
-    const awaitingAction = awaitingGC + awaitingSC + pendingInterviews;
+    const awaitingAction = awaitingGC + awaitingSC + pendingInterviews + pendingAgreement;
 
     // Format top positions
     const positions = topPositions.map(item => ({
@@ -194,6 +206,7 @@ export async function GET(request: NextRequest) {
           awaitingGC,
           awaitingSC,
           pendingInterviews,
+          pendingAgreement,
         },
       },
       byStage,
@@ -201,6 +214,10 @@ export async function GET(request: NextRequest) {
       positions,
       recentActivity: activity,
       generatedAt: new Date().toISOString(),
+    }, {
+      headers: {
+        'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=120',
+      },
     });
   } catch (error) {
     console.error('Error fetching dashboard metrics:', sanitizeForLog(error instanceof Error ? error.message : 'Unknown error'));

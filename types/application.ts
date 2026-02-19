@@ -90,6 +90,8 @@ export interface ApplicationCard {
   personApplicationCount: number;
   /** Fields that were claimed but are missing */
   missingFields: string[];
+  /** Whether this application requires action */
+  needsAttention: boolean;
 }
 
 /**

@@ -10,5 +10,4 @@
 // export * from './use-candidate';
 // etc.
 
-// Placeholder - hooks will be added as we build features
-export {};
+export { useMediaQuery } from './use-media-query';

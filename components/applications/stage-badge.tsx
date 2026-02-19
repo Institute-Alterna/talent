@@ -21,28 +21,28 @@ interface StageBadgeProps {
 
 const STAGE_CONFIG: Record<Stage, { color: string; bgColor: string }> = {
   APPLICATION: {
-    color: 'text-slate-700',
-    bgColor: 'bg-slate-100 hover:bg-slate-200',
+    color: 'text-slate-700 dark:text-slate-300',
+    bgColor: 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-800',
   },
   GENERAL_COMPETENCIES: {
-    color: 'text-purple-700',
-    bgColor: 'bg-purple-100 hover:bg-purple-200',
+    color: 'text-purple-700 dark:text-purple-300',
+    bgColor: 'bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/50 dark:hover:bg-purple-900',
   },
   SPECIALIZED_COMPETENCIES: {
-    color: 'text-indigo-700',
-    bgColor: 'bg-indigo-100 hover:bg-indigo-200',
+    color: 'text-indigo-700 dark:text-indigo-300',
+    bgColor: 'bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:hover:bg-indigo-900',
   },
   INTERVIEW: {
-    color: 'text-amber-700',
-    bgColor: 'bg-amber-100 hover:bg-amber-200',
+    color: 'text-amber-700 dark:text-amber-300',
+    bgColor: 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/50 dark:hover:bg-amber-900',
   },
   AGREEMENT: {
-    color: 'text-cyan-700',
-    bgColor: 'bg-cyan-100 hover:bg-cyan-200',
+    color: 'text-cyan-700 dark:text-cyan-300',
+    bgColor: 'bg-cyan-100 hover:bg-cyan-200 dark:bg-cyan-900/50 dark:hover:bg-cyan-900',
   },
   SIGNED: {
-    color: 'text-green-700',
-    bgColor: 'bg-green-100 hover:bg-green-200',
+    color: 'text-green-700 dark:text-green-300',
+    bgColor: 'bg-green-100 hover:bg-green-200 dark:bg-green-900/50 dark:hover:bg-green-900',
   },
 };
 

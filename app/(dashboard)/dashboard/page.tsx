@@ -24,8 +24,5 @@ export default async function DashboardPage() {
     redirect('/auth/error?error=AccessDenied');
   }
 
-  // Get display name: prefer firstName, then displayName, then name
-  const displayName = session.user.firstName || session.user.displayName || session.user.name || 'there';
-
-  return <DashboardPageClient displayName={displayName} />;
+  return <DashboardPageClient />;
 }

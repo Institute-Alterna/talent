@@ -18,7 +18,7 @@ jest.mock('@/config', () => ({
 }));
 
 // Mock the server actions
-jest.mock('@/app/(dashboard)/users/actions', () => ({
+jest.mock('@/app/(dashboard)/personnel/actions', () => ({
   makeAdminAction: jest.fn(),
   revokeAdminAction: jest.fn(),
   deleteUserAction: jest.fn(),

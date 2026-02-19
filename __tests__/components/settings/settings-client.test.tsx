@@ -115,11 +115,10 @@ describe('SettingsClient', () => {
     });
   });
 
-  it('renders settings page with title', async () => {
+  it('renders settings page with profile section', async () => {
     render(<SettingsClient {...defaultProps} />);
 
-    expect(screen.getByText('Settings')).toBeInTheDocument();
-    expect(screen.getByText('Manage your profile and preferences')).toBeInTheDocument();
+    expect(screen.getByText('Profile')).toBeInTheDocument();
 
     // Wait for async data loading to complete to avoid act() warnings
     await waitFor(() => {

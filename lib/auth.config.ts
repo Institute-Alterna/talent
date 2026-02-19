@@ -65,7 +65,8 @@ export const authConfig: NextAuthConfig = {
         nextUrl.pathname.startsWith('/dashboard') ||
         nextUrl.pathname.startsWith('/candidates') ||
         nextUrl.pathname.startsWith('/settings') ||
-        nextUrl.pathname.startsWith('/users');
+        nextUrl.pathname.startsWith('/personnel') ||
+        nextUrl.pathname.startsWith('/log');
 
       if (isProtectedRoute && !isLoggedIn) {
         return false; // Will redirect to signIn page

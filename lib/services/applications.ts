@@ -171,6 +171,22 @@ export async function getApplicationsForPipeline(filters?: {
           },
         },
       },
+      _count: {
+        select: {
+          assessments: true,
+          interviews: true,
+        },
+      },
+      interviews: {
+        where: { completedAt: { not: null } },
+        select: { id: true },
+        take: 1,
+      },
+      assessments: {
+        where: { assessmentType: 'SPECIALIZED_COMPETENCIES' },
+        select: { id: true },
+        take: 1,
+      },
     },
     orderBy: { createdAt: 'desc' },
   });
@@ -186,6 +202,14 @@ export async function getApplicationsForPipeline(filters?: {
   };
 
   for (const app of applications) {
+    // Determine if this application needs attention
+    const needsAttention = app.status === 'ACTIVE' && (
+      (app.currentStage === 'APPLICATION' && !app.person.generalCompetenciesCompleted) ||
+      (app.currentStage === 'SPECIALIZED_COMPETENCIES' && app.assessments.length === 0) ||
+      (app.currentStage === 'INTERVIEW' && app.interviews.length === 0) ||
+      (app.currentStage === 'AGREEMENT')
+    );
+
     const card: ApplicationCard = {
       id: app.id,
       personId: app.personId,
@@ -203,6 +227,7 @@ export async function getApplicationsForPipeline(filters?: {
       },
       personApplicationCount: app.person._count.applications,
       missingFields: calcMissingFields(app),
+      needsAttention,
     };
 
     applicationsByStage[app.currentStage].push(card);
@@ -505,14 +530,30 @@ export async function getApplicationStats(filters?: {
     byPosition[item.position] = item._count;
   }
 
-  // Count applications awaiting action (active applications in certain stages)
+  // Count applications awaiting action — matches dashboard logic:
+  // - APPLICATION stage where GC not completed
+  // - SPECIALIZED_COMPETENCIES stage where SC assessment not submitted
+  // - INTERVIEW stage where no interview has been completed
+  // - AGREEMENT stage (pending offer/agreement)
   const awaitingAction = await db.application.count({
     where: {
       status: 'ACTIVE',
       OR: [
-        { currentStage: 'APPLICATION' },
-        { currentStage: 'INTERVIEW' },
-        { currentStage: 'AGREEMENT' },
+        {
+          currentStage: 'APPLICATION',
+          person: { generalCompetenciesCompleted: false },
+        },
+        {
+          currentStage: 'SPECIALIZED_COMPETENCIES',
+          assessments: { none: { assessmentType: 'SPECIALIZED_COMPETENCIES' } },
+        },
+        {
+          currentStage: 'INTERVIEW',
+          interviews: { none: { completedAt: { not: null } } },
+        },
+        {
+          currentStage: 'AGREEMENT',
+        },
       ],
     },
   });

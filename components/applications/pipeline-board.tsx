@@ -10,9 +10,9 @@
 import * as React from 'react';
 import { Stage } from '@/lib/generated/prisma/client';
 import { ApplicationCard, ApplicationCardData } from './application-card';
-import { StageBadge } from './stage-badge';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { recruitment } from '@/config';
 
 export interface PipelineBoardData {
   APPLICATION: ApplicationCardData[];
@@ -45,6 +45,8 @@ const STAGE_ORDER: Stage[] = [
   'SIGNED',
 ];
 
+
+
 interface StageColumnProps {
   stage: Stage;
   applications: ApplicationCardData[];
@@ -71,16 +73,16 @@ function StageColumn({
   const count = applications.length;
 
   return (
-    <div className="flex-shrink-0 w-72 flex flex-col bg-muted/30 rounded-lg">
+    <div className="flex-shrink-0 w-72 flex flex-col rounded-xl border border-border/50 bg-card/50 min-h-[400px] snap-start">
       {/* Column header */}
-      <div className="p-3 border-b">
+      <div className="relative p-3 border-b border-border/50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <StageBadge stage={stage} size="sm" />
-            <span className="text-sm font-medium text-muted-foreground">
-              {count}
-            </span>
-          </div>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {(recruitment.stages.find(s => s.id === stage)?.name || stage.replace(/_/g, ' '))}
+          </span>
+          <span className="inline-flex items-center justify-center h-5 min-w-5 rounded-full bg-muted text-xs font-medium px-1.5">
+            {count}
+          </span>
         </div>
       </div>
 
@@ -149,30 +151,38 @@ export function PipelineBoard({
   isLoading = false,
   className,
 }: PipelineBoardProps) {
-  if (isLoading) {
+  // Show skeleton only on initial load (no data yet)
+  const hasData = STAGE_ORDER.some((stage) => (data[stage] || []).length > 0);
+  if (isLoading && !hasData) {
     return <PipelineSkeleton />;
   }
 
   return (
-    <ScrollArea className={cn('w-full', className)}>
-      <div className="flex gap-4 pb-4 min-w-max">
-        {STAGE_ORDER.map((stage) => (
-          <StageColumn
-            key={stage}
-            stage={stage}
-            applications={data[stage] || []}
-            onViewApplication={onViewApplication}
-            onSendEmail={onSendEmail}
-            onScheduleInterview={onScheduleInterview}
-            onExportPdf={onExportPdf}
-            onWithdraw={onWithdraw}
-            exportingPdfId={exportingPdfId}
-            isAdmin={isAdmin}
-          />
-        ))}
-      </div>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+    <div className="relative">
+      {/* Subtle loading overlay on refresh — keeps existing board visible */}
+      {isLoading && hasData && (
+        <div className="absolute inset-0 z-10 bg-background/50 rounded-lg pointer-events-none animate-in fade-in duration-200" />
+      )}
+      <ScrollArea className={cn('w-full snap-x snap-mandatory', isLoading && hasData && 'opacity-80 transition-opacity duration-200', className)}>
+        <div className="flex gap-4 pb-4 min-w-max">
+          {STAGE_ORDER.map((stage) => (
+            <StageColumn
+              key={stage}
+              stage={stage}
+              applications={data[stage] || []}
+              onViewApplication={onViewApplication}
+              onSendEmail={onSendEmail}
+              onScheduleInterview={onScheduleInterview}
+              onExportPdf={onExportPdf}
+              onWithdraw={onWithdraw}
+              exportingPdfId={exportingPdfId}
+              isAdmin={isAdmin}
+            />
+          ))}
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+    </div>
   );
 }
 

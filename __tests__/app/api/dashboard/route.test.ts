@@ -125,7 +125,8 @@ describe('Dashboard API Routes', () => {
         .mockResolvedValueOnce(5)   // applicationsThisWeek
         .mockResolvedValueOnce(2)   // pendingInterviews
         .mockResolvedValueOnce(3)   // awaitingGC
-        .mockResolvedValueOnce(1);  // awaitingSC
+        .mockResolvedValueOnce(1)   // awaitingSC
+        .mockResolvedValueOnce(2);  // pendingAgreement
 
       // Mock person count
       (mockDb.person.count as jest.Mock).mockResolvedValueOnce(12);
@@ -177,7 +178,7 @@ describe('Dashboard API Routes', () => {
       expect(data.metrics.totalActiveApplications).toBe(15);
       expect(data.metrics.totalPersons).toBe(12);
       expect(data.metrics.pendingInterviews).toBe(2);
-      expect(data.metrics.awaitingAction).toBe(6); // 3 + 1 + 2
+      expect(data.metrics.awaitingAction).toBe(8); // 3 + 1 + 2 + 2
       expect(data.byStage).toBeDefined();
       expect(data.byStatus).toBeDefined();
       expect(data.recentActivity).toHaveLength(1);

@@ -10,6 +10,12 @@
 import * as React from 'react';
 import { cn, formatDate, formatDateTime } from '@/lib/utils';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Mail,
   UserPlus,
   CheckCircle,
@@ -44,43 +50,43 @@ interface TimelineProps {
 const TYPE_CONFIG: Record<TimelineItem['type'], { icon: LucideIcon; color: string; bgColor: string }> = {
   create: {
     icon: UserPlus,
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
+    color: 'text-green-600 dark:text-green-400',
+    bgColor: 'bg-green-100 dark:bg-green-900/40',
   },
   update: {
     icon: Edit,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
+    color: 'text-blue-600 dark:text-blue-400',
+    bgColor: 'bg-blue-100 dark:bg-blue-900/40',
   },
   delete: {
     icon: Trash2,
-    color: 'text-red-600',
-    bgColor: 'bg-red-100',
+    color: 'text-red-600 dark:text-red-400',
+    bgColor: 'bg-red-100 dark:bg-red-900/40',
   },
   view: {
     icon: Eye,
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-100',
+    color: 'text-gray-600 dark:text-gray-400',
+    bgColor: 'bg-gray-100 dark:bg-gray-800/50',
   },
   email: {
     icon: Mail,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
+    color: 'text-purple-600 dark:text-purple-400',
+    bgColor: 'bg-purple-100 dark:bg-purple-900/40',
   },
   status_change: {
     icon: CheckCircle,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-100',
+    color: 'text-amber-600 dark:text-amber-400',
+    bgColor: 'bg-amber-100 dark:bg-amber-900/40',
   },
   stage_change: {
     icon: ArrowRight,
-    color: 'text-indigo-600',
-    bgColor: 'bg-indigo-100',
+    color: 'text-indigo-600 dark:text-indigo-400',
+    bgColor: 'bg-indigo-100 dark:bg-indigo-900/40',
   },
   default: {
     icon: Bell,
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-100',
+    color: 'text-gray-600 dark:text-gray-400',
+    bgColor: 'bg-gray-100 dark:bg-gray-800/50',
   },
 };
 
@@ -119,6 +125,7 @@ export function Timeline({ items, className, maxItems, emptyMessage = 'No activi
   }
 
   return (
+    <TooltipProvider>
     <div className={cn('relative', className)}>
       {/* Vertical line */}
       <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-border" />
@@ -158,13 +165,19 @@ export function Timeline({ items, className, maxItems, emptyMessage = 'No activi
                       </p>
                     )}
                   </div>
-                  <time
-                    className="text-xs text-muted-foreground whitespace-nowrap"
-                    title={formatTimestamp(item.timestamp)}
-                    dateTime={new Date(item.timestamp).toISOString()}
-                  >
-                    {formatRelativeTime(item.timestamp)}
-                  </time>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <time
+                        className="text-xs text-muted-foreground whitespace-nowrap cursor-help"
+                        dateTime={new Date(item.timestamp).toISOString()}
+                      >
+                        {formatRelativeTime(item.timestamp)}
+                      </time>
+                    </TooltipTrigger>
+                    <TooltipContent side="left">
+                      <p className="text-xs">{formatTimestamp(item.timestamp)}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             </div>
@@ -180,6 +193,7 @@ export function Timeline({ items, className, maxItems, emptyMessage = 'No activi
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 }
 

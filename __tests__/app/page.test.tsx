@@ -62,12 +62,11 @@ describe('Home Page (Login)', () => {
   /**
    * Test: Shows the welcome message from strings config
    */
-  it('shows the welcome message', async () => {
+  it('shows the authorization message', async () => {
     const HomeComponent = await Home();
     render(HomeComponent);
-    // The welcome message is part of a longer string
-    const welcomeText = `${strings.dashboard.welcome} to the talent management system.`;
-    expect(screen.getByText(welcomeText)).toBeInTheDocument();
+    // The new login page doesn't have the dashboard welcome text - it's on a separate panel
+    expect(screen.getByText(strings.login.subtitle)).toBeInTheDocument();
   });
 
   /**
