@@ -18,11 +18,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { strings } from '@/config';
 import { formatDateTime } from '@/lib/utils';
+import { RoleBadge } from '@/components/shared/role-badge';
 import { updateUserAction, fetchUser } from '@/app/(dashboard)/personnel/actions';
 import type { UserListItem, User } from '@/types/user';
 
@@ -184,13 +184,10 @@ export function UserDetailDialog({
                 <h3 className="font-semibold">{fullUser ? `${fullUser.firstName} ${fullUser.lastName}` : `${user.firstName} ${user.lastName}`}</h3>
                 <p className="text-sm text-muted-foreground">{fullUser?.email || user.email}</p>
               </div>
-              {(fullUser?.isAdmin ?? user.isAdmin) ? (
-                <Badge>{strings.personnel.admin}</Badge>
-              ) : user.hasAppAccess ? (
-                <Badge variant="secondary">{strings.personnel.hiringManager}</Badge>
-              ) : (
-                <Badge variant="outline" className="text-muted-foreground">{strings.personnel.noAccess}</Badge>
-              )}
+              <RoleBadge
+                isAdmin={fullUser?.isAdmin ?? user.isAdmin}
+                hasAppAccess={user.hasAppAccess}
+              />
             </div>
 
             <Separator />

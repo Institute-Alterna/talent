@@ -325,26 +325,63 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-/**
- * Left Panel Content - Personal Info, Documents, Background, Activity
- */
-function LeftPanel({
-  application,
-  auditLogs,
+/** Reusable send-email button used across pipeline cards. */
+function SendEmailButton({
+  template,
+  onSendEmail,
+  sendingEmailTemplate,
+  disabled,
 }: {
-  application: ApplicationDetailData;
-  auditLogs?: ApplicationDetailProps['auditLogs'];
+  template: string;
+  onSendEmail?: (template: string) => void;
+  sendingEmailTemplate?: string | null;
+  disabled: boolean;
 }) {
-  const { person } = application;
+  if (!onSendEmail) return null;
+  const isSending = sendingEmailTemplate === template;
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="text-xs h-7"
+      onClick={() => onSendEmail(template)}
+      disabled={disabled}
+    >
+      {isSending ? (
+        <>
+          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+          Sending...
+        </>
+      ) : (
+        <>
+          <Mail className="h-3 w-3 mr-1" />
+          Send Link
+        </>
+      )}
+    </Button>
+  );
+}
 
-  const timelineItems: TimelineItem[] = (auditLogs || []).map(log => ({
+/** Convert audit logs to timeline items. */
+function buildTimelineItems(auditLogs?: ApplicationDetailProps['auditLogs']): TimelineItem[] {
+  return (auditLogs || []).map(log => ({
     id: log.id,
     title: log.action,
     timestamp: log.createdAt,
     type: mapActionTypeToTimelineType(log.actionType),
     user: log.user ? { name: log.user.displayName } : undefined,
   }));
+}
 
+/** Personal info, documents, academic background, experience — shared between desktop left panel and mobile profile tab. */
+function ProfileContent({
+  application,
+  columns = 1,
+}: {
+  application: ApplicationDetailData;
+  columns?: 1 | 2;
+}) {
+  const { person } = application;
   const hasDocuments = application.resumeUrl || application.videoLink || application.otherFileUrl;
 
   return (
@@ -354,7 +391,7 @@ function LeftPanel({
       {/* Personal Information */}
       <div>
         <SectionTitle>Personal Information</SectionTitle>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className={`grid grid-cols-1 ${columns === 2 ? 'sm:grid-cols-2' : ''} gap-4`}>
           <InfoItem icon={User} label="Full Name">
             {person.firstName} {person.middleName} {person.lastName}
           </InfoItem>
@@ -452,6 +489,25 @@ function LeftPanel({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * Left Panel Content - Personal Info, Documents, Background, Activity
+ */
+function LeftPanel({
+  application,
+  auditLogs,
+}: {
+  application: ApplicationDetailData;
+  auditLogs?: ApplicationDetailProps['auditLogs'];
+}) {
+  const timelineItems = buildTimelineItems(auditLogs);
+
+  return (
+    <div className="space-y-6">
+      <ProfileContent application={application} columns={2} />
 
       {/* Activity Timeline */}
       <Separator />
@@ -503,6 +559,15 @@ function RightPanel({
   const latestInterview = interviews[0];
   const latestDecision = decisions[0];
 
+  // --- Compute GC status once (used by all four cards) ---
+  const gcConfig = recruitment.assessmentThresholds.generalCompetencies;
+  const gcScore = parseFloat(person.generalCompetenciesScore || '0');
+  const gcPassed = person.generalCompetenciesCompleted && gcScore >= gcConfig.threshold;
+  const gcFailed = person.generalCompetenciesCompleted && !gcPassed;
+  const gcNotCompleted = !person.generalCompetenciesCompleted;
+  const gcScoreDisplay = formatScoreDisplay(person.generalCompetenciesScore, gcConfig.scale);
+  const isActionable = application.status === 'ACTIVE';
+
   // Track if any operation is in progress
   const isAnyOperationInProgress = sendingEmailTemplate !== null || 
     isSchedulingInterview === true || 
@@ -515,19 +580,13 @@ function RightPanel({
       {/* General Competencies */}
       <div className="border rounded-lg p-4">
         {(() => {
-          const { threshold, scale } = recruitment.assessmentThresholds.generalCompetencies;
-          const score = parseFloat(person.generalCompetenciesScore || '0');
-          const passed = score >= threshold;
-          const scoreDisplay = formatScoreDisplay(person.generalCompetenciesScore, scale);
-          const isActionable = application.status === 'ACTIVE';
-
           return (
             <>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-medium text-sm">General Competencies</h4>
                 {person.generalCompetenciesCompleted ? (
-                  <Badge variant={passed ? 'default' : 'destructive'} className="text-xs">
-                    {passed ? (
+                  <Badge variant={gcPassed ? 'default' : 'destructive'} className="text-xs">
+                    {gcPassed ? (
                       <><CheckCircle className="h-3 w-3 mr-1" /> Passed</>
                     ) : (
                       <><XCircle className="h-3 w-3 mr-1" /> Failed</>
@@ -546,16 +605,16 @@ function RightPanel({
                     <span className="text-muted-foreground">Score</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span className="font-medium cursor-help">{scoreDisplay.value}</span>
+                        <span className="font-medium cursor-help">{gcScoreDisplay.value}</span>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{scoreDisplay.tooltip}</p>
+                        <p>{gcScoreDisplay.tooltip}</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Threshold</span>
-                    <span>{threshold}</span>
+                    <span>{gcConfig.threshold}</span>
                   </div>
                   {person.generalCompetenciesPassedAt && (
                     <div className="flex justify-between">
@@ -569,27 +628,12 @@ function RightPanel({
                   {isActionable ? (
                     <>
                       <p className="text-xs text-muted-foreground mb-2">Not yet completed</p>
-                      {onSendEmail && (
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          className="text-xs h-7" 
-                          onClick={() => onSendEmail('general-competencies-invitation')}
-                          disabled={isAnyOperationInProgress}
-                        >
-                          {sendingEmailTemplate === 'general-competencies-invitation' ? (
-                            <>
-                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                              Sending...
-                            </>
-                          ) : (
-                            <>
-                              <Mail className="h-3 w-3 mr-1" />
-                              Send Link
-                            </>
-                          )}
-                        </Button>
-                      )}
+                      <SendEmailButton
+                        template="general-competencies-invitation"
+                        onSendEmail={onSendEmail}
+                        sendingEmailTemplate={sendingEmailTemplate}
+                        disabled={isAnyOperationInProgress}
+                      />
                     </>
                   ) : (
                     <p className="text-xs text-muted-foreground italic">
@@ -606,11 +650,7 @@ function RightPanel({
       {/* Specialized Competencies */}
       <div className="border rounded-lg p-4">
         {(() => {
-          const gcConfig = recruitment.assessmentThresholds.generalCompetencies;
           const scConfig = recruitment.assessmentThresholds.specializedCompetencies;
-          const gcScore = parseFloat(person.generalCompetenciesScore || '0');
-          const gcPassed = gcScore >= gcConfig.threshold;
-          const isActionable = application.status === 'ACTIVE';
 
           return (
             <>
@@ -662,11 +702,11 @@ function RightPanel({
                 <div className="text-center py-2">
                   {isActionable ? (
                     <>
-                      {!person.generalCompetenciesCompleted ? (
+                      {gcNotCompleted ? (
                         <p className="text-xs text-muted-foreground opacity-60">
                           {strings.interview.gcNotCompleted}
                         </p>
-                      ) : !gcPassed ? (
+                      ) : gcFailed ? (
                         <p className="text-xs text-muted-foreground opacity-60">
                           {strings.interview.gcFailed}
                         </p>
@@ -675,27 +715,12 @@ function RightPanel({
                           <p className="text-xs text-muted-foreground mb-2">
                             Ready for assessment
                           </p>
-                          {onSendEmail && (
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="text-xs h-7" 
-                              onClick={() => onSendEmail('specialized-competencies-invitation')}
-                              disabled={isAnyOperationInProgress}
-                            >
-                              {sendingEmailTemplate === 'specialized-competencies-invitation' ? (
-                                <>
-                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                                  Sending...
-                                </>
-                              ) : (
-                                <>
-                                  <Mail className="h-3 w-3 mr-1" />
-                                  Send Link
-                                </>
-                              )}
-                            </Button>
-                          )}
+                          <SendEmailButton
+                            template="specialized-competencies-invitation"
+                            onSendEmail={onSendEmail}
+                            sendingEmailTemplate={sendingEmailTemplate}
+                            disabled={isAnyOperationInProgress}
+                          />
                         </>
                       )}
                     </>
@@ -714,11 +739,6 @@ function RightPanel({
       {/* Interview */}
       <div className="border rounded-lg p-4">
         {(() => {
-          const gcConfig = recruitment.assessmentThresholds.generalCompetencies;
-          const gcScore = parseFloat(person.generalCompetenciesScore || '0');
-          const gcPassed = gcScore >= gcConfig.threshold;
-          const gcFailed = person.generalCompetenciesCompleted && !gcPassed;
-          const isActionable = application.status === 'ACTIVE';
           const canScheduleInterview = person.generalCompetenciesCompleted && gcPassed;
           const isInterviewCompleted = latestInterview?.completedAt !== null;
 
@@ -818,7 +838,7 @@ function RightPanel({
                         <p className="text-xs text-muted-foreground opacity-60">
                           {strings.interview.gcFailed}
                         </p>
-                      ) : !person.generalCompetenciesCompleted ? (
+                      ) : gcNotCompleted ? (
                         <p className="text-xs text-muted-foreground opacity-60">
                           {strings.interview.gcNotCompleted}
                         </p>
@@ -907,12 +927,6 @@ function RightPanel({
         ) : (
           <div className="text-center py-2">
             {isAdmin && onMakeDecision && application.status === 'ACTIVE' && (() => {
-              const gcConfig = recruitment.assessmentThresholds.generalCompetencies;
-              const gcScore = parseFloat(person.generalCompetenciesScore || '0');
-              const gcPassed = person.generalCompetenciesCompleted && gcScore >= gcConfig.threshold;
-              const gcNotCompleted = !person.generalCompetenciesCompleted;
-              const gcFailed = person.generalCompetenciesCompleted && !gcPassed;
-
               if (gcNotCompleted) {
                 // GC not completed - show message, no buttons
                 return (
@@ -982,129 +996,14 @@ function RightPanel({
  * Profile tab content — personal info, documents, academic background, previous experience
  */
 function ProfileTab({ application }: { application: ApplicationDetailData }) {
-  const { person } = application;
-  const hasDocuments = application.resumeUrl || application.videoLink || application.otherFileUrl;
-
-  return (
-    <div className="space-y-6">
-      <MissingFieldsAlert application={application} />
-
-      {/* Personal Information */}
-      <div>
-        <SectionTitle>Personal Information</SectionTitle>
-        <div className="grid grid-cols-1 gap-4">
-          <InfoItem icon={User} label="Full Name">
-            {person.firstName} {person.middleName} {person.lastName}
-          </InfoItem>
-          <InfoItem icon={Mail} label="Email">
-            <a href={`mailto:${person.email}`} className="text-primary hover:underline">
-              {person.email}
-            </a>
-          </InfoItem>
-          {person.secondaryEmail && (
-            <InfoItem icon={Mail} label="Secondary Email">
-              <a href={`mailto:${person.secondaryEmail}`} className="text-primary hover:underline">
-                {person.secondaryEmail}
-              </a>
-            </InfoItem>
-          )}
-          {person.phoneNumber && (
-            <InfoItem icon={Phone} label="Phone">
-              {person.phoneNumber}
-            </InfoItem>
-          )}
-          {(person.city || person.state || person.country) && (
-            <InfoItem icon={MapPin} label="Location">
-              {[
-                person.city,
-                person.state,
-                person.country && person.country.length === 2
-                  ? getCountryName(person.country)
-                  : person.country,
-              ].filter(Boolean).join(', ')}
-            </InfoItem>
-          )}
-          {person.portfolioLink && (
-            <InfoItem icon={LinkIcon} label="Portfolio">
-              <a
-                href={person.portfolioLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline flex items-center gap-1"
-              >
-                View Portfolio <ExternalLink className="h-3 w-3" />
-              </a>
-            </InfoItem>
-          )}
-          {person.educationLevel && (
-            <InfoItem icon={GraduationCap} label="Education">
-              {person.educationLevel}
-            </InfoItem>
-          )}
-        </div>
-      </div>
-
-      {/* Documents */}
-      {hasDocuments && (
-        <>
-          <Separator />
-          <div>
-            <SectionTitle>Documents</SectionTitle>
-            <div className="space-y-2">
-              {application.resumeUrl && (
-                <DocumentLink icon={FileText} label="Resume" url={application.resumeUrl} />
-              )}
-              {application.videoLink && (
-                <DocumentLink icon={Video} label="Video Introduction" url={application.videoLink} />
-              )}
-              {application.otherFileUrl && (
-                <DocumentLink icon={FileText} label="Other File" url={application.otherFileUrl} />
-              )}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Academic Background */}
-      {application.academicBackground && (
-        <>
-          <Separator />
-          <div>
-            <SectionTitle>Academic Background</SectionTitle>
-            <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded-lg p-3">
-              {application.academicBackground}
-            </p>
-          </div>
-        </>
-      )}
-
-      {/* Previous Experience */}
-      {application.previousExperience && (
-        <>
-          <Separator />
-          <div>
-            <SectionTitle>Previous Experience</SectionTitle>
-            <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded-lg p-3">
-              {application.previousExperience}
-            </p>
-          </div>
-        </>
-      )}
-    </div>
-  );
+  return <ProfileContent application={application} />;
 }
 
 /**
  * Activity tab content — audit log timeline
  */
 function ActivityTab({ auditLogs }: { auditLogs?: ApplicationDetailProps['auditLogs'] }) {
-  const timelineItems: TimelineItem[] = (auditLogs || []).map(log => ({
-    id: log.id,
-    title: log.action,
-    timestamp: log.createdAt,
-    type: mapActionTypeToTimelineType(log.actionType),
-    user: log.user ? { name: log.user.displayName } : undefined,
-  }));
+  const timelineItems = buildTimelineItems(auditLogs);
 
   return (
     <div>
@@ -1181,13 +1080,8 @@ export function ApplicationDetail({
                 {showSkeleton ? (
                   headerDescription
                 ) : (
-                  <DialogDescription className="flex flex-wrap items-center gap-2 mt-1.5">
-                    <StageBadge stage={application.currentStage} />
-                    <StatusBadge status={application.status} />
-                    <span className="text-muted-foreground">•</span>
-                    <span>{application.position}</span>
-                    <span className="text-muted-foreground">•</span>
-                    <span>Applied {formatDateShort(application.createdAt)}</span>
+                  <DialogDescription asChild>
+                    {headerDescription}
                   </DialogDescription>
                 )}
               </div>

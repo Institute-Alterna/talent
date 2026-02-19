@@ -10,8 +10,6 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Timeline, TimelineItem, mapActionTypeToTimelineType } from '@/components/ui/timeline';
 import { strings } from '@/config';
 import { Stage } from '@/lib/generated/prisma/client';
@@ -19,10 +17,11 @@ import {
   RefreshCw,
   ArrowRight,
   AlertCircle,
-  AlertTriangle,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useMediaQuery } from '@/hooks';
+import { AttentionBreakdownPanel } from '@/components/shared/attention-breakdown';
+import { MetricCard } from '@/components/shared/metric-card';
 
 // Lazy-load recharts-heavy PipelineChart — only rendered when data is available
 const PipelineChart = React.lazy(() => import('@/components/dashboard/pipeline-chart').then(m => ({ default: m.PipelineChart })));
@@ -140,40 +139,28 @@ export function DashboardPageClient() {
 
       {/* Compact Metrics Row — 5 columns on desktop, refresh button stretches to card height */}
       <div className="grid gap-3 grid-cols-[1fr_1fr] md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
-        <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{strings.metrics.totalCandidates}</span>
-          <span className="text-lg font-semibold tabular-nums">
-            {isLoading ? '-' : data?.metrics.totalActiveApplications || 0}
-          </span>
-        </div>
+        <MetricCard
+          label={strings.metrics.totalCandidates}
+          value={isLoading ? '-' : data?.metrics.totalActiveApplications || 0}
+        />
 
         {/* Awaiting Action — click to show breakdown */}
-        <button
-          type="button"
-          className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between text-left w-full cursor-pointer hover:bg-accent/50 transition-colors"
+        <MetricCard
+          label={strings.metrics.awaitingAction}
+          value={isLoading ? '-' : data?.metrics.awaitingAction || 0}
+          asButton
           onClick={() => setShowBreakdown(true)}
           disabled={!data || data.metrics.awaitingAction === 0}
-        >
-          <span className="text-xs text-muted-foreground">
-            {strings.metrics.awaitingAction}
-          </span>
-          <span className="text-lg font-semibold tabular-nums">
-            {isLoading ? '-' : data?.metrics.awaitingAction || 0}
-          </span>
-        </button>
+        />
 
-        <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{strings.metrics.thisWeek}</span>
-          <span className="text-lg font-semibold tabular-nums">
-            {isLoading ? '-' : data?.metrics.applicationsThisWeek || 0}
-          </span>
-        </div>
-        <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{strings.interview.pending}</span>
-          <span className="text-lg font-semibold tabular-nums">
-            {isLoading ? '-' : data?.metrics.pendingInterviews || 0}
-          </span>
-        </div>
+        <MetricCard
+          label={strings.metrics.thisWeek}
+          value={isLoading ? '-' : data?.metrics.applicationsThisWeek || 0}
+        />
+        <MetricCard
+          label={strings.interview.pending}
+          value={isLoading ? '-' : data?.metrics.pendingInterviews || 0}
+        />
 
         {/* Refresh button — stretches to full card height via grid */}
         <Button
@@ -187,75 +174,19 @@ export function DashboardPageClient() {
       </div>
 
       {/* Awaiting Action breakdown — Dialog on desktop, Sheet on mobile */}
-      {data && data.metrics.awaitingAction > 0 && (() => {
-        const breakdownContent = (
-          <div className="space-y-4">
-            <div className="grid gap-3">
-              {data.metrics.breakdown.awaitingGC > 0 && (
-                <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Awaiting General Competencies</span>
-                  <span className="text-lg font-semibold tabular-nums">{data.metrics.breakdown.awaitingGC}</span>
-                </div>
-              )}
-              {data.metrics.breakdown.awaitingSC > 0 && (
-                <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Awaiting Specialised Competencies</span>
-                  <span className="text-lg font-semibold tabular-nums">{data.metrics.breakdown.awaitingSC}</span>
-                </div>
-              )}
-              {data.metrics.breakdown.pendingInterviews > 0 && (
-                <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Pending Interviews</span>
-                  <span className="text-lg font-semibold tabular-nums">{data.metrics.breakdown.pendingInterviews}</span>
-                </div>
-              )}
-              {data.metrics.breakdown.pendingAgreement > 0 && (
-                <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Pending Agreement</span>
-                  <span className="text-lg font-semibold tabular-nums">{data.metrics.breakdown.pendingAgreement}</span>
-                </div>
-              )}
-            </div>
-            <Link href="/candidates">
-              <Button
-                className="w-full bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700"
-                onClick={() => setShowBreakdown(false)}
-              >
-                <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
-                View in Candidates
-              </Button>
-            </Link>
-          </div>
-        );
-
-        return isDesktop ? (
-          <Dialog open={showBreakdown} onOpenChange={setShowBreakdown}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Needs Attention</DialogTitle>
-                <DialogDescription>
-                  {data.metrics.awaitingAction} application{data.metrics.awaitingAction !== 1 ? 's' : ''} requiring attention
-                </DialogDescription>
-              </DialogHeader>
-              {breakdownContent}
-            </DialogContent>
-          </Dialog>
-        ) : (
-          <Sheet open={showBreakdown} onOpenChange={setShowBreakdown}>
-            <SheetContent side="bottom" className="rounded-t-xl">
-              <SheetHeader>
-                <SheetTitle>Needs Attention</SheetTitle>
-                <SheetDescription>
-                  {data.metrics.awaitingAction} application{data.metrics.awaitingAction !== 1 ? 's' : ''} requiring attention
-                </SheetDescription>
-              </SheetHeader>
-              <div className="px-4 pb-6 pt-2">
-                {breakdownContent}
-              </div>
-            </SheetContent>
-          </Sheet>
-        );
-      })()}
+      {data && (
+        <AttentionBreakdownPanel
+          breakdown={{ ...data.metrics.breakdown, total: data.metrics.awaitingAction }}
+          open={showBreakdown}
+          onOpenChange={setShowBreakdown}
+          isDesktop={isDesktop}
+          action={{
+            label: 'View in Candidates',
+            href: '/candidates',
+            onClick: () => setShowBreakdown(false),
+          }}
+        />
+      )}
 
       {/* Pipeline + Activity */}
       <div className="grid gap-4 md:grid-cols-2">

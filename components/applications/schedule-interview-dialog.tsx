@@ -34,6 +34,8 @@ import {
 } from '@/components/ui/select';
 import { strings } from '@/config';
 import { Calendar, Loader2, AlertTriangle, ExternalLink } from 'lucide-react';
+import { InlineError } from '@/components/shared/inline-error';
+import { useDialogSubmit } from '@/hooks/use-dialog-submit';
 import Link from 'next/link';
 
 export interface Interviewer {
@@ -71,8 +73,6 @@ export function ScheduleInterviewDialog({
 }: ScheduleInterviewDialogProps) {
   const [interviewerId, setInterviewerId] = React.useState('');
   const [sendEmail, setSendEmail] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   // Filter interviewers to only those with scheduling links
   const availableInterviewers = React.useMemo(
@@ -86,48 +86,29 @@ export function ScheduleInterviewDialog({
       const defaultInterviewer = availableInterviewers.find(i => i.id === currentUserId);
       setInterviewerId(defaultInterviewer?.id || availableInterviewers[0]?.id || '');
       setSendEmail(true);
-      setError(null);
     }
   }, [isOpen, availableInterviewers, currentUserId]);
 
   const selectedInterviewer = availableInterviewers.find(i => i.id === interviewerId);
 
-  const handleConfirm = async () => {
-    // Validate interviewer selected
-    if (!interviewerId) {
-      setError(strings.interview.interviewerRequired);
-      return;
-    }
+  const { isSubmitting, isDisabled, error, handleOpenChange, handleConfirm } =
+    useDialogSubmit({
+      onConfirm: () =>
+        onConfirm({
+          interviewerId,
+          sendEmail,
+        }),
+      onClose,
+      isProcessing,
+      validate: () => {
+        if (!interviewerId)
+          return strings.interview.interviewerRequired;
+        if (!selectedInterviewer?.schedulingLink)
+          return strings.interview.schedulingLinkRequired;
+        return null;
+      },
+    });
 
-    // Validate interviewer has scheduling link
-    if (!selectedInterviewer?.schedulingLink) {
-      setError(strings.interview.schedulingLinkRequired);
-      return;
-    }
-
-    setError(null);
-    setIsSubmitting(true);
-
-    try {
-      await onConfirm({
-        interviewerId,
-        sendEmail,
-      });
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open && !isProcessing && !isSubmitting) {
-      onClose();
-    }
-  };
-
-  const isDisabled = isProcessing || isSubmitting;
   const hasNoInterviewers = availableInterviewers.length === 0;
 
   return (
@@ -148,12 +129,7 @@ export function ScheduleInterviewDialog({
 
         <div className="space-y-4 py-4">
           {/* Error message */}
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-              <p className="text-sm text-destructive">{error}</p>
-            </div>
-          )}
+          <InlineError message={error} />
 
           {/* No interviewers available */}
           {hasNoInterviewers ? (

@@ -2,17 +2,12 @@
 
 import { Moon, Monitor, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useSyncExternalStore } from "react";
+import { useMounted } from "@/hooks/use-mounted";
 import { strings } from "@/config/strings";
 
 export function ThemeSelector() {
   const { theme, setTheme } = useTheme();
-  // Avoid hydration mismatch with useSyncExternalStore
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
+  const mounted = useMounted();
 
   if (!mounted) {
     return (

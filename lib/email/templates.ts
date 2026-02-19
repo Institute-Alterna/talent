@@ -14,6 +14,7 @@ import {
 } from './config';
 import { sanitizeForLog } from '@/lib/security';
 import { formatDate } from '@/lib/utils';
+import { branding } from '@/config';
 
 /**
  * Template cache to avoid repeated file reads
@@ -121,7 +122,7 @@ export function renderTemplate(
 
   // Get subject from metadata and replace variables
   const meta = EMAIL_TEMPLATE_META[templateName];
-  const subject = replaceVariables(meta?.subject || 'Message from Institute Alterna', allVariables);
+  const subject = replaceVariables(meta?.subject || `Message from ${branding.organisationName}`, allVariables);
 
   // Warn about missing variables in development
   if (process.env.NODE_ENV === 'development') {

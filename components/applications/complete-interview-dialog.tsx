@@ -24,7 +24,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { strings } from '@/config';
-import { CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
+import { InlineError } from '@/components/shared/inline-error';
+import { useDialogSubmit } from '@/hooks/use-dialog-submit';
 
 export interface CompleteInterviewDialogProps {
   isOpen: boolean;
@@ -48,46 +50,22 @@ export function CompleteInterviewDialog({
   isProcessing = false,
 }: CompleteInterviewDialogProps) {
   const [notes, setNotes] = React.useState('');
-  const [error, setError] = React.useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const { isSubmitting, isDisabled, error, handleOpenChange, handleConfirm } =
+    useDialogSubmit({
+      onConfirm: () => onConfirm({ notes: notes.trim() }),
+      onClose,
+      isProcessing,
+      validate: () =>
+        !notes.trim() ? strings.interview.notesRequired : null,
+    });
 
   // Reset form when dialog opens
   React.useEffect(() => {
     if (isOpen) {
       setNotes('');
-      setError(null);
     }
   }, [isOpen]);
-
-  const handleConfirm = async () => {
-    // Validate notes are required
-    if (!notes.trim()) {
-      setError(strings.interview.notesRequired);
-      return;
-    }
-
-    setError(null);
-    setIsSubmitting(true);
-
-    try {
-      await onConfirm({
-        notes: notes.trim(),
-      });
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open && !isProcessing && !isSubmitting) {
-      onClose();
-    }
-  };
-
-  const isDisabled = isProcessing || isSubmitting;
 
   return (
     <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -110,12 +88,7 @@ export function CompleteInterviewDialog({
 
         <div className="space-y-4 py-4">
           {/* Error message */}
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-              <p className="text-sm text-destructive">{error}</p>
-            </div>
-          )}
+          <InlineError message={error} />
 
           {/* Notes field - required */}
           <div className="space-y-2">

@@ -12,16 +12,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAccess } from '@/lib/api-helpers';
-import { getApplicationDetail } from '@/lib/services/applications';
+import { requireApplicationAccess, type RouteParams } from '@/lib/api-helpers';
 import { logInterviewCompleted } from '@/lib/audit';
 import { db } from '@/lib/db';
 import { sanitizeForLog, requireString, RequiredFieldError, sanitizeText } from '@/lib/security';
-import { isValidUUID } from '@/lib/utils';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * POST /api/applications/[id]/complete-interview
@@ -34,42 +28,21 @@ export async function POST(
   { params }: RouteParams
 ) {
   try {
-    const { id } = await params;
-
-    // Validate ID format
-    if (!isValidUUID(id)) {
-      console.error('[Complete Interview] Invalid UUID format:', sanitizeForLog(id));
-      return NextResponse.json(
-        { error: 'Invalid application ID format' },
-        { status: 400 }
-      );
-    }
-
-    const auth = await requireAccess();
-    if (!auth.ok) return auth.error;
-    const { session } = auth;
-
-    // Get application details
-    const application = await getApplicationDetail(id);
-    if (!application) {
-      console.error('[Complete Interview] Application not found:', sanitizeForLog(id));
-      return NextResponse.json(
-        { error: 'Application not found' },
-        { status: 404 }
-      );
-    }
+    const access = await requireApplicationAccess(params);
+    if (!access.ok) return access.error;
+    const { session, application } = access;
 
     // Get existing interview
     const existingInterview = await db.interview.findFirst({
       where: {
-        applicationId: id,
+        applicationId: application.id,
         completedAt: null, // Only complete non-completed interviews
       },
       orderBy: { createdAt: 'desc' },
     });
 
     if (!existingInterview) {
-      console.error('[Complete Interview] No active interview found for application:', sanitizeForLog(id));
+      console.error('[Complete Interview] No active interview found for application:', sanitizeForLog(application.id));
       return NextResponse.json(
         { error: 'No active interview found to complete' },
         { status: 404 }
@@ -114,14 +87,14 @@ export async function POST(
 
     // Log the interview completion
     await logInterviewCompleted(
-      id,
+      application.id,
       application.personId,
       existingInterview.interviewerId,
       session.user.dbUserId
     );
 
     console.log('[Complete Interview] Success:', {
-      applicationId: sanitizeForLog(id),
+      applicationId: sanitizeForLog(application.id),
       interviewId: sanitizeForLog(existingInterview.id),
       completedBy: sanitizeForLog(session.user.email),
     });

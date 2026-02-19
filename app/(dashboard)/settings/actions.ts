@@ -14,15 +14,7 @@ import { isValidURL } from '@/lib/utils';
 import { db } from '@/lib/db';
 import { updateProfile, getUserById } from '@/lib/services/users';
 import type { ActionType } from '@/lib/generated/prisma/client';
-
-/**
- * Result type for server actions
- */
-interface ActionResult<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
+import type { ActionResult } from '@/types/shared';
 
 /**
  * Activity log item for display

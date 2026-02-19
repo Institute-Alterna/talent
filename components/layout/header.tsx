@@ -12,10 +12,11 @@
  * differences between SSR and client hydration.
  */
 
-import { useState, useSyncExternalStore } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { useMounted } from '@/hooks/use-mounted';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -53,11 +54,7 @@ export function Header({ user, onSignOut }: HeaderProps) {
   const pathname = usePathname();
 
   // Track client-side mounting to avoid Radix useId() hydration mismatch
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
+  const mounted = useMounted();
 
   // Route-based page title and subtitle
   const pageInfo = getPageInfo(pathname);

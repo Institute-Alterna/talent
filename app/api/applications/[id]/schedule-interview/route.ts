@@ -14,18 +14,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAccess } from '@/lib/api-helpers';
-import { getApplicationDetail } from '@/lib/services/applications';
+import { requireApplicationAccess, parseJsonBody, type RouteParams } from '@/lib/api-helpers';
 import { getUserById } from '@/lib/services/users';
 import { sendInterviewInvitation } from '@/lib/email';
 import { logInterviewScheduled } from '@/lib/audit';
 import { db } from '@/lib/db';
 import { sanitizeForLog, requireString, RequiredFieldError, sanitizeText } from '@/lib/security';
 import { isValidUUID, isValidURL } from '@/lib/utils';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * POST /api/applications/[id]/schedule-interview
@@ -38,47 +33,13 @@ export async function POST(
   { params }: RouteParams
 ) {
   try {
-    const { id } = await params;
+    const access = await requireApplicationAccess(params, { requireActive: true });
+    if (!access.ok) return access.error;
+    const { session, application } = access;
 
-    // Validate ID format
-    if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid application ID format' },
-        { status: 400 }
-      );
-    }
-
-    const auth = await requireAccess();
-    if (!auth.ok) return auth.error;
-    const { session } = auth;
-
-    // Get application details
-    const application = await getApplicationDetail(id);
-    if (!application) {
-      return NextResponse.json(
-        { error: 'Application not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check if application is active
-    if (application.status !== 'ACTIVE') {
-      return NextResponse.json(
-        { error: 'Cannot schedule interview for inactive applications' },
-        { status: 400 }
-      );
-    }
-
-    // Parse request body
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      );
-    }
+    const parsed = await parseJsonBody(request);
+    if (!parsed.ok) return parsed.error;
+    const { body } = parsed;
 
     // Validate interviewerId
     let interviewerId: string;
@@ -153,7 +114,7 @@ export async function POST(
     let stageChanged = false;
     if (application.currentStage !== 'INTERVIEW') {
       await db.application.update({
-        where: { id },
+        where: { id: application.id },
         data: { currentStage: 'INTERVIEW' },
       });
       stageChanged = true;
@@ -162,7 +123,7 @@ export async function POST(
     // Create interview record
     const interview = await db.interview.create({
       data: {
-        applicationId: id,
+        applicationId: application.id,
         interviewerId: interviewer.id,
         schedulingLink: interviewer.schedulingLink,
         scheduledAt: scheduledAt ?? null,
@@ -174,7 +135,7 @@ export async function POST(
 
     // Log the interview scheduling
     await logInterviewScheduled(
-      id,
+      application.id,
       application.personId,
       interviewer.id,
       interviewer.schedulingLink,
@@ -186,7 +147,7 @@ export async function POST(
     if (sendEmail) {
       emailResult = await sendInterviewInvitation(
         application.personId,
-        id,
+        application.id,
         application.person.email,
         application.person.firstName,
         application.position,

@@ -12,10 +12,14 @@ import type {
   AssessmentType,
   InterviewOutcome,
   DecisionType,
-  Prisma,
 } from '@/lib/generated/prisma/client';
-
-type Decimal = Prisma.Decimal;
+import type {
+  Decimal,
+  UserReference,
+  PersonSummary,
+  PaginationMeta,
+} from './shared';
+import type { Person } from './person';
 
 /**
  * Application data as returned from the database
@@ -54,14 +58,7 @@ export interface ApplicationListItem {
   status: Status;
   createdAt: Date;
   updatedAt: Date;
-  person: {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    generalCompetenciesCompleted: boolean;
-    generalCompetenciesScore: Decimal | null;
-  };
+  person: PersonSummary;
   _count: {
     interviews: number;
     decisions: number;
@@ -78,14 +75,7 @@ export interface ApplicationCard {
   currentStage: Stage;
   status: Status;
   createdAt: Date;
-  person: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    generalCompetenciesCompleted: boolean;
-    generalCompetenciesScore: Decimal | null;
-  };
+  person: PersonSummary;
   /** Number of applications this person has */
   personApplicationCount: number;
   /** Fields that were claimed but are missing */
@@ -107,24 +97,10 @@ export interface ApplicationDetail extends Application {
 /**
  * Person info included in application detail
  */
-export interface PersonDetailForApplication {
-  id: string;
-  email: string;
-  firstName: string;
-  middleName: string | null;
-  lastName: string;
-  secondaryEmail: string | null;
-  phoneNumber: string | null;
-  country: string | null;
-  city: string | null;
-  state: string | null;
-  countryCode: string | null;
-  portfolioLink: string | null;
-  educationLevel: string | null;
-  generalCompetenciesCompleted: boolean;
-  generalCompetenciesScore: Decimal | null;
-  generalCompetenciesPassedAt: Date | null;
-}
+export type PersonDetailForApplication = Omit<
+  Person,
+  'tallyRespondentId' | 'oktaUserId' | 'createdAt' | 'updatedAt'
+>;
 
 /**
  * Assessment detail for application view
@@ -152,11 +128,7 @@ export interface InterviewDetail {
   outcome: InterviewOutcome;
   emailSentAt: Date | null;
   createdAt: Date;
-  interviewer: {
-    id: string;
-    displayName: string;
-    email: string;
-  };
+  interviewer: UserReference;
 }
 
 /**
@@ -168,11 +140,7 @@ export interface DecisionDetail {
   reason: string;
   notes: string | null;
   decidedAt: Date;
-  user: {
-    id: string;
-    displayName: string;
-    email: string;
-  };
+  user: UserReference;
 }
 
 /**
@@ -271,12 +239,8 @@ export interface ApplicationFilters {
 /**
  * Paginated response for applications list
  */
-export interface ApplicationsListResponse {
+export interface ApplicationsListResponse extends PaginationMeta {
   applications: ApplicationListItem[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
 }
 
 /**

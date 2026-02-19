@@ -28,15 +28,65 @@ import {
   hasUserTalentAccessGroup,
 } from '@/lib/integrations/okta';
 import type { UserListItem, UserStats, UpdateUserData } from '@/types/user';
-import type { OktaStatus } from '@/lib/generated/prisma/client';
+import type { OktaStatus, User } from '@/lib/generated/prisma/client';
+import type { ActionResult } from '@/types/shared';
+
+/** Map a Prisma User to the UserListItem shape returned to the client. */
+function toUserListItem(user: User): UserListItem {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    displayName: user.displayName,
+    title: user.title,
+    isAdmin: user.isAdmin,
+    hasAppAccess: user.hasAppAccess,
+    schedulingLink: user.schedulingLink,
+    oktaStatus: user.oktaStatus,
+    lastSyncedAt: user.lastSyncedAt,
+    createdAt: user.createdAt,
+  };
+}
 
 /**
- * Result type for server actions
+ * Shared guard for role-management actions.
+ * Validates UUID, auth, Okta config, optional self-action prevention,
+ * and user existence before delegating to the action-specific logic.
  */
-interface ActionResult<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
+async function withRoleActionGuard(
+  id: string,
+  options: { preventSelfAction?: boolean },
+  fn: (currentUser: User) => Promise<ActionResult<{ user: UserListItem }>>,
+): Promise<ActionResult<{ user: UserListItem }>> {
+  if (!isValidUUID(id)) {
+    return { success: false, error: 'Invalid user ID format' };
+  }
+
+  const session = await auth();
+  if (!session?.user?.isAdmin) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  if (!isOktaConfigured()) {
+    return { success: false, error: 'Okta integration is not configured' };
+  }
+
+  if (options.preventSelfAction && session.user.dbUserId === id) {
+    return { success: false, error: 'Cannot perform this action on your own account' };
+  }
+
+  const currentUser = await getUserById(id);
+  if (!currentUser) {
+    return { success: false, error: 'User not found' };
+  }
+
+  try {
+    return await fn(currentUser);
+  } catch (error) {
+    console.error(`Role action error for ${id}:`, error);
+    return { success: false, error: 'Action failed' };
+  }
 }
 
 /**
@@ -204,67 +254,17 @@ export async function syncFromOktaAction(): Promise<ActionResult<{ synced: numbe
  * Adds them to the talent-administration Okta group and updates local database
  */
 export async function makeAdminAction(id: string): Promise<ActionResult<{ user: UserListItem }>> {
-  try {
-    // Validate UUID format to prevent invalid database queries
-    if (!isValidUUID(id)) {
-      return { success: false, error: 'Invalid user ID format' };
-    }
-
-    const session = await auth();
-    if (!session?.user?.isAdmin) {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    if (!isOktaConfigured()) {
-      return { success: false, error: 'Okta integration is not configured' };
-    }
-
-    // Cannot change own admin status
-    if (session.user.dbUserId === id) {
-      return { success: false, error: 'Cannot change your own admin status' };
-    }
-
-    const currentUser = await getUserById(id);
-    if (!currentUser) {
-      return { success: false, error: 'User not found' };
-    }
-
+  return withRoleActionGuard(id, { preventSelfAction: true }, async (currentUser) => {
     if (currentUser.isAdmin) {
       return { success: false, error: 'User is already an administrator' };
     }
 
-    // Add user to talent-administration group in Okta
     await grantAdminAccess(currentUser.oktaUserId);
-
-    // Update local database - admin always has app access
     const updatedUser = await updateUser(id, { isAdmin: true, hasAppAccess: true });
-    
+
     revalidatePath('/personnel');
-    
-    // Return updated user for UI update
-    return { 
-      success: true, 
-      data: { 
-        user: {
-          id: updatedUser.id,
-          email: updatedUser.email,
-          firstName: updatedUser.firstName,
-          lastName: updatedUser.lastName,
-          displayName: updatedUser.displayName,
-          title: updatedUser.title,
-          isAdmin: updatedUser.isAdmin,
-          hasAppAccess: updatedUser.hasAppAccess,
-          schedulingLink: updatedUser.schedulingLink,
-          oktaStatus: updatedUser.oktaStatus,
-          lastSyncedAt: updatedUser.lastSyncedAt,
-          createdAt: updatedUser.createdAt,
-        }
-      } 
-    };
-  } catch (error) {
-    console.error('Error making user admin:', error);
-    return { success: false, error: 'Failed to make user admin' };
-  }
+    return { success: true, data: { user: toUserListItem(updatedUser) } };
+  });
 }
 
 /**
@@ -273,133 +273,41 @@ export async function makeAdminAction(id: string): Promise<ActionResult<{ user: 
  * Adds them to talent-access group if they don't have it already
  */
 export async function revokeAdminAction(id: string): Promise<ActionResult<{ user: UserListItem }>> {
-  try {
-    // Validate UUID format to prevent invalid database queries
-    if (!isValidUUID(id)) {
-      return { success: false, error: 'Invalid user ID format' };
-    }
-
-    const session = await auth();
-    if (!session?.user?.isAdmin) {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    if (!isOktaConfigured()) {
-      return { success: false, error: 'Okta integration is not configured' };
-    }
-
-    // Cannot change own admin status
-    if (session.user.dbUserId === id) {
-      return { success: false, error: 'Cannot change your own admin status' };
-    }
-
-    const currentUser = await getUserById(id);
-    if (!currentUser) {
-      return { success: false, error: 'User not found' };
-    }
-
+  return withRoleActionGuard(id, { preventSelfAction: true }, async (currentUser) => {
     if (!currentUser.isAdmin) {
       return { success: false, error: 'User is not an administrator' };
     }
 
-    // Remove from talent-administration group
     await revokeAdminAccess(currentUser.oktaUserId);
 
-    // Check if they have talent-access group, if not add them to keep app access
+    // Ensure they keep talent-access group membership
     const hasTalentAccess = await hasUserTalentAccessGroup(currentUser.oktaUserId);
     if (!hasTalentAccess) {
       await grantTalentAppAccess(currentUser.oktaUserId);
     }
 
-    // Update local database - no longer admin but still has app access as hiring manager
     const updatedUser = await updateUser(id, { isAdmin: false, hasAppAccess: true });
-    
+
     revalidatePath('/personnel');
-    
-    return { 
-      success: true, 
-      data: { 
-        user: {
-          id: updatedUser.id,
-          email: updatedUser.email,
-          firstName: updatedUser.firstName,
-          lastName: updatedUser.lastName,
-          displayName: updatedUser.displayName,
-          title: updatedUser.title,
-          isAdmin: updatedUser.isAdmin,
-          hasAppAccess: updatedUser.hasAppAccess,
-          schedulingLink: updatedUser.schedulingLink,
-          oktaStatus: updatedUser.oktaStatus,
-          lastSyncedAt: updatedUser.lastSyncedAt,
-          createdAt: updatedUser.createdAt,
-        }
-      } 
-    };
-  } catch (error) {
-    console.error('Error revoking admin access:', error);
-    return { success: false, error: 'Failed to revoke admin access' };
-  }
+    return { success: true, data: { user: toUserListItem(updatedUser) } };
+  });
 }
 
 /**
  * Grant app access to a user by adding them to the talent-access Okta group
  */
 export async function grantAppAccessAction(id: string): Promise<ActionResult<{ user: UserListItem }>> {
-  try {
-    // Validate UUID format to prevent invalid database queries
-    if (!isValidUUID(id)) {
-      return { success: false, error: 'Invalid user ID format' };
-    }
-
-    const session = await auth();
-    if (!session?.user?.isAdmin) {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    if (!isOktaConfigured()) {
-      return { success: false, error: 'Okta integration is not configured' };
-    }
-
-    const user = await getUserById(id);
-    if (!user) {
-      return { success: false, error: 'User not found' };
-    }
-
-    if (user.hasAppAccess) {
+  return withRoleActionGuard(id, {}, async (currentUser) => {
+    if (currentUser.hasAppAccess) {
       return { success: false, error: 'User already has app access' };
     }
 
-    // Add user to talent-access group in Okta
-    await grantTalentAppAccess(user.oktaUserId);
-
-    // Update local database to reflect the change
+    await grantTalentAppAccess(currentUser.oktaUserId);
     const updatedUser = await updateUser(id, { hasAppAccess: true });
 
     revalidatePath('/personnel');
-    
-    return { 
-      success: true, 
-      data: { 
-        user: {
-          id: updatedUser.id,
-          email: updatedUser.email,
-          firstName: updatedUser.firstName,
-          lastName: updatedUser.lastName,
-          displayName: updatedUser.displayName,
-          title: updatedUser.title,
-          isAdmin: updatedUser.isAdmin,
-          hasAppAccess: updatedUser.hasAppAccess,
-          schedulingLink: updatedUser.schedulingLink,
-          oktaStatus: updatedUser.oktaStatus,
-          lastSyncedAt: updatedUser.lastSyncedAt,
-          createdAt: updatedUser.createdAt,
-        }
-      } 
-    };
-  } catch (error) {
-    console.error('Error granting app access:', error);
-    return { success: false, error: 'Failed to grant app access' };
-  }
+    return { success: true, data: { user: toUserListItem(updatedUser) } };
+  });
 }
 
 /**
@@ -407,64 +315,15 @@ export async function grantAppAccessAction(id: string): Promise<ActionResult<{ u
  * Removes them from both talent-administration and talent-access groups
  */
 export async function revokeAppAccessAction(id: string): Promise<ActionResult<{ user: UserListItem }>> {
-  try {
-    // Validate UUID format to prevent invalid database queries
-    if (!isValidUUID(id)) {
-      return { success: false, error: 'Invalid user ID format' };
-    }
-
-    const session = await auth();
-    if (!session?.user?.isAdmin) {
-      return { success: false, error: 'Unauthorized' };
-    }
-
-    if (!isOktaConfigured()) {
-      return { success: false, error: 'Okta integration is not configured' };
-    }
-
-    // Cannot revoke own access
-    if (session.user.dbUserId === id) {
-      return { success: false, error: 'Cannot revoke your own app access' };
-    }
-
-    const user = await getUserById(id);
-    if (!user) {
-      return { success: false, error: 'User not found' };
-    }
-
-    if (!user.hasAppAccess && !user.isAdmin) {
+  return withRoleActionGuard(id, { preventSelfAction: true }, async (currentUser) => {
+    if (!currentUser.hasAppAccess && !currentUser.isAdmin) {
       return { success: false, error: 'User does not have app access' };
     }
 
-    // Remove from both groups in Okta
-    await revokeAllAppAccess(user.oktaUserId);
-
-    // Update local database - no longer admin and no app access
+    await revokeAllAppAccess(currentUser.oktaUserId);
     const updatedUser = await updateUser(id, { isAdmin: false, hasAppAccess: false });
 
     revalidatePath('/personnel');
-    
-    return { 
-      success: true, 
-      data: { 
-        user: {
-          id: updatedUser.id,
-          email: updatedUser.email,
-          firstName: updatedUser.firstName,
-          lastName: updatedUser.lastName,
-          displayName: updatedUser.displayName,
-          title: updatedUser.title,
-          isAdmin: updatedUser.isAdmin,
-          hasAppAccess: updatedUser.hasAppAccess,
-          schedulingLink: updatedUser.schedulingLink,
-          oktaStatus: updatedUser.oktaStatus,
-          lastSyncedAt: updatedUser.lastSyncedAt,
-          createdAt: updatedUser.createdAt,
-        }
-      } 
-    };
-  } catch (error) {
-    console.error('Error revoking app access:', error);
-    return { success: false, error: 'Failed to revoke app access' };
-  }
+    return { success: true, data: { user: toUserListItem(updatedUser) } };
+  });
 }

@@ -13,18 +13,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAccess } from '@/lib/api-helpers';
-import { getApplicationDetail } from '@/lib/services/applications';
+import { requireApplicationAccess, type RouteParams } from '@/lib/api-helpers';
 import { getUserById } from '@/lib/services/users';
 import { sendInterviewInvitation } from '@/lib/email';
 import { logInterviewRescheduled } from '@/lib/audit';
 import { db } from '@/lib/db';
 import { sanitizeForLog, requireString, RequiredFieldError } from '@/lib/security';
 import { isValidUUID, isValidURL } from '@/lib/utils';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * POST /api/applications/[id]/reschedule-interview
@@ -37,51 +32,21 @@ export async function POST(
   { params }: RouteParams
 ) {
   try {
-    const { id } = await params;
-
-    // Validate ID format
-    if (!isValidUUID(id)) {
-      console.error('[Reschedule Interview] Invalid UUID format:', sanitizeForLog(id));
-      return NextResponse.json(
-        { error: 'Invalid application ID format' },
-        { status: 400 }
-      );
-    }
-
-    const auth = await requireAccess();
-    if (!auth.ok) return auth.error;
-    const { session } = auth;
-
-    // Get application details
-    const application = await getApplicationDetail(id);
-    if (!application) {
-      console.error('[Reschedule Interview] Application not found:', sanitizeForLog(id));
-      return NextResponse.json(
-        { error: 'Application not found' },
-        { status: 404 }
-      );
-    }
-
-    // Validate application is active
-    if (application.status !== 'ACTIVE') {
-      console.error('[Reschedule Interview] Application not active:', sanitizeForLog(id), 'status:', sanitizeForLog(application.status));
-      return NextResponse.json(
-        { error: 'Can only reschedule interviews for active applications' },
-        { status: 400 }
-      );
-    }
+    const access = await requireApplicationAccess(params, { requireActive: true });
+    if (!access.ok) return access.error;
+    const { session, application } = access;
 
     // Get existing interview
     const existingInterview = await db.interview.findFirst({
       where: {
-        applicationId: id,
+        applicationId: application.id,
         completedAt: null, // Only reschedule non-completed interviews
       },
       orderBy: { createdAt: 'desc' },
     });
 
     if (!existingInterview) {
-      console.error('[Reschedule Interview] No active interview found for application:', sanitizeForLog(id));
+      console.error('[Reschedule Interview] No active interview found for application:', sanitizeForLog(application.id));
       return NextResponse.json(
         { error: 'No active interview found to reschedule' },
         { status: 404 }
@@ -152,7 +117,7 @@ export async function POST(
 
     // Log the interview rescheduling
     await logInterviewRescheduled(
-      id,
+      application.id,
       application.personId,
       existingInterview.interviewerId,
       interviewerId,
@@ -165,7 +130,7 @@ export async function POST(
     if (resendEmail) {
       emailResult = await sendInterviewInvitation(
         application.personId,
-        id,
+        application.id,
         application.person.email,
         application.person.firstName,
         application.position,
@@ -180,7 +145,7 @@ export async function POST(
     }
 
     console.log('[Reschedule Interview] Success:', {
-      applicationId: sanitizeForLog(id),
+      applicationId: sanitizeForLog(application.id),
       oldInterviewerId: sanitizeForLog(existingInterview.interviewerId),
       newInterviewerId: sanitizeForLog(interviewerId),
       emailResent: resendEmail,

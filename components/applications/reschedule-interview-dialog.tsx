@@ -33,6 +33,8 @@ import {
 } from '@/components/ui/select';
 import { strings } from '@/config';
 import { Calendar, Loader2, AlertTriangle, Mail } from 'lucide-react';
+import { InlineError } from '@/components/shared/inline-error';
+import { useDialogSubmit } from '@/hooks/use-dialog-submit';
 
 export interface Interviewer {
   id: string;
@@ -73,8 +75,6 @@ export function RescheduleInterviewDialog({
 }: RescheduleInterviewDialogProps) {
   const [interviewerId, setInterviewerId] = React.useState('');
   const [resendEmail, setResendEmail] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   // Filter interviewers to only those with scheduling links
   const availableInterviewers = React.useMemo(
@@ -87,49 +87,30 @@ export function RescheduleInterviewDialog({
     if (isOpen) {
       setInterviewerId(currentInterviewerId || availableInterviewers[0]?.id || '');
       setResendEmail(true);
-      setError(null);
     }
   }, [isOpen, currentInterviewerId, availableInterviewers]);
 
   const selectedInterviewer = availableInterviewers.find(i => i.id === interviewerId);
   const isInterviewerChanged = interviewerId !== currentInterviewerId;
 
-  const handleConfirm = async () => {
-    // Validate interviewer selected
-    if (!interviewerId) {
-      setError(strings.interview.interviewerRequired);
-      return;
-    }
+  const { isSubmitting, isDisabled, error, handleOpenChange, handleConfirm } =
+    useDialogSubmit({
+      onConfirm: () =>
+        onConfirm({
+          interviewerId,
+          resendEmail,
+        }),
+      onClose,
+      isProcessing,
+      validate: () => {
+        if (!interviewerId)
+          return strings.interview.interviewerRequired;
+        if (!selectedInterviewer?.schedulingLink)
+          return strings.interview.schedulingLinkRequired;
+        return null;
+      },
+    });
 
-    // Validate interviewer has scheduling link
-    if (!selectedInterviewer?.schedulingLink) {
-      setError(strings.interview.schedulingLinkRequired);
-      return;
-    }
-
-    setError(null);
-    setIsSubmitting(true);
-
-    try {
-      await onConfirm({
-        interviewerId,
-        resendEmail,
-      });
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open && !isProcessing && !isSubmitting) {
-      onClose();
-    }
-  };
-
-  const isDisabled = isProcessing || isSubmitting;
   const mailtoLink = `mailto:${candidateEmail}?subject=Interview Reschedule - ${applicationName}&body=Dear ${candidateName},%0D%0A%0D%0AYour interview has been rescheduled. You will receive a new invitation email shortly.%0D%0A%0D%0ABest regards`;
 
   return (
@@ -150,12 +131,7 @@ export function RescheduleInterviewDialog({
 
         <div className="space-y-4 py-4">
           {/* Error message */}
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-              <p className="text-sm text-destructive">{error}</p>
-            </div>
-          )}
+          <InlineError message={error} />
 
           {/* Warning about candidate notification */}
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 dark:bg-amber-950/50 dark:border-amber-800">

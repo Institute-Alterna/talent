@@ -51,33 +51,59 @@ Determined by Okta group membership: `talent-administration` (admins) and `talen
 
 ```
 app/
+├── actions.ts                # Server actions (login)
+├── layout.tsx                # Root layout
+├── page.tsx                  # Login page
 ├── (dashboard)/              # Protected routes
-│   ├── audit-log/
-│   ├── candidates/
-│   ├── dashboard/
-│   ├── settings/
-│   └── users/
+│   ├── candidates/           # Pipeline board view
+│   ├── dashboard/            # Statistics overview
+│   ├── log/                  # Audit log viewer
+│   ├── personnel/            # User management (actions.ts uses withRoleActionGuard)
+│   └── settings/             # User profile settings
 ├── api/
-│   ├── applications/[id]/    # CRUD, schedule/reschedule interview, decision
+│   ├── applications/         # Application list
+│   │   └── [id]/             # CRUD + sub-routes (all use requireApplicationAccess)
+│   │       ├── audit-log/
+│   │       ├── complete-interview/
+│   │       ├── decision/
+│   │       ├── export-pdf/
+│   │       ├── reschedule-interview/
+│   │       ├── schedule-interview/
+│   │       └── send-email/
 │   ├── audit-logs/
 │   ├── auth/[...nextauth]/
 │   ├── dashboard/
-│   ├── health/
+│   ├── debug/                # Development-only routes
 │   ├── persons/[id]/
-│   ├── users/                # Sync, CRUD
-│   └── webhooks/tally/       # application, general-competencies, specialised-competencies
+│   ├── users/                # Sync, CRUD, stats
+│   └── webhooks/tally/       # application, general-competencies, specialized-competencies
 └── auth/                     # Login/error pages
 components/
 ├── applications/
+│   ├── application-detail.tsx  # Main detail dialog (ProfileContent, buildTimelineItems, SendEmailButton)
+│   ├── interview-dialog.tsx    # Unified schedule/reschedule dialog (mode prop)
+│   └── ...                     # card, pipeline-board, stage/status badges, decision/withdraw dialogs
 ├── candidates/
 ├── dashboard/
-├── layout/                   # Header, Sidebar, Footer
+│   └── pipeline-chart.tsx
+├── layout/                   # Header, Sidebar, DashboardLayout
+├── providers/                # ThemeProvider
 ├── shared/
+│   ├── attention-breakdown.tsx  # Reusable Dialog/Sheet for score breakdown
+│   ├── inline-error.tsx         # Error display with AlertTriangle icon
+│   ├── login-form.tsx
+│   ├── metric-card.tsx          # Compact metric display card
+│   ├── role-badge.tsx           # Admin/HiringManager/NoAccess badge
+│   ├── theme-selector.tsx
+│   └── theme-toggle.tsx
 ├── ui/                       # shadcn/ui primitives
 └── users/
+    ├── user-detail-dialog.tsx
+    └── users-table.tsx         # Data-driven dialogs via actionMap + openConfirmDialog
 config/
-├── branding.ts               # Colours, logos, organisation name
-├── recruitment.ts            # Stages, thresholds, positions, rate limits
+├── index.ts                  # Re-exports all config modules
+├── branding.ts               # Organisation name, colours, logos, auth provider name
+├── recruitment.ts            # Stages, thresholds, positions, rate limits (source of truth for stage list)
 └── strings.ts                # All UI text (British English)
 emails/
 ├── application/              # application-received
@@ -85,19 +111,38 @@ emails/
 ├── decision/                 # offer-letter, rejection
 ├── interview/                # interview-invitation
 └── onboarding/               # account-created
+hooks/
+├── index.ts                  # Re-exports all hooks
+├── use-dialog-submit.ts      # Shared dialog submission pattern (refs via useEffect)
+├── use-media-query.ts        # Responsive breakpoint detection
+├── use-mounted.ts            # SSR hydration guard
+└── use-toast.tsx             # Toast notifications
 lib/
-├── email/                    # Service, config, templates, queue
-├── generated/prisma/         # Generated Prisma client
+├── api-helpers.ts            # requireAuth, requireAccess, requireAdmin, requireApplicationAccess, parseJsonBody, RouteParams
+├── audit.ts                  # Audit logging functions
+├── auth.config.ts            # NextAuth edge config
+├── auth.ts                   # NextAuth full config with DB callbacks
+├── constants.ts              # VALID_STAGES (derived from recruitment config), VALID_STATUSES
+├── db.ts                     # Prisma client singleton
+├── db-utils.ts               # Database utilities
+├── utils.ts                  # General utilities (isValidUUID, isValidURL, calcMissingFields, etc.)
+├── email/                    # Service, config, templates, queue, transporter
+├── generated/prisma/         # Generated Prisma client (do not edit)
 ├── integrations/okta.ts      # Bidirectional Okta sync
 ├── pdf/                      # PDF generation + sanitisation
-├── security/                 # Log sanitiser
-├── services/                 # persons, applications, users
+├── security/                 # Log sanitiser, input validation
+├── services/                 # persons, applications, users, seed-cleanup
 └── webhooks/                 # Tally mapper, signature verification, rate limiter
 prisma/
 ├── schema.prisma
 ├── migrations/
 └── seed.ts
-types/                        # application.ts, person.ts, user.ts
+types/
+├── index.ts                  # Re-exports all type modules
+├── shared.ts                 # ActionResult, Decimal, UserReference, Interviewer, PersonSummary, PaginationMeta
+├── application.ts
+├── person.ts
+└── user.ts
 __tests__/
 ├── app/api/                  # API route tests
 ├── components/               # Component tests
@@ -239,6 +284,80 @@ Do not consider work complete until all steps pass.
 - Pipeline: Install → Generate Prisma → Test → Build
 - Build job depends on test passing
 - 26 environment secrets configured
+
+---
+
+## DRY Practices & Shared Abstractions
+
+Follow these established patterns to avoid duplication when adding new features.
+
+### API Route Helpers (`lib/api-helpers.ts`)
+
+- **`RouteParams`** — Shared type for Next.js dynamic route params. Use `import { type RouteParams } from '@/lib/api-helpers'` instead of defining local `interface RouteParams { params: Promise<{ id: string }> }` in each route.
+- **`requireApplicationAccess(params, options?)`** — Single call that combines UUID validation, auth (`requireAccess` or `requireAdmin` via `level` option), application fetch (`getApplicationDetail`), and optional active-status check (`requireActive: true`). Returns discriminated union `{ ok: true, session, application }` or `{ ok: false, error }`. Use in all `/api/applications/[id]/*` routes.
+- **`parseJsonBody<T>(request)`** — Wraps `request.json()` with 400 error response on failure. Returns `{ ok: true, body }` or `{ ok: false, error }`. Eliminates try/catch JSON parsing boilerplate.
+
+**Pattern:**
+```typescript
+const access = await requireApplicationAccess(params, { level: 'admin', requireActive: true });
+if (!access.ok) return access.error;
+const { session, application } = access;
+
+const parsed = await parseJsonBody(request);
+if (!parsed.ok) return parsed.error;
+const body = parsed.body;
+```
+
+### Server Action Guards (`app/(dashboard)/personnel/actions.ts`)
+
+- **`withRoleActionGuard(id, options, fn)`** — Higher-order function wrapping UUID validation, auth, Okta config check, optional self-action prevention, user fetch, and error handling. All role-management actions (makeAdmin, revokeAdmin, grantAppAccess, revokeAppAccess) use this.
+- **`toUserListItem(user)`** — Maps Prisma `User` to client-facing `UserListItem` shape. Use whenever converting DB user objects for the client.
+
+### Shared Types (`types/shared.ts`)
+
+- **`ActionResult<T>`** — Generic result type for server actions: `{ success, data?, error? }`
+- **`Decimal`** — Prisma Decimal type alias
+- **`UserReference`** — `{ id, displayName, email }` — minimal user reference
+- **`Interviewer extends UserReference`** — Adds `schedulingLink`
+- **`PersonSummary`** — Compact person shape for lists
+- **`PaginationMeta`** — `{ total, page, limit, totalPages }`
+
+### Shared Hooks (`hooks/`)
+
+- **`useDialogSubmit({ onConfirm, onClose, isProcessing, validate })`** — Encapsulates dialog submission state (loading, error, open/close). Uses internal refs via `useEffect` to avoid stale closures. Returns `{ isSubmitting, isDisabled, error, setError, handleOpenChange, handleConfirm }`.
+- **`useMounted()`** — Returns `true` after first client render. Use to guard client-only rendering (e.g., theme-dependent UI).
+- **`useMediaQuery(query)`** — Reactive media query match with SSR safety.
+
+### Shared Components (`components/shared/`)
+
+- **`InlineError`** — Error display with `AlertTriangle` icon. Use in forms/dialogs instead of inline error rendering.
+- **`RoleBadge`** — Renders admin/hiring-manager/no-access/dismissed badges. Single source of truth for role display.
+- **`MetricCard`** — Compact stat card with label, value, optional icon. Use in dashboards.
+- **`AttentionBreakdownPanel`** — Dialog/Sheet for attention score breakdown by category.
+
+### Component Decomposition (`components/applications/application-detail.tsx`)
+
+- **`ProfileContent`** — Shared profile layout with `columns` prop (1 or 2). Used by both desktop `LeftPanel` and mobile `ProfileTab`.
+- **`SendEmailButton`** — Encapsulates email-send button with loading state. Used by GC, SC, Interview, and Decision cards.
+- **`buildTimelineItems(auditLogs)`** — Converts audit logs to timeline items. Used by both `LeftPanel` timeline and `ActivityTab`.
+- **GC status values** — Pre-computed once at top of `RightPanel` (`gcConfig`, `gcScore`, `gcPassed`, `gcFailed`, `gcNotCompleted`, `gcScoreDisplay`, `isActionable`). All 4 cards reference these instead of recomputing.
+
+### Interview Dialog (`components/applications/interview-dialog.tsx`)
+
+- Unified dialog with `mode: 'schedule' | 'reschedule'` prop using discriminated union types. Replaces separate `schedule-interview-dialog.tsx` and `reschedule-interview-dialog.tsx`.
+
+### Data-Driven Dialogs (`components/users/users-table.tsx`)
+
+- **`actionMap`** — Maps dialog types to server actions, eliminating per-action click/confirm handlers.
+- **`openConfirmDialog(user, type)`** — Single function opening the appropriate confirmation dialog.
+- **Config-driven AlertDialog** — Single `AlertDialog` with config map for title, description, confirmLabel, destructive flag.
+
+### Configuration as Source of Truth
+
+- **Organisation name** — Always reference `branding.organisationName` from `config/branding.ts`. Never hardcode "Institute Alterna" in code.
+- **Pipeline stages** — Defined once in `config/recruitment.ts`. `VALID_STAGES` in `lib/constants.ts` is derived from it. The Prisma `Stage` enum in `schema.prisma` must match.
+- **Auth provider name** — Use `branding.authProviderName` / `branding.authProviderShortName` from config.
+- **Email fallback subject** — Uses `branding.organisationName` interpolation, not a hardcoded string.
 
 ---
 

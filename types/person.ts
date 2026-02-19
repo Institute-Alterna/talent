@@ -5,9 +5,8 @@
  * A Person is identified by email and can have multiple Applications.
  */
 
-import type { Prisma } from '@/lib/generated/prisma/client';
-
-type Decimal = Prisma.Decimal;
+import type { Stage, Status } from '@/lib/generated/prisma/client';
+import type { Decimal, PaginationMeta } from './shared';
 
 /**
  * Person data as returned from the database
@@ -65,8 +64,8 @@ export interface PersonWithApplications extends Person {
 export interface ApplicationSummary {
   id: string;
   position: string;
-  currentStage: string;
-  status: string;
+  currentStage: Stage;
+  status: Status;
   createdAt: Date;
 }
 
@@ -140,10 +139,6 @@ export interface PersonFilters {
 /**
  * Paginated response for persons list
  */
-export interface PersonsListResponse {
+export interface PersonsListResponse extends PaginationMeta {
   persons: PersonListItem[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
 }

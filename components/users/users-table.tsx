@@ -35,9 +35,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { MoreHorizontal, Shield, ShieldOff, Trash2, Calendar, Eye, CheckCircle2, XCircle, Clock, AlertTriangle, UserPlus, UserMinus, Ban } from 'lucide-react';
-import { strings } from '@/config';
 import { makeAdminAction, revokeAdminAction, deleteUserAction, grantAppAccessAction, revokeAppAccessAction } from '@/app/(dashboard)/personnel/actions';
+import { RoleBadge } from '@/components/shared/role-badge';
 import type { UserListItem } from '@/types/user';
+import type { ActionResult } from '@/types/shared';
 import type { OktaStatus } from '@/lib/generated/prisma/client';
 
 interface UsersTableProps {
@@ -64,101 +65,36 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
     setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
   };
 
-  const handleMakeAdminClick = (user: UserListItem) => {
+  // --- Action maps for data-driven confirm dialog ---
+  const actionMap: Record<Exclude<ConfirmDialogType, null>, (id: string) => Promise<ActionResult<{ user: UserListItem } | void>>> = {
+    makeAdmin: makeAdminAction,
+    revokeAdmin: revokeAdminAction,
+    grantAccess: grantAppAccessAction,
+    revokeAccess: revokeAppAccessAction,
+    delete: deleteUserAction,
+  };
+
+  const openConfirmDialog = (user: UserListItem, type: Exclude<ConfirmDialogType, null>) => {
     setSelectedUser(user);
-    setConfirmDialogType('makeAdmin');
+    setConfirmDialogType(type);
   };
 
-  const handleMakeAdminConfirm = () => {
-    if (!selectedUser) return;
-
+  const handleConfirm = () => {
+    if (!selectedUser || !confirmDialogType) return;
+    const action = actionMap[confirmDialogType];
     startTransition(async () => {
-      const result = await makeAdminAction(selectedUser.id);
-      if (result.success && result.data?.user) {
-        updateLocalUser(result.data.user);
-      } else {
-        console.error('Failed to make admin:', result.error);
-      }
-      setConfirmDialogType(null);
-      setSelectedUser(null);
-    });
-  };
-
-  const handleRevokeAdminClick = (user: UserListItem) => {
-    setSelectedUser(user);
-    setConfirmDialogType('revokeAdmin');
-  };
-
-  const handleRevokeAdminConfirm = () => {
-    if (!selectedUser) return;
-
-    startTransition(async () => {
-      const result = await revokeAdminAction(selectedUser.id);
-      if (result.success && result.data?.user) {
-        updateLocalUser(result.data.user);
-      } else {
-        console.error('Failed to revoke admin:', result.error);
-      }
-      setConfirmDialogType(null);
-      setSelectedUser(null);
-    });
-  };
-
-  const handleGrantAccessClick = (user: UserListItem) => {
-    setSelectedUser(user);
-    setConfirmDialogType('grantAccess');
-  };
-
-  const handleGrantAccessConfirm = () => {
-    if (!selectedUser) return;
-
-    startTransition(async () => {
-      const result = await grantAppAccessAction(selectedUser.id);
-      if (result.success && result.data?.user) {
-        updateLocalUser(result.data.user);
-      } else {
-        console.error('Failed to grant access:', result.error);
-      }
-      setConfirmDialogType(null);
-      setSelectedUser(null);
-    });
-  };
-
-  const handleRevokeAccessClick = (user: UserListItem) => {
-    setSelectedUser(user);
-    setConfirmDialogType('revokeAccess');
-  };
-
-  const handleRevokeAccessConfirm = () => {
-    if (!selectedUser) return;
-
-    startTransition(async () => {
-      const result = await revokeAppAccessAction(selectedUser.id);
-      if (result.success && result.data?.user) {
-        updateLocalUser(result.data.user);
-      } else {
-        console.error('Failed to revoke access:', result.error);
-      }
-      setConfirmDialogType(null);
-      setSelectedUser(null);
-    });
-  };
-
-  const handleDeleteClick = (user: UserListItem) => {
-    setSelectedUser(user);
-    setConfirmDialogType('delete');
-  };
-
-  const handleDeleteConfirm = () => {
-    if (!selectedUser) return;
-
-    startTransition(async () => {
-      const result = await deleteUserAction(selectedUser.id);
+      const result = await action(selectedUser.id);
       if (result.success) {
-        // Remove deleted user from local state
-        setUsers(prev => prev.filter(u => u.id !== selectedUser.id));
+        if (confirmDialogType === 'delete') {
+          setUsers(prev => prev.filter(u => u.id !== selectedUser.id));
+        } else {
+          const data = result.data as { user: UserListItem } | undefined;
+          if (data?.user) {
+            updateLocalUser(data.user);
+          }
+        }
       } else {
-        console.error('Failed to delete user:', result.error);
+        console.error(`Action ${confirmDialogType} failed:`, result.error);
       }
       setConfirmDialogType(null);
       setSelectedUser(null);
@@ -258,18 +194,11 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
                 <TableCell>{user.title || '-'}</TableCell>
                 <TableCell>{getStatusBadge(user.oktaStatus)}</TableCell>
                 <TableCell>
-                  {isDismissed(user) ? (
-                    <Badge variant="secondary" className="gap-1">
-                      <Ban className="h-3 w-3" />
-                      Dismissed
-                    </Badge>
-                  ) : user.isAdmin ? (
-                    <Badge variant="default">{strings.personnel.admin}</Badge>
-                  ) : user.hasAppAccess ? (
-                    <Badge variant="secondary">{strings.personnel.hiringManager}</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-muted-foreground">{strings.personnel.noAccess}</Badge>
-                  )}
+                  <RoleBadge
+                    isAdmin={user.isAdmin}
+                    hasAppAccess={user.hasAppAccess}
+                    isDismissed={isDismissed(user)}
+                  />
                 </TableCell>
                 <TableCell>
                   {user.schedulingLink ? (
@@ -310,7 +239,7 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
                           <>
                             {/* Grant access for users without access */}
                             {!user.hasAppAccess && !user.isAdmin && (
-                              <DropdownMenuItem onClick={() => handleGrantAccessClick(user)}>
+                              <DropdownMenuItem onClick={() => openConfirmDialog(user, 'grantAccess')}>
                                 <UserPlus className="mr-2 h-4 w-4" />
                                 Grant App Access
                               </DropdownMenuItem>
@@ -318,12 +247,12 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
                             
                             {/* Admin management */}
                             {user.isAdmin ? (
-                              <DropdownMenuItem onClick={() => handleRevokeAdminClick(user)}>
+                              <DropdownMenuItem onClick={() => openConfirmDialog(user, 'revokeAdmin')}>
                                 <ShieldOff className="mr-2 h-4 w-4" />
                                 Revoke Admin Access
                               </DropdownMenuItem>
                             ) : user.hasAppAccess ? (
-                              <DropdownMenuItem onClick={() => handleMakeAdminClick(user)}>
+                              <DropdownMenuItem onClick={() => openConfirmDialog(user, 'makeAdmin')}>
                                 <Shield className="mr-2 h-4 w-4" />
                                 Make Admin
                               </DropdownMenuItem>
@@ -332,7 +261,7 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
                             {/* Revoke all access for users with access (hiring managers or admins) */}
                             {(user.hasAppAccess || user.isAdmin) && (
                               <DropdownMenuItem 
-                                onClick={() => handleRevokeAccessClick(user)}
+                                onClick={() => openConfirmDialog(user, 'revokeAccess')}
                                 className="text-destructive focus:text-destructive"
                               >
                                 <UserMinus className="mr-2 h-4 w-4" />
@@ -343,7 +272,7 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive"
-                              onClick={() => handleDeleteClick(user)}
+                              onClick={() => openConfirmDialog(user, 'delete')}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
@@ -365,111 +294,67 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
         </TableBody>
       </Table>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={confirmDialogType === 'delete'} onOpenChange={(open) => !open && handleDialogClose()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Person</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete {selectedUser ? getFullName(selectedUser) : ''}? This action
-              cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isPending ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Make Admin Confirmation Dialog */}
-      <AlertDialog open={confirmDialogType === 'makeAdmin'} onOpenChange={(open) => !open && handleDialogClose()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Make Person an Administrator</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to make {selectedUser ? getFullName(selectedUser) : ''} an administrator?
-              This will add them to the talent-administration group and grant them full access to manage personnel, candidates, and system settings.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleMakeAdminConfirm}>
-              {isPending ? 'Updating...' : 'Make Admin'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Revoke Admin Confirmation Dialog */}
-      <AlertDialog open={confirmDialogType === 'revokeAdmin'} onOpenChange={(open) => !open && handleDialogClose()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Revoke Administrator Access</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to revoke administrator access from {selectedUser ? getFullName(selectedUser) : ''}?
-              They will be removed from the talent-administration group but will retain access as a Hiring Manager.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleRevokeAdminConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isPending ? 'Revoking...' : 'Revoke Admin'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Grant Access Confirmation Dialog */}
-      <AlertDialog open={confirmDialogType === 'grantAccess'} onOpenChange={(open) => !open && handleDialogClose()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Grant App Access</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to grant {selectedUser ? getFullName(selectedUser) : ''} access to this application?
-              They will be added to the talent-access group and be able to view and manage candidates.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleGrantAccessConfirm}>
-              {isPending ? 'Granting Access...' : 'Grant Access'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Revoke Access Confirmation Dialog */}
-      <AlertDialog open={confirmDialogType === 'revokeAccess'} onOpenChange={(open) => !open && handleDialogClose()}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Revoke App Access</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to revoke all app access from {selectedUser ? getFullName(selectedUser) : ''}?
-              {selectedUser?.isAdmin && ' This will remove them from both the talent-administration and talent-access groups.'}
-              {!selectedUser?.isAdmin && ' This will remove them from the talent-access group.'}
-              {' '}They will no longer be able to access this application.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleRevokeAccessConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isPending ? 'Revoking...' : 'Revoke Access'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Data-driven confirmation dialog */}
+      {confirmDialogType && (() => {
+        const userName = selectedUser ? getFullName(selectedUser) : '';
+        const config: Record<Exclude<ConfirmDialogType, null>, { title: string; description: string; confirmLabel: string; pendingLabel: string; destructive: boolean }> = {
+          delete: {
+            title: 'Delete Person',
+            description: `Are you sure you want to delete ${userName}? This action cannot be undone.`,
+            confirmLabel: 'Delete',
+            pendingLabel: 'Deleting...',
+            destructive: true,
+          },
+          makeAdmin: {
+            title: 'Make Person an Administrator',
+            description: `Are you sure you want to make ${userName} an administrator? This will add them to the talent-administration group and grant them full access to manage personnel, candidates, and system settings.`,
+            confirmLabel: 'Make Admin',
+            pendingLabel: 'Updating...',
+            destructive: false,
+          },
+          revokeAdmin: {
+            title: 'Revoke Administrator Access',
+            description: `Are you sure you want to revoke administrator access from ${userName}? They will be removed from the talent-administration group but will retain access as a Hiring Manager.`,
+            confirmLabel: 'Revoke Admin',
+            pendingLabel: 'Revoking...',
+            destructive: true,
+          },
+          grantAccess: {
+            title: 'Grant App Access',
+            description: `Are you sure you want to grant ${userName} access to this application? They will be added to the talent-access group and be able to view and manage candidates.`,
+            confirmLabel: 'Grant Access',
+            pendingLabel: 'Granting Access...',
+            destructive: false,
+          },
+          revokeAccess: {
+            title: 'Revoke App Access',
+            description: `Are you sure you want to revoke all app access from ${userName}?${selectedUser?.isAdmin ? ' This will remove them from both the talent-administration and talent-access groups.' : ' This will remove them from the talent-access group.'} They will no longer be able to access this application.`,
+            confirmLabel: 'Revoke Access',
+            pendingLabel: 'Revoking...',
+            destructive: true,
+          },
+        };
+        const c = config[confirmDialogType];
+        return (
+          <AlertDialog open onOpenChange={(open) => !open && handleDialogClose()}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{c.title}</AlertDialogTitle>
+                <AlertDialogDescription>{c.description}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleConfirm}
+                  className={c.destructive ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : undefined}
+                >
+                  {isPending ? c.pendingLabel : c.confirmLabel}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        );
+      })()}
     </>
   );
 }

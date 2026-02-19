@@ -14,8 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAccess } from '@/lib/api-helpers';
-import { getApplicationDetail } from '@/lib/services/applications';
+import { requireApplicationAccess, parseJsonBody, type RouteParams } from '@/lib/api-helpers';
 import {
   sendGCInvitation,
   sendSCInvitation,
@@ -26,11 +25,7 @@ import {
 } from '@/lib/email';
 import { escapeHtml } from '@/lib/email/templates';
 import { sanitizeForLog } from '@/lib/security';
-import { isValidUUID, isValidURL } from '@/lib/utils';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
+import { isValidURL } from '@/lib/utils';
 
 /**
  * Valid template names that can be sent via this endpoint
@@ -53,27 +48,9 @@ export async function POST(
   { params }: RouteParams
 ) {
   try {
-    const { id } = await params;
-
-    // Validate ID format
-    if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid application ID format' },
-        { status: 400 }
-      );
-    }
-
-    const auth = await requireAccess();
-    if (!auth.ok) return auth.error;
-
-    // Get application details
-    const application = await getApplicationDetail(id);
-    if (!application) {
-      return NextResponse.json(
-        { error: 'Application not found' },
-        { status: 404 }
-      );
-    }
+    const access = await requireApplicationAccess(params);
+    if (!access.ok) return access.error;
+    const { application } = access;
 
     // Check if application is active (can't send emails to withdrawn/rejected)
     if (application.status !== 'ACTIVE' && application.status !== 'ACCEPTED') {
@@ -84,15 +61,9 @@ export async function POST(
     }
 
     // Parse request body
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      );
-    }
+    const parsed = await parseJsonBody(request);
+    if (!parsed.ok) return parsed.error;
+    const body = parsed.body;
 
     // Validate template name
     const templateName = body.templateName as string;

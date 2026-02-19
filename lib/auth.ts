@@ -21,6 +21,7 @@ import NextAuth from 'next-auth';
 import { authConfig } from './auth.config';
 import { db } from './db';
 import type { User as DbUser } from './generated/prisma/client';
+import { branding } from '@/config';
 
 /**
  * Extended session user type with our custom fields
@@ -242,7 +243,7 @@ async function syncUserToDatabase(
           countryCode,
           preferredLanguage,
           timezone,
-          organisation: 'Institute Alterna',
+          organisation: branding.organisationName,
           isAdmin,
           hasAppAccess: true, // User has access if we're syncing them
           lastSyncedAt: new Date(),

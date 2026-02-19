@@ -7,6 +7,7 @@
 
 import { db } from '@/lib/db';
 import { Prisma, OktaStatus } from '@/lib/generated/prisma/client';
+import { branding } from '@/config';
 import type {
   User,
   UserListItem,
@@ -149,7 +150,7 @@ export async function createUser(data: CreateUserData): Promise<User> {
       countryCode: data.countryCode,
       preferredLanguage: data.preferredLanguage || 'en',
       timezone: data.timezone || 'America/New_York',
-      organisation: data.organisation || 'Institute Alterna',
+      organisation: data.organisation || branding.organisationName,
       operationalClearance: data.operationalClearance || 'A',
       isAdmin: data.isAdmin || false,
       schedulingLink: data.schedulingLink,
@@ -375,7 +376,7 @@ export async function syncUsersFromOkta(
         countryCode: userData.countryCode,
         preferredLanguage: userData.preferredLanguage || 'en',
         timezone: userData.timezone || 'America/New_York',
-        organisation: 'Institute Alterna',
+        organisation: branding.organisationName,
         oktaStatus: userData.oktaStatus || 'ACTIVE',
         isAdmin: userData.isAdmin || false,
         hasAppAccess: userData.hasAppAccess || false,

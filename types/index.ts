@@ -6,6 +6,7 @@
  */
 
 // Re-export all types from individual files
+export * from './shared';
 export * from './person';
 export * from './application';
 export * from './user';

@@ -14,16 +14,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/api-helpers';
+import { requireAdmin, type RouteParams } from '@/lib/api-helpers';
 import { getApplicationById } from '@/lib/services/applications';
 import { getAuditLogsForApplication } from '@/lib/audit';
 import { getEmailLogsForApplication } from '@/lib/email';
 import { sanitizeForLog } from '@/lib/security';
 import { isValidUUID } from '@/lib/utils';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * GET /api/applications/[id]/audit-log

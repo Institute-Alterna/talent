@@ -18,20 +18,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAccess } from '@/lib/api-helpers';
+import { requireApplicationAccess, type RouteParams } from '@/lib/api-helpers';
 import {
   generateCandidateReportPdf,
   generateAuditReportPdf,
   PdfGenerationError,
 } from '@/lib/pdf';
-import { getApplicationDetail } from '@/lib/services/applications';
 import { createAuditLog } from '@/lib/audit';
 import { sanitizeForLog } from '@/lib/security';
-import { isValidUUID } from '@/lib/utils';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * Parse boolean query parameter
@@ -52,16 +46,9 @@ function parseBooleanParam(value: string | null, defaultValue: boolean): boolean
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = await params;
-
-    // Validate ID format to prevent injection
-    if (!isValidUUID(id)) {
-      return NextResponse.json({ error: 'Invalid application ID format' }, { status: 400 });
-    }
-
-    const auth = await requireAccess();
-    if (!auth.ok) return auth.error;
-    const { session } = auth;
+    const access = await requireApplicationAccess(params);
+    if (!access.ok) return access.error;
+    const { session, application } = access;
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -77,17 +64,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Verify application exists and get person info for audit log
-    const application = await getApplicationDetail(id);
-    if (!application) {
-      return NextResponse.json({ error: 'Application not found' }, { status: 404 });
-    }
-
     // Generate the PDF based on type
     let result;
 
     if (reportType === 'candidate') {
-      result = await generateCandidateReportPdf(id, {
+      result = await generateCandidateReportPdf(application.id, {
         confidential,
         includeAuditLogs,
         maxAuditLogs: 50,
@@ -95,7 +76,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     } else {
       // Audit report
       const subjectName = `${application.person.firstName} ${application.person.lastName}`;
-      result = await generateAuditReportPdf('application', id, subjectName, {
+      result = await generateAuditReportPdf('application', application.id, subjectName, {
         confidential,
         maxAuditLogs: 100,
       });
@@ -104,7 +85,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Log the export action for compliance
     await createAuditLog({
       personId: application.personId,
-      applicationId: id,
+      applicationId: application.id,
       userId: session.user.dbUserId,
       action: `PDF ${reportType} report exported`,
       actionType: 'VIEW',

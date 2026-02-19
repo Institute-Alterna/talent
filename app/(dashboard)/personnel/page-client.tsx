@@ -26,6 +26,7 @@ import {
 import { RefreshCw, Search, AlertTriangle } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 import { UsersTable, UserDetailDialog } from '@/components/users';
+import { MetricCard } from '@/components/shared/metric-card';
 import { syncFromOktaAction, fetchUsers } from './actions';
 import type { UserListItem, UserStats } from '@/types/user';
 import type { OktaStatus } from '@/lib/generated/prisma/client';
@@ -82,18 +83,20 @@ export function UsersPageClient({
     };
   }, [users]);
 
-  const handleSearch = (newStatusFilter?: StatusFilter) => {
-    const filterToUse = newStatusFilter ?? statusFilter;
-    startTransition(async () => {
-      const result = await fetchUsers({
-        search: searchQuery || undefined,
-        oktaStatus: filterToUse,
-      });
-      if (result.success && result.data) {
-        setUsers(result.data.users);
-        setStats(result.data.stats);
-      }
+  /** Shared fetch-and-update for users + stats. */
+  const refreshUsers = async (overrideStatus?: StatusFilter) => {
+    const result = await fetchUsers({
+      search: searchQuery || undefined,
+      oktaStatus: overrideStatus ?? statusFilter,
     });
+    if (result.success && result.data) {
+      setUsers(result.data.users);
+      setStats(result.data.stats);
+    }
+  };
+
+  const handleSearch = (newStatusFilter?: StatusFilter) => {
+    startTransition(() => refreshUsers(newStatusFilter));
   };
 
   const handleStatusFilterChange = (newFilter: StatusFilter) => {
@@ -107,11 +110,7 @@ export function UsersPageClient({
       const result = await syncFromOktaAction();
       if (result.success && result.data) {
         // Refresh user list after sync
-        const fetchResult = await fetchUsers({ oktaStatus: statusFilter });
-        if (fetchResult.success && fetchResult.data) {
-          setUsers(fetchResult.data.users);
-          setStats(fetchResult.data.stats);
-        }
+        await refreshUsers();
         // Show success message with counts
         let message = `Sync completed: ${result.data.synced} users synced, ${result.data.removed} removed`;
         if (result.data.seedDataCleaned) {
@@ -136,16 +135,7 @@ export function UsersPageClient({
     setIsDialogOpen(open);
     if (!open) {
       // Refresh users when dialog closes in case of updates
-      startTransition(async () => {
-        const result = await fetchUsers({
-          search: searchQuery || undefined,
-          oktaStatus: statusFilter,
-        });
-        if (result.success && result.data) {
-          setUsers(result.data.users);
-          setStats(result.data.stats);
-        }
-      });
+      startTransition(() => refreshUsers());
     }
   };
 
@@ -153,43 +143,27 @@ export function UsersPageClient({
     <div className="space-y-4">
       {/* Compact Stats Row */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-5">
-        <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Total</span>
-          <span className="text-lg font-semibold tabular-nums">{stats.total}</span>
-        </div>
-        <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Active</span>
-          <span className="text-lg font-semibold tabular-nums">{stats.active}</span>
-        </div>
-        <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Inactive</span>
-          <span className="text-lg font-semibold tabular-nums">{stats.inactive}</span>
-        </div>
-        <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Admins</span>
-          <span className="text-lg font-semibold tabular-nums">{stats.admins}</span>
-        </div>
-        <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Interviewers</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-lg font-semibold tabular-nums">{interviewerStats.ready}</span>
-            {interviewerStats.missingLink > 0 && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 cursor-help">
-                      <AlertTriangle className="h-3 w-3" />
-                      {interviewerStats.missingLink}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{interviewerStats.missingLink} user{interviewerStats.missingLink !== 1 ? 's' : ''} without a scheduling link</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-        </div>
+        <MetricCard label="Total" value={stats.total} />
+        <MetricCard label="Active" value={stats.active} />
+        <MetricCard label="Inactive" value={stats.inactive} />
+        <MetricCard label="Admins" value={stats.admins} />
+        <MetricCard label="Interviewers" value={interviewerStats.ready}>
+          {interviewerStats.missingLink > 0 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 cursor-help">
+                    <AlertTriangle className="h-3 w-3" />
+                    {interviewerStats.missingLink}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{interviewerStats.missingLink} user{interviewerStats.missingLink !== 1 ? 's' : ''} without a scheduling link</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </MetricCard>
       </div>
 
       {/* Filters Row */}

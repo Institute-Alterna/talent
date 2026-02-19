@@ -10,7 +10,6 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  getApplicationDetail,
   updateApplication,
   updateApplicationStatus,
   deleteApplication,
@@ -24,13 +23,9 @@ import {
 } from '@/lib/audit';
 import { sanitizeForLog, sanitizeText } from '@/lib/security';
 import { Stage, Status } from '@/lib/generated/prisma/client';
-import { isValidUUID, isValidURL } from '@/lib/utils';
-import { requireAccess, requireAdmin } from '@/lib/api-helpers';
+import { isValidURL } from '@/lib/utils';
+import { requireApplicationAccess, parseJsonBody, type RouteParams } from '@/lib/api-helpers';
 import { VALID_STAGES, VALID_STATUSES } from '@/lib/constants';
-
-interface RouteParams {
-  params: Promise<{ id: string }>;
-}
 
 /**
  * GET /api/applications/[id]
@@ -43,28 +38,9 @@ export async function GET(
   { params }: RouteParams
 ) {
   try {
-    const { id } = await params;
-
-    // Validate ID format
-    if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid application ID format' },
-        { status: 400 }
-      );
-    }
-
-    const auth = await requireAccess();
-    if (!auth.ok) return auth.error;
-    const { session } = auth;
-
-    // Fetch application with full details
-    const application = await getApplicationDetail(id);
-    if (!application) {
-      return NextResponse.json(
-        { error: 'Application not found' },
-        { status: 404 }
-      );
-    }
+    const access = await requireApplicationAccess(params);
+    if (!access.ok) return access.error;
+    const { session, application } = access;
 
     // Log the view for GDPR compliance
     if (session.user.dbUserId) {
@@ -100,39 +76,14 @@ export async function PATCH(
   { params }: RouteParams
 ) {
   try {
-    const { id } = await params;
-
-    // Validate ID format
-    if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid application ID format' },
-        { status: 400 }
-      );
-    }
-
-    const auth = await requireAccess();
-    if (!auth.ok) return auth.error;
-    const { session } = auth;
-
-    // Get existing application
-    const existingApp = await getApplicationDetail(id);
-    if (!existingApp) {
-      return NextResponse.json(
-        { error: 'Application not found' },
-        { status: 404 }
-      );
-    }
+    const access = await requireApplicationAccess(params);
+    if (!access.ok) return access.error;
+    const { session, application: existingApp } = access;
 
     // Parse request body
-    let body: Record<string, unknown>;
-    try {
-      body = await request.json();
-    } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 }
-      );
-    }
+    const parsed = await parseJsonBody(request);
+    if (!parsed.ok) return parsed.error;
+    const body = parsed.body;
 
     // Determine what fields are being updated
     const requestedFields = Object.keys(body);
@@ -233,12 +184,12 @@ export async function PATCH(
     }
 
     // Perform the update
-    const updatedApp = await updateApplication(id, updateData);
+    const updatedApp = await updateApplication(existingApp.id, updateData);
 
     // Log stage change if applicable
     if (updateData.currentStage && updateData.currentStage !== existingApp.currentStage) {
       await logStageChange(
-        id,
+        existingApp.id,
         existingApp.personId,
         existingApp.currentStage,
         updateData.currentStage as string,
@@ -250,7 +201,7 @@ export async function PATCH(
     // Log status change if applicable
     if (updateData.status && updateData.status !== existingApp.status) {
       await logStatusChange(
-        id,
+        existingApp.id,
         existingApp.personId,
         existingApp.status,
         updateData.status as string,
@@ -293,36 +244,17 @@ export async function DELETE(
   { params }: RouteParams
 ) {
   try {
-    const { id } = await params;
-
     // Check for hardDelete query parameter
     const { searchParams } = new URL(request.url);
     const hardDelete = searchParams.get('hardDelete') === 'true';
 
-    // Validate ID format
-    if (!isValidUUID(id)) {
-      return NextResponse.json(
-        { error: 'Invalid application ID format' },
-        { status: 400 }
-      );
-    }
-
-    const auth = await requireAdmin();
-    if (!auth.ok) return auth.error;
-    const { session } = auth;
-
-    // Get existing application
-    const existingApp = await getApplicationDetail(id);
-    if (!existingApp) {
-      return NextResponse.json(
-        { error: 'Application not found' },
-        { status: 404 }
-      );
-    }
+    const access = await requireApplicationAccess(params, { level: 'admin' });
+    if (!access.ok) return access.error;
+    const { session, application: existingApp } = access;
 
     if (hardDelete) {
       // Hard delete: permanently remove the application and all related data
-      await deleteApplication(id);
+      await deleteApplication(existingApp.id);
 
       return NextResponse.json({
         success: true,
@@ -350,20 +282,20 @@ export async function DELETE(
     }
 
     // Soft delete: set status to WITHDRAWN
-    await updateApplicationStatus(id, 'WITHDRAWN');
+    await updateApplicationStatus(existingApp.id, 'WITHDRAWN');
 
     // Log the deletion
     await logRecordDeleted(
       'Application',
-      id,
+      existingApp.id,
       existingApp.personId,
-      id,
+      existingApp.id,
       session.user.dbUserId,
       reason
     );
 
     await logStatusChange(
-      id,
+      existingApp.id,
       existingApp.personId,
       existingApp.status,
       'WITHDRAWN',

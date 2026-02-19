@@ -9,7 +9,6 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -18,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   PipelineBoard,
@@ -26,6 +24,7 @@ import {
   type ApplicationDetailData,
   ApplicationCardData,
 } from '@/components/applications';
+import { AttentionBreakdownPanel } from '@/components/shared/attention-breakdown';
 import { Stage, Status } from '@/lib/generated/prisma/client';
 import { Search, RefreshCw, Maximize2, Minimize2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -34,8 +33,7 @@ import { cn } from '@/lib/utils';
 
 // Lazy-load heavy dialog components — only needed on user interaction
 const ApplicationDetail = React.lazy(() => import('@/components/applications/application-detail').then(m => ({ default: m.ApplicationDetail })));
-const ScheduleInterviewDialog = React.lazy(() => import('@/components/applications/schedule-interview-dialog').then(m => ({ default: m.ScheduleInterviewDialog })));
-const RescheduleInterviewDialog = React.lazy(() => import('@/components/applications/reschedule-interview-dialog').then(m => ({ default: m.RescheduleInterviewDialog })));
+const InterviewDialog = React.lazy(() => import('@/components/applications/interview-dialog').then(m => ({ default: m.InterviewDialog })));
 const CompleteInterviewDialog = React.lazy(() => import('@/components/applications/complete-interview-dialog').then(m => ({ default: m.CompleteInterviewDialog })));
 const WithdrawDialog = React.lazy(() => import('@/components/applications/withdraw-dialog').then(m => ({ default: m.WithdrawDialog })));
 const DecisionDialog = React.lazy(() => import('@/components/applications/decision-dialog').then(m => ({ default: m.DecisionDialog })));
@@ -405,7 +403,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
   const handleRescheduleInterviewConfirm = async (data: {
     interviewerId: string;
-    resendEmail: boolean;
+    sendEmail: boolean;
   }) => {
     if (!selectedApplicationId) return;
 
@@ -414,7 +412,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       const response = await fetch(`/api/applications/${selectedApplicationId}/reschedule-interview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ interviewerId: data.interviewerId, resendEmail: data.sendEmail }),
       });
 
       if (!response.ok) {
@@ -977,7 +975,8 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
         <React.Suspense fallback={null}>
           {isScheduleInterviewDialogOpen && (
-            <ScheduleInterviewDialog
+            <InterviewDialog
+              mode="schedule"
               isOpen={isScheduleInterviewDialogOpen}
               onClose={() => setIsScheduleInterviewDialogOpen(false)}
               onConfirm={handleScheduleInterviewConfirm}
@@ -992,7 +991,8 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
         <React.Suspense fallback={null}>
           {isRescheduleInterviewDialogOpen && (
-            <RescheduleInterviewDialog
+            <InterviewDialog
+              mode="reschedule"
               isOpen={isRescheduleInterviewDialogOpen}
               onClose={() => setIsRescheduleInterviewDialogOpen(false)}
               onConfirm={handleRescheduleInterviewConfirm}
@@ -1021,76 +1021,19 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
         </React.Suspense>
 
         {/* Needs Attention breakdown — Dialog on desktop, Sheet on mobile */}
-        {attentionBreakdown.total > 0 && (() => {
-          const breakdownContent = (
-            <div className="space-y-4">
-              <div className="grid gap-3">
-                {attentionBreakdown.awaitingGC > 0 && (
-                  <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Awaiting General Competencies</span>
-                    <span className="text-lg font-semibold tabular-nums">{attentionBreakdown.awaitingGC}</span>
-                  </div>
-                )}
-                {attentionBreakdown.awaitingSC > 0 && (
-                  <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Awaiting Specialised Competencies</span>
-                    <span className="text-lg font-semibold tabular-nums">{attentionBreakdown.awaitingSC}</span>
-                  </div>
-                )}
-                {attentionBreakdown.pendingInterviews > 0 && (
-                  <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Pending Interviews</span>
-                    <span className="text-lg font-semibold tabular-nums">{attentionBreakdown.pendingInterviews}</span>
-                  </div>
-                )}
-                {attentionBreakdown.pendingAgreement > 0 && (
-                  <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Pending Agreement</span>
-                    <span className="text-lg font-semibold tabular-nums">{attentionBreakdown.pendingAgreement}</span>
-                  </div>
-                )}
-              </div>
-              <Button
-                className="w-full bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700"
-                onClick={() => {
-                  setNeedsAttentionFilter(true);
-                  setShowAttentionBreakdown(false);
-                }}
-              >
-                <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
-                Filter to Attention Only
-              </Button>
-            </div>
-          );
-
-          return isDesktop ? (
-            <Dialog open={showAttentionBreakdown} onOpenChange={setShowAttentionBreakdown}>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Needs Attention</DialogTitle>
-                  <DialogDescription>
-                    {attentionBreakdown.total} application{attentionBreakdown.total !== 1 ? 's' : ''} requiring attention
-                  </DialogDescription>
-                </DialogHeader>
-                {breakdownContent}
-              </DialogContent>
-            </Dialog>
-          ) : (
-            <Sheet open={showAttentionBreakdown} onOpenChange={setShowAttentionBreakdown}>
-              <SheetContent side="bottom" className="rounded-t-xl">
-                <SheetHeader>
-                  <SheetTitle>Needs Attention</SheetTitle>
-                  <SheetDescription>
-                    {attentionBreakdown.total} application{attentionBreakdown.total !== 1 ? 's' : ''} requiring attention
-                  </SheetDescription>
-                </SheetHeader>
-                <div className="px-4 pb-6 pt-2">
-                  {breakdownContent}
-                </div>
-              </SheetContent>
-            </Sheet>
-          );
-        })()}
+        <AttentionBreakdownPanel
+          breakdown={attentionBreakdown}
+          open={showAttentionBreakdown}
+          onOpenChange={setShowAttentionBreakdown}
+          isDesktop={isDesktop}
+          action={{
+            label: 'Filter to Attention Only',
+            onClick: () => {
+              setNeedsAttentionFilter(true);
+              setShowAttentionBreakdown(false);
+            },
+          }}
+        />
       </div>
     </TooltipProvider>
   );
