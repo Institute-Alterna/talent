@@ -21,7 +21,7 @@ import {
   AlertCircle,
   FileDown,
   Loader2,
-  Ban,
+  Trash2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -36,6 +36,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { recruitment, formatScoreDisplay } from '@/config';
+import { strings } from '@/config';
 
 export interface ApplicationCardData {
   id: string;
@@ -95,7 +96,7 @@ export function ApplicationCard({
     <Card
       className={cn(
         'cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 border-border/50 py-3 min-h-[160px] flex flex-col',
-        application.status !== 'ACTIVE' && 'opacity-60 grayscale',
+        application.status === 'REJECTED' && 'opacity-60 grayscale',
         application.needsAttention && 'border-l-[3px] border-l-amber-500 dark:border-l-amber-400',
         className
       )}
@@ -209,8 +210,8 @@ export function ApplicationCard({
                       onClick={() => onWithdraw(application.id)}
                       className="text-destructive focus:text-destructive"
                     >
-                      <Ban className="mr-2 h-4 w-4" />
-                      Withdraw
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      {strings.withdraw.menuItem}
                     </DropdownMenuItem>
                   </>
                 )}

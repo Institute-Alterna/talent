@@ -52,7 +52,7 @@ export async function POST(
     if (!access.ok) return access.error;
     const { application } = access;
 
-    // Check if application is active (can't send emails to withdrawn/rejected)
+    // Check if application is active (can't send emails to rejected applications)
     if (application.status !== 'ACTIVE' && application.status !== 'ACCEPTED') {
       return NextResponse.json(
         { error: 'Cannot send emails to inactive applications' },
@@ -70,6 +70,27 @@ export async function POST(
     if (!templateName || !ALLOWED_TEMPLATES.includes(templateName as EmailTemplateName)) {
       return NextResponse.json(
         { error: `Invalid template. Must be one of: ${ALLOWED_TEMPLATES.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Stage-gate email templates to prevent inappropriate emails
+    const postInterviewStages = ['AGREEMENT', 'SIGNED'];
+    if (templateName === EMAIL_TEMPLATES.GC_INVITATION ||
+        templateName === EMAIL_TEMPLATES.SC_INVITATION ||
+        templateName === EMAIL_TEMPLATES.INTERVIEW_INVITATION) {
+      if (postInterviewStages.includes(application.currentStage)) {
+        return NextResponse.json(
+          { error: `Cannot send ${templateName} email at the ${application.currentStage} stage` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Rejection emails should not be sent to accepted applications
+    if (templateName === EMAIL_TEMPLATES.REJECTION && application.status === 'ACCEPTED') {
+      return NextResponse.json(
+        { error: 'Cannot send a rejection email to an accepted application' },
         { status: 400 }
       );
     }

@@ -61,6 +61,8 @@ export function DecisionDialog({
   const [sendEmail, setSendEmail] = React.useState(true);
 
   const isReject = decision === 'REJECT';
+  // ACCEPT always sends the offer letter (contains agreement link)
+  const isAccept = decision === 'ACCEPT';
 
   const { isSubmitting, isDisabled, error, handleOpenChange, handleConfirm } =
     useDialogSubmit({
@@ -69,7 +71,7 @@ export function DecisionDialog({
           decision,
           reason: reason.trim(),
           notes: notes.trim() || undefined,
-          sendEmail,
+          sendEmail: isAccept ? true : sendEmail,
         }),
       onClose,
       isProcessing,
@@ -147,21 +149,27 @@ export function DecisionDialog({
             />
           </div>
 
-          {/* Send email checkbox */}
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="send-email"
-              checked={sendEmail}
-              onCheckedChange={(checked) => setSendEmail(checked === true)}
-              disabled={isDisabled}
-            />
-            <Label
-              htmlFor="send-email"
-              className="text-sm font-normal cursor-pointer"
-            >
-              {strings.decision.sendEmailLabel}
-            </Label>
-          </div>
+          {/* Send email — always on for ACCEPT, checkbox for REJECT */}
+          {isAccept ? (
+            <p className="text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
+              {strings.decision.acceptEmailInfo}
+            </p>
+          ) : (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="send-email"
+                checked={sendEmail}
+                onCheckedChange={(checked) => setSendEmail(checked === true)}
+                disabled={isDisabled}
+              />
+              <Label
+                htmlFor="send-email"
+                className="text-sm font-normal cursor-pointer"
+              >
+                {strings.decision.sendEmailLabel}
+              </Label>
+            </div>
+          )}
         </div>
 
         <AlertDialogFooter>

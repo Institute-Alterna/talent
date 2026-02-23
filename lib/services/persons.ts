@@ -336,7 +336,7 @@ export async function getPersonStats(): Promise<PersonStats> {
  * Delete a person and all their applications
  *
  * Note: This cascades to applications, assessments, interviews, etc.
- * Use with caution - typically you should mark applications as WITHDRAWN instead.
+ * Use with caution - this permanently removes all associated data.
  *
  * @param id - Person ID
  */

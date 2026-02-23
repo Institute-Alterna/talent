@@ -37,6 +37,14 @@ export async function POST(
     if (!access.ok) return access.error;
     const { session, application } = access;
 
+    // Block scheduling for applications past the interview stage
+    if (application.currentStage === 'AGREEMENT' || application.currentStage === 'SIGNED') {
+      return NextResponse.json(
+        { error: 'Cannot schedule an interview for an application that has passed the interview stage' },
+        { status: 400 }
+      );
+    }
+
     const parsed = await parseJsonBody(request);
     if (!parsed.ok) return parsed.error;
     const { body } = parsed;

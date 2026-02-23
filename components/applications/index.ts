@@ -6,6 +6,7 @@
 
 export { ApplicationCard, type ApplicationCardData } from './application-card';
 export { ApplicationDetail, type ApplicationDetailData } from './application-detail';
+export { ApplicationListView, type ApplicationListItem } from './application-list-view';
 export { PipelineBoard, type PipelineBoardData, calculatePipelineStats } from './pipeline-board';
 export { StatusBadge } from './status-badge';
 export { StageBadge, getStageName, getStageOrder } from './stage-badge';

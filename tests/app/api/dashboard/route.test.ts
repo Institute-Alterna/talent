@@ -22,7 +22,6 @@ const Status = {
   ACTIVE: 'ACTIVE' as const,
   ACCEPTED: 'ACCEPTED' as const,
   REJECTED: 'REJECTED' as const,
-  WITHDRAWN: 'WITHDRAWN' as const,
 };
 
 const ActionType = {

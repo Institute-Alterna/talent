@@ -17,7 +17,7 @@ jest.mock('@/lib/auth', () => ({
 jest.mock('@/lib/services/applications', () => ({
   getApplicationDetail: jest.fn(),
   updateApplication: jest.fn(),
-  updateApplicationStatus: jest.fn(),
+  deleteApplication: jest.fn(),
 }));
 
 // Mock audit
@@ -39,7 +39,7 @@ jest.mock('@/lib/security', () => {
 
 import { GET, PATCH, DELETE } from '@/app/api/applications/[id]/route';
 import { auth } from '@/lib/auth';
-import { getApplicationDetail, updateApplication, updateApplicationStatus } from '@/lib/services/applications';
+import { getApplicationDetail, updateApplication, deleteApplication } from '@/lib/services/applications';
 import { logRecordViewed, logStageChange, logStatusChange, logRecordDeleted } from '@/lib/audit';
 
 const mockAuthAdmin = {
@@ -306,16 +306,59 @@ describe('PATCH /api/applications/[id]', () => {
     expect(response.status).toBe(403);
   });
 
-  it('allows admin to change stage', async () => {
+  it('allows admin to change stage forward', async () => {
     (auth as jest.Mock).mockResolvedValue(mockAuthAdmin);
+    // Start at APPLICATION stage so we can advance forward
+    (getApplicationDetail as jest.Mock).mockResolvedValue({ ...mockApplication, currentStage: 'APPLICATION' });
+    (updateApplication as jest.Mock).mockResolvedValue({ ...mockApplication, currentStage: 'GENERAL_COMPETENCIES' });
 
-    const request = createRequest(mockAppId, { currentStage: 'AGREEMENT' });
+    const request = createRequest(mockAppId, { currentStage: 'GENERAL_COMPETENCIES' });
     const response = await PATCH(request, { params: createParams(mockAppId) });
     await response.json();
 
     expect(response.status).toBe(200);
-    expect(updateApplication).toHaveBeenCalledWith(mockAppId, { currentStage: 'AGREEMENT' });
+    expect(updateApplication).toHaveBeenCalledWith(mockAppId, { currentStage: 'GENERAL_COMPETENCIES' });
     expect(logStageChange).toHaveBeenCalled();
+  });
+
+  it('blocks stage change to automated stages (AGREEMENT, SIGNED)', async () => {
+    (auth as jest.Mock).mockResolvedValue(mockAuthAdmin);
+
+    const request = createRequest(mockAppId, { currentStage: 'AGREEMENT' });
+    const response = await PATCH(request, { params: createParams(mockAppId) });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain('Cannot manually set stage');
+  });
+
+  it('blocks backward stage movement', async () => {
+    (auth as jest.Mock).mockResolvedValue(mockAuthAdmin);
+
+    const request = createRequest(mockAppId, { currentStage: 'APPLICATION' });
+    const response = await PATCH(request, { params: createParams(mockAppId) });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain('Cannot move stage backward');
+  });
+
+  it('blocks setting status to ACCEPTED or REJECTED via PATCH', async () => {
+    (auth as jest.Mock).mockResolvedValue(mockAuthAdmin);
+
+    const requestAccepted = createRequest(mockAppId, { status: 'ACCEPTED' });
+    const responseAccepted = await PATCH(requestAccepted, { params: createParams(mockAppId) });
+    const dataAccepted = await responseAccepted.json();
+
+    expect(responseAccepted.status).toBe(400);
+    expect(dataAccepted.error).toContain('Use the decision endpoint');
+
+    const requestRejected = createRequest(mockAppId, { status: 'REJECTED' });
+    const responseRejected = await PATCH(requestRejected, { params: createParams(mockAppId) });
+    const dataRejected = await responseRejected.json();
+
+    expect(responseRejected.status).toBe(400);
+    expect(dataRejected.error).toContain('Use the decision endpoint');
   });
 
   it('validates stage value', async () => {
@@ -377,9 +420,8 @@ describe('DELETE /api/applications/[id]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (getApplicationDetail as jest.Mock).mockResolvedValue(mockApplication);
-    (updateApplicationStatus as jest.Mock).mockResolvedValue({ ...mockApplication, status: 'WITHDRAWN' });
+    (deleteApplication as jest.Mock).mockResolvedValue(undefined);
     (logRecordDeleted as jest.Mock).mockResolvedValue(undefined);
-    (logStatusChange as jest.Mock).mockResolvedValue(undefined);
   });
 
   const createRequest = (id: string, body?: object) => {
@@ -438,19 +480,7 @@ describe('DELETE /api/applications/[id]', () => {
     expect(data.error).toBe('Application not found');
   });
 
-  it('returns 400 if application is already withdrawn', async () => {
-    (auth as jest.Mock).mockResolvedValue(mockAuthAdmin);
-    (getApplicationDetail as jest.Mock).mockResolvedValue({ ...mockApplication, status: 'WITHDRAWN' });
-
-    const request = createRequest(mockAppId);
-    const response = await DELETE(request, { params: createParams(mockAppId) });
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('Application is already withdrawn');
-  });
-
-  it('soft deletes by setting status to WITHDRAWN', async () => {
+  it('permanently deletes the application', async () => {
     (auth as jest.Mock).mockResolvedValue(mockAuthAdmin);
 
     const request = createRequest(mockAppId);
@@ -459,15 +489,14 @@ describe('DELETE /api/applications/[id]', () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(updateApplicationStatus).toHaveBeenCalledWith(mockAppId, 'WITHDRAWN');
+    expect(deleteApplication).toHaveBeenCalledWith(mockAppId);
     expect(logRecordDeleted).toHaveBeenCalled();
-    expect(logStatusChange).toHaveBeenCalled();
   });
 
   it('accepts optional reason in body', async () => {
     (auth as jest.Mock).mockResolvedValue(mockAuthAdmin);
 
-    const request = createRequest(mockAppId, { reason: 'Candidate requested withdrawal' });
+    const request = createRequest(mockAppId, { reason: 'Candidate requested removal' });
     const response = await DELETE(request, { params: createParams(mockAppId) });
 
     expect(response.status).toBe(200);
@@ -477,7 +506,8 @@ describe('DELETE /api/applications/[id]', () => {
       mockApplication.personId,
       mockAppId,
       mockAuthAdmin.user.dbUserId,
-      'Candidate requested withdrawal'
+      'Candidate requested removal'
     );
   });
 });
+

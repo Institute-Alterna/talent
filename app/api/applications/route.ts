@@ -8,7 +8,7 @@
  * - personId: Filter by person ID
  * - position: Filter by position
  * - stage: Filter by current stage
- * - status: Filter by status (ACTIVE, ACCEPTED, REJECTED, WITHDRAWN)
+ * - status: Filter by status (ACTIVE, ACCEPTED, REJECTED)
  * - page: Page number (default: 1)
  * - limit: Results per page (default: 20, max: 100)
  * - sortBy: Sort field (createdAt, updatedAt, position)

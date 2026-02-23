@@ -27,6 +27,7 @@ import { db } from '@/lib/db';
 import { DecisionType, Status } from '@/lib/generated/prisma/client';
 import { sanitizeForLog, sanitizeText } from '@/lib/security';
 import { escapeHtml } from '@/lib/email/templates';
+import { recruitment } from '@/config';
 
 /**
  * Valid decision types
@@ -52,6 +53,16 @@ export async function POST(
     if (!session.user.dbUserId) {
       return NextResponse.json(
         { error: 'User profile not found' },
+        { status: 400 }
+      );
+    }
+
+    // Verify application has reached the INTERVIEW stage before a decision can be made
+    const currentOrder = recruitment.stages.find(s => s.id === application.currentStage)?.order ?? 0;
+    const interviewOrder = recruitment.stages.find(s => s.id === 'INTERVIEW')?.order ?? 4;
+    if (currentOrder < interviewOrder) {
+      return NextResponse.json(
+        { error: 'Cannot make a decision before the interview stage' },
         { status: 400 }
       );
     }
@@ -93,8 +104,9 @@ export async function POST(
     // Optional notes
     const notes = typeof body.notes === 'string' ? sanitizeText(body.notes, 5000) : null;
 
-    // Whether to send email (default: true)
-    const sendEmail = body.sendEmail !== false;
+    // Whether to send email
+    // ACCEPT always sends the offer letter (agreement link is in the email)
+    const sendEmail = decision === 'ACCEPT' ? true : body.sendEmail !== false;
 
     // Optional start date for acceptance
     let startDate: Date | undefined;

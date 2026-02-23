@@ -3,7 +3,7 @@
  *
  * GET /api/applications/[id] - Get application details
  * PATCH /api/applications/[id] - Update application (admin only)
- * DELETE /api/applications/[id] - Delete/withdraw application (admin only)
+ * DELETE /api/applications/[id] - Permanently delete application (admin only)
  *
  * Required: Authenticated user with app access
  */
@@ -11,7 +11,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   updateApplication,
-  updateApplicationStatus,
   deleteApplication,
 } from '@/lib/services/applications';
 import { calcMissingFields } from '@/lib/utils';
@@ -26,6 +25,7 @@ import { Stage, Status } from '@/lib/generated/prisma/client';
 import { isValidURL } from '@/lib/utils';
 import { requireApplicationAccess, parseJsonBody, type RouteParams } from '@/lib/api-helpers';
 import { VALID_STAGES, VALID_STATUSES } from '@/lib/constants';
+import { recruitment } from '@/config';
 
 /**
  * GET /api/applications/[id]
@@ -113,6 +113,26 @@ export async function PATCH(
           { status: 400 }
         );
       }
+
+      // AGREEMENT and SIGNED are managed by the decision and agreement-signing flows
+      const automatedStages: Stage[] = ['AGREEMENT', 'SIGNED'];
+      if (automatedStages.includes(body.currentStage as Stage)) {
+        return NextResponse.json(
+          { error: 'Cannot manually set stage to AGREEMENT or SIGNED. Use the decision or agreement signing flows.' },
+          { status: 400 }
+        );
+      }
+
+      // Enforce forward-only stage progression
+      const currentOrder = recruitment.stages.find(s => s.id === existingApp.currentStage)?.order ?? 0;
+      const targetOrder = recruitment.stages.find(s => s.id === body.currentStage)?.order ?? 0;
+      if (targetOrder <= currentOrder) {
+        return NextResponse.json(
+          { error: `Cannot move stage backward. Current stage: ${existingApp.currentStage}` },
+          { status: 400 }
+        );
+      }
+
       updateData.currentStage = body.currentStage;
     }
 
@@ -124,6 +144,15 @@ export async function PATCH(
           { status: 400 }
         );
       }
+
+      // ACCEPTED and REJECTED must go through the decision endpoint for audit trail and GDPR
+      if (body.status === 'ACCEPTED' || body.status === 'REJECTED') {
+        return NextResponse.json(
+          { error: `Cannot set status to ${body.status} directly. Use the decision endpoint.` },
+          { status: 400 }
+        );
+      }
+
       updateData.status = body.status;
     }
 
@@ -239,8 +268,7 @@ export async function PATCH(
 /**
  * DELETE /api/applications/[id]
  *
- * Soft delete an application by setting status to WITHDRAWN.
- * Use ?hardDelete=true to permanently delete the application and all related data.
+ * Permanently deletes an application and all related data.
  * Admin only.
  */
 export async function DELETE(
@@ -248,34 +276,12 @@ export async function DELETE(
   { params }: RouteParams
 ) {
   try {
-    // Check for hardDelete query parameter
-    const { searchParams } = new URL(request.url);
-    const hardDelete = searchParams.get('hardDelete') === 'true';
-
     const access = await requireApplicationAccess(params, { level: 'admin' });
     if (!access.ok) return access.error;
     const { session, application: existingApp } = access;
 
-    if (hardDelete) {
-      // Hard delete: permanently remove the application and all related data
-      await deleteApplication(existingApp.id);
-
-      return NextResponse.json({
-        success: true,
-        message: 'Application permanently deleted',
-      });
-    }
-
-    // Check if already withdrawn/rejected for soft delete
-    if (existingApp.status === 'WITHDRAWN') {
-      return NextResponse.json(
-        { error: 'Application is already withdrawn' },
-        { status: 400 }
-      );
-    }
-
     // Parse optional reason from request body
-    let reason = 'Application withdrawn by admin';
+    let reason = 'Application deleted by admin';
     try {
       const body = await request.json();
       if (body.reason && typeof body.reason === 'string') {
@@ -285,10 +291,7 @@ export async function DELETE(
       // No body provided, use default reason
     }
 
-    // Soft delete: set status to WITHDRAWN
-    await updateApplicationStatus(existingApp.id, 'WITHDRAWN');
-
-    // Log the deletion
+    // Log before deleting (audit trail)
     await logRecordDeleted(
       'Application',
       existingApp.id,
@@ -298,18 +301,11 @@ export async function DELETE(
       reason
     );
 
-    await logStatusChange(
-      existingApp.id,
-      existingApp.personId,
-      existingApp.status,
-      'WITHDRAWN',
-      session.user.dbUserId,
-      reason
-    );
+    await deleteApplication(existingApp.id);
 
     return NextResponse.json({
       success: true,
-      message: 'Application withdrawn successfully',
+      message: 'Application permanently deleted',
     });
   } catch (error) {
     console.error('Error deleting application:', sanitizeForLog(error instanceof Error ? error.message : 'Unknown error'));

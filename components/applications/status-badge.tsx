@@ -4,7 +4,7 @@
  * Status Badge Component
  *
  * Displays application status with appropriate styling.
- * Statuses: ACTIVE, ACCEPTED, REJECTED, WITHDRAWN
+ * Statuses: ACTIVE, ACCEPTED, REJECTED
  */
 
 import { Badge } from '@/components/ui/badge';
@@ -26,17 +26,12 @@ const STATUS_CONFIG: Record<Status, { label: string; variant: 'default' | 'secon
   ACCEPTED: {
     label: 'Accepted',
     variant: 'default',
-    className: 'bg-green-500 hover:bg-green-600',
+    className: 'bg-green-700 hover:bg-green-800',
   },
   REJECTED: {
     label: 'Rejected',
     variant: 'destructive',
     className: '',
-  },
-  WITHDRAWN: {
-    label: 'Withdrawn',
-    variant: 'secondary',
-    className: 'bg-gray-500 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-700 text-white',
   },
 };
 

@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
       ACTIVE: 0,
       ACCEPTED: 0,
       REJECTED: 0,
-      WITHDRAWN: 0,
+
     };
     for (const item of applicationsByStatus) {
       byStatus[item.status] = item._count;

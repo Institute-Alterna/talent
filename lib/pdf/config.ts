@@ -314,7 +314,6 @@ export const pdfLabels = {
     ACTIVE: 'Active',
     ACCEPTED: 'Accepted',
     REJECTED: 'Rejected',
-    WITHDRAWN: 'Withdrawn',
   },
 
   /**
@@ -451,8 +450,6 @@ export function getStatusColor(status: string): string {
       return pdfColors.success;
     case 'REJECTED':
       return pdfColors.danger;
-    case 'WITHDRAWN':
-      return pdfColors.textMuted;
     default:
       return pdfColors.text;
   }

@@ -23,6 +23,8 @@ import {
   PipelineBoardData,
   type ApplicationDetailData,
   ApplicationCardData,
+  ApplicationListView,
+  type ApplicationListItem,
 } from '@/components/applications';
 import { AttentionBreakdownPanel } from '@/components/shared/attention-breakdown';
 import { Stage, Status } from '@/lib/generated/prisma/client';
@@ -89,6 +91,10 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   // Filters
   const [searchQuery, setSearchQuery] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<string>('ACTIVE');
+  const isActiveView = statusFilter === 'ACTIVE';
+
+  // List view data (for non-active statuses)
+  const [listData, setListData] = React.useState<ApplicationListItem[]>([]);
   const [positionFilter, setPositionFilter] = React.useState<string>('all');
   const [needsAttentionFilter, setNeedsAttentionFilter] = React.useState(false);
   const [showAttentionBreakdown, setShowAttentionBreakdown] = React.useState(false);
@@ -103,7 +109,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   // PDF export
   const [exportingPdfId, setExportingPdfId] = React.useState<string | null>(null);
 
-  // Withdraw dialog
+  // Delete dialog
   const [withdrawApplicationId, setWithdrawApplicationId] = React.useState<string | null>(null);
   const [withdrawApplicationName, setWithdrawApplicationName] = React.useState<string>('');
   const [isWithdrawProcessing, setIsWithdrawProcessing] = React.useState(false);
@@ -161,33 +167,58 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [isDecisionProcessing, sendingEmailTemplate, isSchedulingInterview, isReschedulingInterview, isCompletingInterview]);
 
-  // Fetch pipeline data
+  // Fetch pipeline data (active view) or list data (other statuses)
   const fetchPipelineData = React.useCallback(async (force?: boolean) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const params = new URLSearchParams({
-        view: 'pipeline',
-        ...(statusFilter !== 'all' && { status: statusFilter }),
-        ...(positionFilter !== 'all' && { position: positionFilter }),
-      });
+      if (statusFilter === 'ACTIVE') {
+        // Pipeline/kanban view
+        const params = new URLSearchParams({
+          view: 'pipeline',
+          status: 'ACTIVE',
+          ...(positionFilter !== 'all' && { position: positionFilter }),
+        });
 
-      const response = await fetch(`/api/applications?${params.toString()}`, {
-        ...(force && { cache: 'no-store' }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch pipeline data');
+        const response = await fetch(`/api/applications?${params.toString()}`, {
+          ...(force && { cache: 'no-store' }),
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch pipeline data');
+        }
+
+        const data: PipelineResponse = await response.json();
+        setPipelineData(data.applicationsByStage);
+        setStats(data.stats);
+        setListData([]);
+      } else {
+        // List view for Accepted/Rejected
+        const params = new URLSearchParams({
+          status: statusFilter,
+          limit: '100',
+          sortBy: 'updatedAt',
+          sortOrder: 'desc',
+          ...(positionFilter !== 'all' && { position: positionFilter }),
+        });
+
+        const response = await fetch(`/api/applications?${params.toString()}`, {
+          ...(force && { cache: 'no-store' }),
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch applications');
+        }
+
+        const data = await response.json();
+        setListData(data.applications || []);
+        setStats(data.stats);
+        setPipelineData(null);
       }
-
-      const data: PipelineResponse = await response.json();
-      setPipelineData(data.applicationsByStage);
-      setStats(data.stats);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       toast({
         title: 'Error',
-        description: 'Failed to load pipeline data',
+        description: 'Failed to load data',
         variant: 'destructive',
       });
     } finally {
@@ -233,6 +264,14 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   React.useEffect(() => {
     fetchPipelineData();
   }, [fetchPipelineData]);
+
+  // Clear attention filter and fullscreen when switching away from active view
+  React.useEffect(() => {
+    if (!isActiveView) {
+      setNeedsAttentionFilter(false);
+      setIsFullscreen(false);
+    }
+  }, [isActiveView]);
 
   // Fetch detail when selection changes
   React.useEffect(() => {
@@ -592,75 +631,38 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     }
   }, [toast]);
 
-  // Withdraw handlers
+  // Delete handler
   const handleWithdrawClick = React.useCallback((applicationId: string) => {
-    // Find the application to get its name
-    if (!pipelineData) return;
-    
-    for (const stage of Object.keys(pipelineData) as (keyof PipelineBoardData)[]) {
-      const app = pipelineData[stage].find(a => a.id === applicationId);
-      if (app) {
-        setWithdrawApplicationId(applicationId);
-        setWithdrawApplicationName(`${app.person.firstName} ${app.person.lastName}`);
-        return;
+    // Find the application to get its name — check pipeline data first, then list data
+    if (pipelineData) {
+      for (const stage of Object.keys(pipelineData) as (keyof PipelineBoardData)[]) {
+        const app = pipelineData[stage].find(a => a.id === applicationId);
+        if (app) {
+          setWithdrawApplicationId(applicationId);
+          setWithdrawApplicationName(`${app.person.firstName} ${app.person.lastName}`);
+          return;
+        }
       }
     }
-  }, [pipelineData]);
+
+    const listApp = listData.find(a => a.id === applicationId);
+    if (listApp) {
+      setWithdrawApplicationId(applicationId);
+      setWithdrawApplicationName(`${listApp.person.firstName} ${listApp.person.lastName}`);
+    }
+  }, [pipelineData, listData]);
 
   const handleWithdrawClose = React.useCallback(() => {
     setWithdrawApplicationId(null);
     setWithdrawApplicationName('');
   }, []);
 
-  const handleDenyApplication = React.useCallback(async () => {
-    if (!withdrawApplicationId) return;
-    
-    setIsWithdrawProcessing(true);
-    try {
-      // Set status to WITHDRAWN (soft delete)
-      const response = await fetch(`/api/applications/${withdrawApplicationId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: 'Application denied by administrator' }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to withdraw application');
-      }
-
-      // Send rejection email
-      await fetch(`/api/applications/${withdrawApplicationId}/send-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateName: 'rejection' }),
-      });
-
-      toast({
-        title: 'Application Withdrawn',
-        description: 'The application has been withdrawn and a rejection email has been sent.',
-      });
-
-      // Refresh the pipeline
-      fetchPipelineData(true);
-    } catch (err) {
-      toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to withdraw application',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsWithdrawProcessing(false);
-    }
-  }, [withdrawApplicationId, toast, fetchPipelineData]);
-
   const handleDeleteApplication = React.useCallback(async () => {
     if (!withdrawApplicationId) return;
     
     setIsWithdrawProcessing(true);
     try {
-      // Hard delete the application
-      const response = await fetch(`/api/applications/${withdrawApplicationId}?hardDelete=true`, {
+      const response = await fetch(`/api/applications/${withdrawApplicationId}`, {
         method: 'DELETE',
       });
 
@@ -699,6 +701,12 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     return stats.breakdown;
   }, [stats]);
 
+  // Shared search predicate — matches query against candidate name, email, and position
+  const matchesSearch = React.useCallback((person: { firstName: string; lastName: string; email: string }, position: string, query: string) => {
+    const fields = [person.firstName, person.lastName, person.email, position].map(f => f.toLowerCase());
+    return fields.some(f => f.includes(query));
+  }, []);
+
   // Filter applications by search query and needs attention (client-side filtering)
   const filteredPipelineData = React.useMemo(() => {
     if (!pipelineData) return pipelineData;
@@ -706,21 +714,8 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
     const query = searchQuery.toLowerCase();
     const filterFn = (app: ApplicationCardData) => {
-      // Needs attention filter
       if (needsAttentionFilter && !app.needsAttention) return false;
-
-      // Search filter
-      if (query) {
-        const searchFields = [
-          app.person.firstName,
-          app.person.lastName,
-          app.person.email,
-          app.position,
-        ].map(f => f.toLowerCase());
-
-        if (!searchFields.some(f => f.includes(query))) return false;
-      }
-
+      if (query && !matchesSearch(app.person, app.position, query)) return false;
       return true;
     };
 
@@ -732,7 +727,16 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       AGREEMENT: pipelineData.AGREEMENT.filter(filterFn),
       SIGNED: pipelineData.SIGNED.filter(filterFn),
     };
-  }, [pipelineData, searchQuery, needsAttentionFilter]);
+  }, [pipelineData, searchQuery, needsAttentionFilter, matchesSearch]);
+
+  // Filter list data by search query (client-side)
+  const filteredListData = React.useMemo(() => {
+    if (!listData.length) return listData;
+    if (!searchQuery.trim()) return listData;
+
+    const query = searchQuery.toLowerCase();
+    return listData.filter((app) => matchesSearch(app.person, app.position, query));
+  }, [listData, searchQuery, matchesSearch]);
 
   return (
     <TooltipProvider>
@@ -750,7 +754,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
           <div className={cn('grid gap-3 grid-cols-2 md:grid-cols-4 transition-opacity duration-200', isLoading && 'opacity-60')}>
             <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Applications</span>
-              <span className="text-lg font-semibold tabular-nums">{stats.total}</span>
+              <span className="text-lg font-semibold tabular-nums">{stats.total - (stats.byStatus?.REJECTED ?? 0)}</span>
             </div>
             <button
               type="button"
@@ -795,11 +799,9 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="ACTIVE">Active</SelectItem>
                 <SelectItem value="ACCEPTED">Accepted</SelectItem>
                 <SelectItem value="REJECTED">Rejected</SelectItem>
-                <SelectItem value="WITHDRAWN">Withdrawn</SelectItem>
               </SelectContent>
             </Select>
 
@@ -818,45 +820,49 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
               </SelectContent>
             </Select>
 
-            {/* Needs Attention toggle */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={needsAttentionFilter ? 'default' : 'outline'}
-                  size="icon"
-                  className={cn(
-                    'size-9',
-                    needsAttentionFilter
-                      ? 'bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700'
-                      : ''
-                  )}
-                  onClick={() => setNeedsAttentionFilter(v => !v)}
-                >
-                  <AlertTriangle className="h-3.5 w-3.5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{needsAttentionFilter ? 'Clear attention filter' : 'View applications that need attention'}</p>
-              </TooltipContent>
-            </Tooltip>
+            {/* Needs Attention toggle (active pipeline only) */}
+            {isActiveView && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={needsAttentionFilter ? 'default' : 'outline'}
+                    size="icon"
+                    className={cn(
+                      'size-9',
+                      needsAttentionFilter
+                        ? 'bg-amber-500 hover:bg-amber-600 text-white dark:bg-amber-600 dark:hover:bg-amber-700'
+                        : ''
+                    )}
+                    onClick={() => setNeedsAttentionFilter(v => !v)}
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{needsAttentionFilter ? 'Clear attention filter' : 'View applications that need attention'}</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
 
             {/* Refresh */}
             <Button variant="outline" className="h-9" onClick={() => fetchPipelineData(true)} disabled={isLoading}>
               <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
 
-            {/* Fullscreen toggle (desktop only) */}
-            <Button
-              variant="outline"
-              className="h-9 hidden lg:flex"
-              onClick={() => setIsFullscreen(true)}
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-            </Button>
+            {/* Fullscreen toggle (desktop + active view only) */}
+            {isActiveView && (
+              <Button
+                variant="outline"
+                className="h-9 hidden lg:flex"
+                onClick={() => setIsFullscreen(true)}
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Pipeline Board */}
+        {/* Pipeline Board or List View */}
         {error ? (
           <div className="text-center py-8">
             <p className="text-destructive mb-4">{error}</p>
@@ -864,7 +870,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
               Try Again
             </Button>
           </div>
-        ) : (
+        ) : isActiveView ? (
           <PipelineBoard
             data={filteredPipelineData || {
               APPLICATION: [],
@@ -883,10 +889,19 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
             isAdmin={isAdmin}
             isLoading={isLoading}
           />
+        ) : (
+          <ApplicationListView
+            applications={filteredListData}
+            status={statusFilter as Status}
+            onViewApplication={handleViewApplication}
+            onExportPdf={handleExportPdf}
+            exportingPdfId={exportingPdfId}
+            isLoading={isLoading}
+          />
         )}
 
-        {/* Fullscreen Pipeline Overlay (desktop only) */}
-        {isFullscreen && (
+        {/* Fullscreen Pipeline Overlay (desktop + active view only) */}
+        {isFullscreen && isActiveView && (
           <div className="fixed inset-0 z-50 bg-background flex flex-col">
             {/* Fullscreen header */}
             <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
@@ -954,7 +969,6 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
             <WithdrawDialog
               isOpen={!!withdrawApplicationId}
               onClose={handleWithdrawClose}
-              onDeny={handleDenyApplication}
               onDelete={handleDeleteApplication}
               applicationName={withdrawApplicationName}
               isProcessing={isWithdrawProcessing}

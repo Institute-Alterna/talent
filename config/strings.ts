@@ -46,7 +46,6 @@ export const strings = {
     active: 'Active',
     accepted: 'Accepted',
     rejected: 'Rejected',
-    withdrawn: 'Withdrawn',
     applicationRejected: 'Application Rejected',
   },
 
@@ -145,7 +144,7 @@ export const strings = {
     // Decision dialog strings
     title: 'Confirm Decision',
     acceptTitle: 'Accept Candidate',
-    acceptDescription: 'This will mark the application as accepted and move them to the final stage.',
+    acceptDescription: 'This will accept the application and send the offer letter with the agreement form to the candidate.',
     rejectTitle: 'Reject Candidate',
     rejectDescription: 'This will mark the application as rejected.',
     reasonLabel: 'Reason',
@@ -153,7 +152,8 @@ export const strings = {
     reasonGdprNote: 'Reason is required for rejection decisions (GDPR compliance)',
     notesLabel: 'Additional Notes',
     notesPlaceholder: 'Any additional notes about this decision...',
-    sendEmailLabel: 'Send notification email to candidate',
+    sendEmailLabel: 'Send rejection notification to candidate',
+    acceptEmailInfo: 'The offer letter with the agreement form link will be sent to the candidate automatically.',
     confirmAccept: 'Confirm Accept',
     confirmReject: 'Confirm Reject',
   },
@@ -248,18 +248,13 @@ export const strings = {
     grantAccess: 'Are you sure you want to grant this person access to this application? They will be added to the talent-access group and be able to view and manage candidates.',
   },
 
-  // Withdraw Application
+  // Delete Application
   withdraw: {
-    title: 'Withdraw Application',
-    description: 'Choose how to handle the application for {name}.',
-    denyTitle: 'Deny Application',
-    denyDescription: 'Sets the application status to Rejected and sends a rejection email to the candidate.',
-    denyAction: 'Deny & Send Rejection Email',
-    deleteTitle: 'Delete Entirely',
-    deleteDescription: 'Permanently removes the application and all associated data from the system. Use this for test applications only.',
+    title: 'Delete Application',
+    description: 'Permanently remove the application for {name} and all associated data from the system.',
     deleteWarning: 'This action cannot be undone.',
     deleteAction: 'Delete Permanently',
-    menuItem: 'Withdraw',
+    menuItem: 'Delete',
   },
 
   // Success messages

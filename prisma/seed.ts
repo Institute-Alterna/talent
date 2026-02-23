@@ -10,11 +10,14 @@
  *
  * What this creates:
  * - 2 sample users (1 admin, 1 hiring manager)
- * - 5 sample persons (unique individuals)
- * - 6 sample applications (including one person with 2 applications)
+ * - 10 sample persons (unique individuals)
+ * - 11 sample applications (including one person with 2 applications)
  * - Sample assessments (general on Person, specialized on Application)
  * - Sample interviews and decisions
  * - Sample audit logs and email logs
+ * - 1 person who has completed the full pipeline (SIGNED stage)
+ * - Edge cases: interview completed but no decision, SC passed awaiting advance,
+ *   rejected at interview stage
  */
 
 import 'dotenv/config';
@@ -261,7 +264,86 @@ async function main() {
       tallyRespondentId: 'tally-resp-006',
     },
   });
-  console.log(`✓ Created 6 fictional person records\n`);
+
+  // Person 7: Amara Osei - Completed entire pipeline, signed agreement
+  const person7 = await prisma.person.create({
+    data: {
+      email: 'amara.osei@test.alterna.labs',
+      firstName: 'Amara',
+      lastName: 'Osei',
+      phoneNumber: '+233-555-0107',
+      country: 'Ghana',
+      countryCode: 'GH',
+      city: 'Accra',
+      state: 'Greater Accra',
+      educationLevel: "Master's Degree",
+      portfolioLink: 'https://amaraosei.com',
+      generalCompetenciesCompleted: true,
+      generalCompetenciesScore: 910,
+      generalCompetenciesPassedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+      tallyRespondentId: 'tally-resp-007',
+    },
+  });
+
+  // Person 8: Fatou Diallo - Interview completed, awaiting decision
+  const person8 = await prisma.person.create({
+    data: {
+      email: 'fatou.diallo@test.alterna.labs',
+      firstName: 'Fatou',
+      lastName: 'Diallo',
+      phoneNumber: '+221-555-0108',
+      country: 'Senegal',
+      countryCode: 'SN',
+      city: 'Dakar',
+      state: 'Dakar',
+      educationLevel: "Master's Degree",
+      portfolioLink: 'https://fatoudiallo.org',
+      generalCompetenciesCompleted: true,
+      generalCompetenciesScore: 870,
+      generalCompetenciesPassedAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+      tallyRespondentId: 'tally-resp-008',
+    },
+  });
+
+  // Person 9: Kenji Tanaka - SC passed, ready to advance to interview
+  const person9 = await prisma.person.create({
+    data: {
+      email: 'kenji.tanaka@test.alterna.labs',
+      firstName: 'Kenji',
+      lastName: 'Tanaka',
+      phoneNumber: '+81-555-0109',
+      country: 'Japan',
+      countryCode: 'JP',
+      city: 'Tokyo',
+      state: 'Tōkyō-to',
+      educationLevel: "Bachelor's Degree",
+      portfolioLink: 'https://kenjitanaka.dev',
+      generalCompetenciesCompleted: true,
+      generalCompetenciesScore: 880,
+      generalCompetenciesPassedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+      tallyRespondentId: 'tally-resp-009',
+    },
+  });
+
+  // Person 10: Priya Sharma - Rejected after interview
+  const person10 = await prisma.person.create({
+    data: {
+      email: 'priya.sharma@test.alterna.labs',
+      firstName: 'Priya',
+      lastName: 'Sharma',
+      phoneNumber: '+91-555-0110',
+      country: 'India',
+      countryCode: 'IN',
+      city: 'Mumbai',
+      state: 'Maharashtra',
+      educationLevel: "Master's Degree",
+      generalCompetenciesCompleted: true,
+      generalCompetenciesScore: 840,
+      generalCompetenciesPassedAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+      tallyRespondentId: 'tally-resp-010',
+    },
+  });
+  console.log(`✓ Created 10 fictional person records\n`);
 
   // Create Applications (one or more per person)
   console.log('Creating fictional application records...');
@@ -327,7 +409,7 @@ async function main() {
       personId: person4.id,
       position: 'Video Editor',
       currentStage: Stage.AGREEMENT,
-      status: Status.ACTIVE,
+      status: Status.ACCEPTED,
       academicBackground: 'Film Production',
       previousExperience: '4 years editing educational content',
       hasAcademicBg: true,
@@ -390,7 +472,102 @@ async function main() {
       tallyFormId: 'form-application-001',
     },
   });
-  console.log(`✓ Created 7 fictional application records\n`);
+
+  // Application 8: Amara's Course Facilitator application (signed agreement)
+  const app8 = await prisma.application.create({
+    data: {
+      personId: person7.id,
+      position: 'Course Facilitator',
+      currentStage: Stage.SIGNED,
+      status: Status.ACCEPTED,
+      academicBackground: 'M.Ed. in Curriculum and Instruction from University of Ghana',
+      previousExperience: '5 years facilitating online learning programmes for NGOs across West Africa',
+      resumeUrl: 'https://tally.so/r/resume-008.pdf',
+      videoLink: 'https://youtube.com/watch?v=intro008',
+      hasResume: true,
+      hasAcademicBg: true,
+      hasVideoIntro: true,
+      hasPreviousExp: true,
+      agreementSignedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      agreementTallySubmissionId: 'tally-agreement-008',
+      agreementData: {
+        applicationId: 'seed-app-008',
+        legalFirstName: 'Amara',
+        legalLastName: 'Osei',
+        country: 'Ghana',
+        biography: 'Experienced curriculum facilitator with over 5 years of experience in online learning programme delivery across West Africa.',
+        dateOfBirth: '1992-03-15',
+        privacyPolicyAccepted: true,
+        signatureUrl: 'https://tally.so/r/signature-008.png',
+        serviceHours: '30 hours per week',
+      },
+      tallySubmissionId: 'tally-sub-008',
+      tallyResponseId: 'tally-res-008',
+      tallyFormId: 'form-application-001',
+    },
+  });
+
+  // Application 9: Fatou's Programme Coordinator application (interview completed, no decision)
+  const app9 = await prisma.application.create({
+    data: {
+      personId: person8.id,
+      position: 'Programme Coordinator',
+      currentStage: Stage.INTERVIEW,
+      status: Status.ACTIVE,
+      academicBackground: 'M.A. in International Development from Université Cheikh Anta Diop',
+      previousExperience: '4 years coordinating education programmes for NGOs in West Africa',
+      resumeUrl: 'https://tally.so/r/resume-009.pdf',
+      videoLink: 'https://youtube.com/watch?v=intro009',
+      hasResume: true,
+      hasAcademicBg: true,
+      hasVideoIntro: true,
+      hasPreviousExp: true,
+      tallySubmissionId: 'tally-sub-009',
+      tallyResponseId: 'tally-res-009',
+      tallyFormId: 'form-application-001',
+    },
+  });
+
+  // Application 10: Kenji's Data Analyst application (SC passed, ready for interview)
+  const app10 = await prisma.application.create({
+    data: {
+      personId: person9.id,
+      position: 'Data Analyst',
+      currentStage: Stage.SPECIALIZED_COMPETENCIES,
+      status: Status.ACTIVE,
+      academicBackground: 'B.Sc. in Statistics from University of Tokyo',
+      previousExperience: '3 years data analysis for international education research',
+      resumeUrl: 'https://tally.so/r/resume-010.pdf',
+      hasResume: true,
+      hasAcademicBg: true,
+      hasPreviousExp: true,
+      tallySubmissionId: 'tally-sub-010',
+      tallyResponseId: 'tally-res-010',
+      tallyFormId: 'form-application-001',
+    },
+  });
+
+  // Application 11: Priya's Curriculum Developer application (rejected at interview)
+  const app11 = await prisma.application.create({
+    data: {
+      personId: person10.id,
+      position: 'Curriculum Developer',
+      currentStage: Stage.INTERVIEW,
+      status: Status.REJECTED,
+      academicBackground: 'M.Ed. in Educational Technology from IIT Bombay',
+      previousExperience: '5 years developing digital learning materials for rural education initiatives',
+      resumeUrl: 'https://tally.so/r/resume-011.pdf',
+      videoLink: 'https://youtube.com/watch?v=intro011',
+      hasResume: true,
+      hasAcademicBg: true,
+      hasVideoIntro: true,
+      hasPreviousExp: true,
+      tallySubmissionId: 'tally-sub-011',
+      tallyResponseId: 'tally-res-011',
+      tallyFormId: 'form-application-001',
+    },
+  });
+  console.log(`✓ Created 11 fictional application records\n`);
 
   // Create Assessments
   console.log('Creating fictional assessment records...');
@@ -650,6 +827,86 @@ async function main() {
           }),
         },
       },
+      // Person 7 (Amara): Passed GC — excellent scores
+      {
+        personId: person7.id,
+        assessmentType: AssessmentType.GENERAL_COMPETENCIES,
+        score: 910,
+        passed: true,
+        threshold: 800,
+        completedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-gc-007',
+        rawData: {
+          subscores: { cultureScore: 335, situationalScore: 315, digitalScore: 260 },
+          fields: buildGCQFields({
+            personId: person7.id, name: 'Amara Osei',
+            score: 910, culture: 335, situational: 315, digital: 260,
+            scales: [5, 5, 4, 5, 4, 5, 5, 4, 5, 5],
+            situationalAnswers: ['a80629e7', '1981ecf3', 'c7e5ef28', 'd201939e', 'c5dc1dc1', '6a5dcfbb', '9c2d4469'],
+            digitalAnswers: ['960ea02f', 'ef46f6c8'],
+          }),
+        },
+      },
+      // Person 8 (Fatou): Passed GC — strong performer
+      {
+        personId: person8.id,
+        assessmentType: AssessmentType.GENERAL_COMPETENCIES,
+        score: 870,
+        passed: true,
+        threshold: 800,
+        completedAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-gc-008',
+        rawData: {
+          subscores: { cultureScore: 320, situationalScore: 300, digitalScore: 250 },
+          fields: buildGCQFields({
+            personId: person8.id, name: 'Fatou Diallo',
+            score: 870, culture: 320, situational: 300, digital: 250,
+            scales: [4, 5, 4, 4, 4, 4, 5, 4, 4, 5],
+            situationalAnswers: ['a80629e7', '1981ecf3', 'c7e5ef28', 'd201939e', 'c5dc1dc1', '6a5dcfbb', '9c2d4469'],
+            digitalAnswers: ['960ea02f', 'ef46f6c8'],
+          }),
+        },
+      },
+      // Person 9 (Kenji): Passed GC — consistent scores
+      {
+        personId: person9.id,
+        assessmentType: AssessmentType.GENERAL_COMPETENCIES,
+        score: 880,
+        passed: true,
+        threshold: 800,
+        completedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-gc-009',
+        rawData: {
+          subscores: { cultureScore: 330, situationalScore: 295, digitalScore: 255 },
+          fields: buildGCQFields({
+            personId: person9.id, name: 'Kenji Tanaka',
+            score: 880, culture: 330, situational: 295, digital: 255,
+            scales: [5, 4, 5, 4, 4, 5, 4, 4, 5, 4],
+            situationalAnswers: ['a80629e7', '1981ecf3', 'c7e5ef28', 'd201939e', 'c5dc1dc1', '6a5dcfbb', '9c2d4469'],
+            digitalAnswers: ['960ea02f', 'ef46f6c8'],
+          }),
+        },
+      },
+      // Person 10 (Priya): Passed GC — solid performance
+      {
+        personId: person10.id,
+        assessmentType: AssessmentType.GENERAL_COMPETENCIES,
+        score: 840,
+        passed: true,
+        threshold: 800,
+        completedAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-gc-010',
+        rawData: {
+          subscores: { cultureScore: 305, situationalScore: 285, digitalScore: 250 },
+          fields: buildGCQFields({
+            personId: person10.id, name: 'Priya Sharma',
+            score: 840, culture: 305, situational: 285, digital: 250,
+            scales: [4, 4, 4, 4, 3, 4, 5, 4, 4, 4],
+            situationalAnswers: ['a80629e7', '1981ecf3', 'c7e5ef28', 'd201939e', 'c5dc1dc1', '1ebc7b0c', '9c2d4469'],
+            digitalAnswers: ['960ea02f', 'ef46f6c8'],
+          }),
+        },
+      },
     ],
   });
 
@@ -686,9 +943,49 @@ async function main() {
         completedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
         tallySubmissionId: 'tally-sc-002',
       },
+      // Application 8 (Amara's Course Facilitator): Passed SC — strong performance
+      {
+        applicationId: app8.id,
+        assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
+        score: 540,
+        passed: true,
+        threshold: 400,
+        completedAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-sc-008',
+      },
+      // Application 9 (Fatou's Programme Coordinator): Passed SC
+      {
+        applicationId: app9.id,
+        assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
+        score: 450,
+        passed: true,
+        threshold: 400,
+        completedAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-sc-009',
+      },
+      // Application 10 (Kenji's Data Analyst): Passed SC — strong analytical skills
+      {
+        applicationId: app10.id,
+        assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
+        score: 470,
+        passed: true,
+        threshold: 400,
+        completedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-sc-010',
+      },
+      // Application 11 (Priya's Curriculum Developer): Passed SC
+      {
+        applicationId: app11.id,
+        assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
+        score: 420,
+        passed: true,
+        threshold: 400,
+        completedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        tallySubmissionId: 'tally-sc-011',
+      },
     ],
   });
-  console.log(`✓ Created 7 fictional assessment records\n`);
+  console.log(`✓ Created 16 fictional assessment records\n`);
 
   // Create Interviews (linked to Application)
   console.log('Creating fictional interview records...');
@@ -715,7 +1012,49 @@ async function main() {
       emailSentAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
     },
   });
-  console.log(`✓ Created 2 fictional interview records\n`);
+
+  // Amara's interview — completed and accepted
+  await prisma.interview.create({
+    data: {
+      applicationId: app8.id,
+      interviewerId: adminUser.id,
+      schedulingLink: adminUser.schedulingLink!,
+      scheduledAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+      completedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+      notes: 'Outstanding candidate. Deep experience in curriculum facilitation. Excellent cultural alignment and communication. Highly recommended.',
+      outcome: InterviewOutcome.ACCEPT,
+      emailSentAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  // Fatou's interview — completed, awaiting formal decision
+  await prisma.interview.create({
+    data: {
+      applicationId: app9.id,
+      interviewerId: hiringManager.id,
+      schedulingLink: hiringManager.schedulingLink!,
+      scheduledAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      notes: 'Strong programme coordination experience. Excellent understanding of NGO operations. Good cultural fit. Recommend proceeding.',
+      outcome: InterviewOutcome.ACCEPT,
+      emailSentAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  // Priya's interview — completed, rejected
+  await prisma.interview.create({
+    data: {
+      applicationId: app11.id,
+      interviewerId: adminUser.id,
+      schedulingLink: adminUser.schedulingLink!,
+      scheduledAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+      completedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+      notes: 'Solid technical knowledge but struggled to articulate approach to inclusive curriculum design. Communication style may not align with team dynamics.',
+      outcome: InterviewOutcome.REJECT,
+      emailSentAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+    },
+  });
+  console.log(`✓ Created 5 fictional interview records\n`);
 
   // Create Decisions (linked to Application)
   console.log('Creating fictional decision records...');
@@ -738,81 +1077,623 @@ async function main() {
       decidedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), // 4 days ago
     },
   });
-  console.log(`✓ Created 2 fictional decision records\n`);
+
+  // Amara accepted — completed full pipeline
+  await prisma.decision.create({
+    data: {
+      applicationId: app8.id,
+      decision: DecisionType.ACCEPT,
+      reason: 'Exceptional candidate with strong facilitation background, outstanding assessment scores, and excellent cultural fit. Unanimous recommendation from interview panel.',
+      decidedBy: adminUser.id,
+      decidedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  // Priya rejected — insufficient alignment after interview
+  await prisma.decision.create({
+    data: {
+      applicationId: app11.id,
+      decision: DecisionType.REJECT,
+      reason: 'While technically competent, the candidate did not demonstrate sufficient alignment with our inclusive curriculum design methodology. Communication approach may not suit remote collaborative environment.',
+      decidedBy: adminUser.id,
+      decidedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+    },
+  });
+  console.log(`✓ Created 4 fictional decision records\n`);
 
   // Create Audit Logs (can link to Person, Application, or both)
+  // Action strings and details match the actual audit functions in lib/audit.ts
+  // Temporal ordering follows the logical pipeline flow:
+  //   APPLICATION → GC assessment → GC stage → SC stage → SC assessment →
+  //   INTERVIEW stage → scheduled → completed → decision → status change →
+  //   AGREEMENT stage (auto on accept) → SIGNED (agreement webhook)
   console.log('Creating fictional audit logs...');
   await prisma.auditLog.createMany({
     data: [
-      // Application received
+      // ── App1: Robert — APPLICATION, ACTIVE (just applied) ──
       {
         personId: person1.id,
         applicationId: app1.id,
-        action: 'Application received via Tally webhook',
+        action: 'Application submitted for Compliance Specialist',
         actionType: ActionType.CREATE,
-        details: { source: 'tally_webhook', formId: 'form-application-001' },
+        details: { position: 'Compliance Specialist', source: 'tally_webhook' },
         createdAt: app1.createdAt,
       },
-      // Second application from same person
+
+      // ── App6: Maria's 2nd application — APPLICATION, ACTIVE ──
       {
-        personId: person1.id,
+        personId: person2.id,
         applicationId: app6.id,
-        action: 'Application received via Tally webhook',
+        action: 'Application submitted for Content Writer',
         actionType: ActionType.CREATE,
-        details: { source: 'tally_webhook', formId: 'form-application-001', note: 'Existing person, new application' },
+        details: { position: 'Content Writer', source: 'tally_webhook' },
         createdAt: app6.createdAt,
       },
-      // Stage change
+
+      // ── App2: Maria — SPECIALIZED_COMPETENCIES, ACTIVE ──
+      // Person had already passed GC, so auto-advanced past APPLICATION
+      {
+        personId: person2.id,
+        applicationId: app2.id,
+        action: 'Application submitted for Instructional Designer',
+        actionType: ActionType.CREATE,
+        details: { position: 'Instructional Designer', source: 'tally_webhook' },
+        createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+      },
       {
         personId: person2.id,
         applicationId: app2.id,
         userId: adminUser.id,
-        action: 'Stage changed to Specialised Competencies',
+        action: 'Stage changed from APPLICATION to SPECIALIZED_COMPETENCIES',
         actionType: ActionType.STAGE_CHANGE,
-        details: { from: 'GENERAL_COMPETENCIES', to: 'SPECIALIZED_COMPETENCIES' },
+        details: { fromStage: 'APPLICATION', toStage: 'SPECIALIZED_COMPETENCIES', reason: 'Auto-advanced: person already passed GC' },
+        createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person2.id,
+        applicationId: app2.id,
+        action: 'SPECIALIZED_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 350, passed: false },
+        createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+      },
+
+      // ── App3: Jan — INTERVIEW, ACTIVE ──
+      {
+        personId: person3.id,
+        applicationId: app3.id,
+        action: 'Application submitted for Chief People Officer',
+        actionType: ActionType.CREATE,
+        details: { position: 'Chief People Officer', source: 'tally_webhook' },
+        createdAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person3.id,
+        applicationId: app3.id,
+        action: 'GENERAL_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'GENERAL_COMPETENCIES', score: 920, passed: true },
+        createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person3.id,
+        applicationId: app3.id,
+        action: 'Stage changed from APPLICATION to GENERAL_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'APPLICATION', toStage: 'GENERAL_COMPETENCIES' },
+        createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person3.id,
+        applicationId: app3.id,
+        userId: adminUser.id,
+        action: 'Stage changed from GENERAL_COMPETENCIES to SPECIALIZED_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'GENERAL_COMPETENCIES', toStage: 'SPECIALIZED_COMPETENCIES', reason: 'GC passed — advancing to SC' },
+        createdAt: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person3.id,
+        applicationId: app3.id,
+        action: 'SPECIALIZED_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 485, passed: true },
+        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person3.id,
+        applicationId: app3.id,
+        userId: adminUser.id,
+        action: 'Stage changed from SPECIALIZED_COMPETENCIES to INTERVIEW',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'SPECIALIZED_COMPETENCIES', toStage: 'INTERVIEW' },
         createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
       },
-      // Acceptance
+      {
+        personId: person3.id,
+        applicationId: app3.id,
+        userId: hiringManager.id,
+        action: 'Interview scheduled',
+        actionType: ActionType.CREATE,
+        details: { interviewerId: hiringManager.id, schedulingLink: hiringManager.schedulingLink },
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      },
+
+      // ── App4: Diego — AGREEMENT, ACCEPTED ──
+      {
+        personId: person4.id,
+        applicationId: app4.id,
+        action: 'Application submitted for Video Editor',
+        actionType: ActionType.CREATE,
+        details: { position: 'Video Editor', source: 'tally_webhook' },
+        createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person4.id,
+        applicationId: app4.id,
+        action: 'GENERAL_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'GENERAL_COMPETENCIES', score: 885, passed: true },
+        createdAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person4.id,
+        applicationId: app4.id,
+        action: 'Stage changed from APPLICATION to GENERAL_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'APPLICATION', toStage: 'GENERAL_COMPETENCIES' },
+        createdAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
+      },
       {
         personId: person4.id,
         applicationId: app4.id,
         userId: adminUser.id,
-        action: 'Application accepted',
-        actionType: ActionType.STATUS_CHANGE,
-        details: { decision: 'ACCEPT' },
+        action: 'Stage changed from GENERAL_COMPETENCIES to SPECIALIZED_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'GENERAL_COMPETENCIES', toStage: 'SPECIALIZED_COMPETENCIES', reason: 'GC passed — advancing to SC' },
+        createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person4.id,
+        applicationId: app4.id,
+        action: 'SPECIALIZED_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 520, passed: true },
+        createdAt: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person4.id,
+        applicationId: app4.id,
+        userId: adminUser.id,
+        action: 'Stage changed from SPECIALIZED_COMPETENCIES to INTERVIEW',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'SPECIALIZED_COMPETENCIES', toStage: 'INTERVIEW' },
+        createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person4.id,
+        applicationId: app4.id,
+        userId: adminUser.id,
+        action: 'Interview scheduled',
+        actionType: ActionType.CREATE,
+        details: { interviewerId: adminUser.id, schedulingLink: adminUser.schedulingLink },
+        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person4.id,
+        applicationId: app4.id,
+        userId: adminUser.id,
+        action: 'Interview marked as completed',
+        actionType: ActionType.UPDATE,
+        details: { interviewerId: adminUser.id },
+        createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person4.id,
+        applicationId: app4.id,
+        userId: adminUser.id,
+        action: 'Decision made: ACCEPT',
+        actionType: ActionType.UPDATE,
+        details: { decision: 'ACCEPT', reason: 'Strong technical skills, excellent cultural fit, and impressive portfolio.' },
         createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
       },
-      // Rejection
+      {
+        personId: person4.id,
+        applicationId: app4.id,
+        userId: adminUser.id,
+        action: 'Status changed from ACTIVE to ACCEPTED',
+        actionType: ActionType.STATUS_CHANGE,
+        details: { fromStatus: 'ACTIVE', toStatus: 'ACCEPTED', reason: 'Decision: ACCEPT' },
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person4.id,
+        applicationId: app4.id,
+        userId: adminUser.id,
+        action: 'Stage changed from INTERVIEW to AGREEMENT',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'INTERVIEW', toStage: 'AGREEMENT', reason: 'Auto-advanced: Application accepted' },
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      },
+
+      // ── App5: Pedro — GENERAL_COMPETENCIES, REJECTED ──
+      {
+        personId: person5.id,
+        applicationId: app5.id,
+        action: 'Application submitted for Software Developer',
+        actionType: ActionType.CREATE,
+        details: { position: 'Software Developer', source: 'tally_webhook' },
+        createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person5.id,
+        applicationId: app5.id,
+        action: 'GENERAL_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'GENERAL_COMPETENCIES', score: 650, passed: false },
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person5.id,
+        applicationId: app5.id,
+        action: 'Stage changed from APPLICATION to GENERAL_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'APPLICATION', toStage: 'GENERAL_COMPETENCIES' },
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      },
       {
         personId: person5.id,
         applicationId: app5.id,
         userId: adminUser.id,
-        action: 'Application rejected',
-        actionType: ActionType.STATUS_CHANGE,
-        details: { decision: 'REJECT', reason: 'Failed assessment' },
+        action: 'Decision made: REJECT',
+        actionType: ActionType.UPDATE,
+        details: { decision: 'REJECT', reason: 'Did not meet minimum threshold for general competencies assessment.' },
         createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
       },
-      // Sarah's application received
+      {
+        personId: person5.id,
+        applicationId: app5.id,
+        userId: adminUser.id,
+        action: 'Status changed from ACTIVE to REJECTED',
+        actionType: ActionType.STATUS_CHANGE,
+        details: { fromStatus: 'ACTIVE', toStatus: 'REJECTED', reason: 'Decision: REJECT' },
+        createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+      },
+
+      // ── App7: Sarah — GENERAL_COMPETENCIES, ACTIVE (GC failed, awaiting decision) ──
       {
         personId: person6.id,
         applicationId: app7.id,
-        action: 'Application received via Tally webhook',
+        action: 'Application submitted for UX Designer',
         actionType: ActionType.CREATE,
-        details: { source: 'tally_webhook', formId: 'form-application-001' },
+        details: { position: 'UX Designer', source: 'tally_webhook' },
         createdAt: app7.createdAt,
       },
-      // Sarah completed GC assessment (failed)
       {
         personId: person6.id,
         applicationId: app7.id,
-        action: 'General Competencies assessment completed',
+        action: 'GENERAL_COMPETENCIES assessment completed',
         actionType: ActionType.UPDATE,
-        details: { score: 720, passed: false, threshold: 800 },
+        details: { assessmentType: 'GENERAL_COMPETENCIES', score: 720, passed: false },
         createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person6.id,
+        applicationId: app7.id,
+        action: 'Stage changed from APPLICATION to GENERAL_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'APPLICATION', toStage: 'GENERAL_COMPETENCIES' },
+        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      },
+
+      // ── App8: Amara — SIGNED, ACCEPTED (full pipeline) ──
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        action: 'Application submitted for Course Facilitator',
+        actionType: ActionType.CREATE,
+        details: { position: 'Course Facilitator', source: 'tally_webhook' },
+        createdAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        action: 'GENERAL_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'GENERAL_COMPETENCIES', score: 910, passed: true },
+        createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        action: 'Stage changed from APPLICATION to GENERAL_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'APPLICATION', toStage: 'GENERAL_COMPETENCIES' },
+        createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        userId: adminUser.id,
+        action: 'Stage changed from GENERAL_COMPETENCIES to SPECIALIZED_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'GENERAL_COMPETENCIES', toStage: 'SPECIALIZED_COMPETENCIES', reason: 'GC passed — advancing to SC' },
+        createdAt: new Date(Date.now() - 44 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        action: 'SPECIALIZED_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 540, passed: true },
+        createdAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        userId: adminUser.id,
+        action: 'Stage changed from SPECIALIZED_COMPETENCIES to INTERVIEW',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'SPECIALIZED_COMPETENCIES', toStage: 'INTERVIEW' },
+        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        userId: adminUser.id,
+        action: 'Interview scheduled',
+        actionType: ActionType.CREATE,
+        details: { interviewerId: adminUser.id, schedulingLink: adminUser.schedulingLink },
+        createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        userId: adminUser.id,
+        action: 'Interview marked as completed',
+        actionType: ActionType.UPDATE,
+        details: { interviewerId: adminUser.id },
+        createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        userId: adminUser.id,
+        action: 'Decision made: ACCEPT',
+        actionType: ActionType.UPDATE,
+        details: { decision: 'ACCEPT', reason: 'Exceptional candidate with strong facilitation background.' },
+        createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        userId: adminUser.id,
+        action: 'Status changed from ACTIVE to ACCEPTED',
+        actionType: ActionType.STATUS_CHANGE,
+        details: { fromStatus: 'ACTIVE', toStatus: 'ACCEPTED', reason: 'Decision: ACCEPT' },
+        createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        userId: adminUser.id,
+        action: 'Stage changed from INTERVIEW to AGREEMENT',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'INTERVIEW', toStage: 'AGREEMENT', reason: 'Auto-advanced: Application accepted' },
+        createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        action: 'Stage changed from AGREEMENT to SIGNED',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'AGREEMENT', toStage: 'SIGNED', reason: 'Agreement signed via Tally webhook' },
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      },
+
+      // ── App9: Fatou — INTERVIEW, ACTIVE (interview completed, awaiting decision) ──
+      {
+        personId: person8.id,
+        applicationId: app9.id,
+        action: 'Application submitted for Programme Coordinator',
+        actionType: ActionType.CREATE,
+        details: { position: 'Programme Coordinator', source: 'tally_webhook' },
+        createdAt: new Date(Date.now() - 32 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person8.id,
+        applicationId: app9.id,
+        action: 'GENERAL_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'GENERAL_COMPETENCIES', score: 870, passed: true },
+        createdAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person8.id,
+        applicationId: app9.id,
+        action: 'Stage changed from APPLICATION to GENERAL_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'APPLICATION', toStage: 'GENERAL_COMPETENCIES' },
+        createdAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person8.id,
+        applicationId: app9.id,
+        userId: adminUser.id,
+        action: 'Stage changed from GENERAL_COMPETENCIES to SPECIALIZED_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'GENERAL_COMPETENCIES', toStage: 'SPECIALIZED_COMPETENCIES', reason: 'GC passed — advancing to SC' },
+        createdAt: new Date(Date.now() - 27 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person8.id,
+        applicationId: app9.id,
+        action: 'SPECIALIZED_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 450, passed: true },
+        createdAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person8.id,
+        applicationId: app9.id,
+        userId: adminUser.id,
+        action: 'Stage changed from SPECIALIZED_COMPETENCIES to INTERVIEW',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'SPECIALIZED_COMPETENCIES', toStage: 'INTERVIEW' },
+        createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person8.id,
+        applicationId: app9.id,
+        userId: hiringManager.id,
+        action: 'Interview scheduled',
+        actionType: ActionType.CREATE,
+        details: { interviewerId: hiringManager.id, schedulingLink: hiringManager.schedulingLink },
+        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person8.id,
+        applicationId: app9.id,
+        userId: hiringManager.id,
+        action: 'Interview marked as completed',
+        actionType: ActionType.UPDATE,
+        details: { interviewerId: hiringManager.id },
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      },
+
+      // ── App10: Kenji — SPECIALIZED_COMPETENCIES, ACTIVE (SC passed, ready to advance) ──
+      {
+        personId: person9.id,
+        applicationId: app10.id,
+        action: 'Application submitted for Data Analyst',
+        actionType: ActionType.CREATE,
+        details: { position: 'Data Analyst', source: 'tally_webhook' },
+        createdAt: new Date(Date.now() - 24 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person9.id,
+        applicationId: app10.id,
+        action: 'GENERAL_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'GENERAL_COMPETENCIES', score: 880, passed: true },
+        createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person9.id,
+        applicationId: app10.id,
+        action: 'Stage changed from APPLICATION to GENERAL_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'APPLICATION', toStage: 'GENERAL_COMPETENCIES' },
+        createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person9.id,
+        applicationId: app10.id,
+        userId: adminUser.id,
+        action: 'Stage changed from GENERAL_COMPETENCIES to SPECIALIZED_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'GENERAL_COMPETENCIES', toStage: 'SPECIALIZED_COMPETENCIES', reason: 'GC passed — advancing to SC' },
+        createdAt: new Date(Date.now() - 19 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person9.id,
+        applicationId: app10.id,
+        action: 'SPECIALIZED_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 470, passed: true },
+        createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+      },
+
+      // ── App11: Priya — INTERVIEW, REJECTED (rejected post-interview) ──
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        action: 'Application submitted for Curriculum Developer',
+        actionType: ActionType.CREATE,
+        details: { position: 'Curriculum Developer', source: 'tally_webhook' },
+        createdAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        action: 'GENERAL_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'GENERAL_COMPETENCIES', score: 840, passed: true },
+        createdAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        action: 'Stage changed from APPLICATION to GENERAL_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'APPLICATION', toStage: 'GENERAL_COMPETENCIES' },
+        createdAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        userId: adminUser.id,
+        action: 'Stage changed from GENERAL_COMPETENCIES to SPECIALIZED_COMPETENCIES',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'GENERAL_COMPETENCIES', toStage: 'SPECIALIZED_COMPETENCIES', reason: 'GC passed — advancing to SC' },
+        createdAt: new Date(Date.now() - 34 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        action: 'SPECIALIZED_COMPETENCIES assessment completed',
+        actionType: ActionType.UPDATE,
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 420, passed: true },
+        createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        userId: adminUser.id,
+        action: 'Stage changed from SPECIALIZED_COMPETENCIES to INTERVIEW',
+        actionType: ActionType.STAGE_CHANGE,
+        details: { fromStage: 'SPECIALIZED_COMPETENCIES', toStage: 'INTERVIEW' },
+        createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        userId: adminUser.id,
+        action: 'Interview scheduled',
+        actionType: ActionType.CREATE,
+        details: { interviewerId: adminUser.id, schedulingLink: adminUser.schedulingLink },
+        createdAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        userId: adminUser.id,
+        action: 'Interview marked as completed',
+        actionType: ActionType.UPDATE,
+        details: { interviewerId: adminUser.id },
+        createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        userId: adminUser.id,
+        action: 'Decision made: REJECT',
+        actionType: ActionType.UPDATE,
+        details: { decision: 'REJECT', reason: 'Insufficient alignment with inclusive curriculum design methodology.' },
+        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        userId: adminUser.id,
+        action: 'Status changed from ACTIVE to REJECTED',
+        actionType: ActionType.STATUS_CHANGE,
+        details: { fromStatus: 'ACTIVE', toStatus: 'REJECTED', reason: 'Decision: REJECT' },
+        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
       },
     ],
   });
-  console.log(`✓ Created 7 fictional audit logs\n`);
+  console.log(`✓ Created 66 fictional audit logs\n`);
 
   // Create Email Logs (can link to Person, Application, or both)
   console.log('Creating fictional email logs...');
@@ -823,7 +1704,7 @@ async function main() {
         personId: person1.id,
         applicationId: app1.id,
         recipientEmail: person1.email,
-        templateName: 'application-received',
+        templateName: 'application/application-received',
         subject: 'Application Received - Alterna',
         status: EmailStatus.SENT,
         sentAt: app1.createdAt,
@@ -832,7 +1713,7 @@ async function main() {
       {
         personId: person1.id,
         recipientEmail: person1.email,
-        templateName: 'general-competencies-invitation',
+        templateName: 'assessment/general-competencies-invitation',
         subject: 'Complete Your Assessment - Alterna',
         status: EmailStatus.SENT,
         sentAt: new Date(app1.createdAt.getTime() + 1000), // 1 second after application
@@ -842,7 +1723,7 @@ async function main() {
         personId: person3.id,
         applicationId: app3.id,
         recipientEmail: person3.email,
-        templateName: 'interview-invitation',
+        templateName: 'interview/interview-invitation',
         subject: 'Interview Invitation - Alterna',
         status: EmailStatus.SENT,
         sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
@@ -853,7 +1734,7 @@ async function main() {
         personId: person4.id,
         applicationId: app4.id,
         recipientEmail: person4.email,
-        templateName: 'offer-letter',
+        templateName: 'decision/offer-letter',
         subject: 'Offer Letter - Alterna',
         status: EmailStatus.SENT,
         sentAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
@@ -864,7 +1745,7 @@ async function main() {
         personId: person5.id,
         applicationId: app5.id,
         recipientEmail: person5.email,
-        templateName: 'rejection',
+        templateName: 'decision/rejection',
         subject: 'Application Update - Alterna',
         status: EmailStatus.SENT,
         sentAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
@@ -875,7 +1756,7 @@ async function main() {
         personId: person6.id,
         applicationId: app7.id,
         recipientEmail: person6.email,
-        templateName: 'application-received',
+        templateName: 'application/application-received',
         subject: 'Application Received - Alterna',
         status: EmailStatus.SENT,
         sentAt: app7.createdAt,
@@ -884,7 +1765,7 @@ async function main() {
       {
         personId: person6.id,
         recipientEmail: person6.email,
-        templateName: 'general-competencies-invitation',
+        templateName: 'assessment/general-competencies-invitation',
         subject: 'Complete Your Assessment - Alterna',
         status: EmailStatus.SENT,
         sentAt: new Date(app7.createdAt.getTime() + 1000),
@@ -894,14 +1775,200 @@ async function main() {
         personId: person6.id,
         applicationId: app7.id,
         recipientEmail: person6.email,
-        templateName: 'general-competencies-failed',
+        templateName: 'assessment/general-competencies-failed',
         subject: 'Assessment Results - Alterna',
         status: EmailStatus.SENT,
         sentAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
       },
+      // Amara's email trail — full pipeline
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        recipientEmail: person7.email,
+        templateName: 'application/application-received',
+        subject: 'Application Received - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        recipientEmail: person7.email,
+        templateName: 'assessment/general-competencies-invitation',
+        subject: 'Complete Your Assessment - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000 + 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        recipientEmail: person7.email,
+        templateName: 'assessment/specialized-competencies-invitation',
+        subject: 'Specialised Assessment - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 44 * 24 * 60 * 60 * 1000),
+        sentBy: adminUser.id,
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        recipientEmail: person7.email,
+        templateName: 'interview/interview-invitation',
+        subject: 'Interview Invitation - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        sentBy: adminUser.id,
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        recipientEmail: person7.email,
+        templateName: 'decision/offer-letter',
+        subject: 'Offer Letter - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+        sentBy: adminUser.id,
+      },
+
+      // Maria's Instructional Designer email trail
+      {
+        personId: person2.id,
+        applicationId: app2.id,
+        recipientEmail: person2.email,
+        templateName: 'application/application-received',
+        subject: 'Application Received - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person2.id,
+        applicationId: app2.id,
+        recipientEmail: person2.email,
+        templateName: 'assessment/specialized-competencies-invitation',
+        subject: 'Specialised Assessment - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+        sentBy: adminUser.id,
+      },
+
+      // Fatou's email trail
+      {
+        personId: person8.id,
+        applicationId: app9.id,
+        recipientEmail: person8.email,
+        templateName: 'application/application-received',
+        subject: 'Application Received - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 32 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person8.id,
+        recipientEmail: person8.email,
+        templateName: 'assessment/general-competencies-invitation',
+        subject: 'Complete Your Assessment - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 32 * 24 * 60 * 60 * 1000 + 1000),
+      },
+      {
+        personId: person8.id,
+        applicationId: app9.id,
+        recipientEmail: person8.email,
+        templateName: 'assessment/specialized-competencies-invitation',
+        subject: 'Specialised Assessment - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 27 * 24 * 60 * 60 * 1000),
+        sentBy: adminUser.id,
+      },
+      {
+        personId: person8.id,
+        applicationId: app9.id,
+        recipientEmail: person8.email,
+        templateName: 'interview/interview-invitation',
+        subject: 'Interview Invitation - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        sentBy: hiringManager.id,
+      },
+
+      // Kenji's email trail
+      {
+        personId: person9.id,
+        applicationId: app10.id,
+        recipientEmail: person9.email,
+        templateName: 'application/application-received',
+        subject: 'Application Received - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 24 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person9.id,
+        recipientEmail: person9.email,
+        templateName: 'assessment/general-competencies-invitation',
+        subject: 'Complete Your Assessment - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 24 * 24 * 60 * 60 * 1000 + 1000),
+      },
+      {
+        personId: person9.id,
+        applicationId: app10.id,
+        recipientEmail: person9.email,
+        templateName: 'assessment/specialized-competencies-invitation',
+        subject: 'Specialised Assessment - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 19 * 24 * 60 * 60 * 1000),
+        sentBy: adminUser.id,
+      },
+
+      // Priya's email trail
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        recipientEmail: person10.email,
+        templateName: 'application/application-received',
+        subject: 'Application Received - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person10.id,
+        recipientEmail: person10.email,
+        templateName: 'assessment/general-competencies-invitation',
+        subject: 'Complete Your Assessment - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000 + 1000),
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        recipientEmail: person10.email,
+        templateName: 'assessment/specialized-competencies-invitation',
+        subject: 'Specialised Assessment - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 34 * 24 * 60 * 60 * 1000),
+        sentBy: adminUser.id,
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        recipientEmail: person10.email,
+        templateName: 'interview/interview-invitation',
+        subject: 'Interview Invitation - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+        sentBy: adminUser.id,
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        recipientEmail: person10.email,
+        templateName: 'decision/rejection',
+        subject: 'Application Update - Alterna',
+        status: EmailStatus.SENT,
+        sentAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        sentBy: adminUser.id,
+      },
     ],
   });
-  console.log(`✓ Created 8 fictional email logs\n`);
+  console.log(`✓ Created 27 fictional email logs\n`);
 
   console.log('Database seeded successfully!\n');
   console.log('Summary:');
@@ -909,18 +1976,13 @@ async function main() {
   if (realUsers.length > 0) {
     console.log(`  - ${realUsers.length} real user(s) preserved`);
   }
-  console.log('  - 6 fictional persons (unique individuals)');
-  console.log('  - 7 fictional application records (including 2 from same person)');
-  console.log('  - 6 fictional assessment records (5 GC, 3 SC)');
-  console.log('  - 2 fictional interview records');
-  console.log('  - 2 fictional decision records');
-  console.log('  - 7 fictional audit logs');
-  console.log('  - 8 fictional email logs');
-  console.log('  - 7 fictional assessment records (4 GC on Persons, 3 SC on Applications - 1 failed SC)');
-  console.log('  - 2 fictional interview records');
-  console.log('  - 2 fictional decision records');
-  console.log('  - 5 fictional audit logs');
-  console.log('  - 5 fictional email logs');
+  console.log('  - 10 fictional persons (unique individuals)');
+  console.log('  - 11 fictional application records (including 2 from same person)');
+  console.log('  - 16 fictional assessment records (9 GC, 7 SC)');
+  console.log('  - 5 fictional interview records');
+  console.log('  - 4 fictional decision records');
+  console.log('  - 66 fictional audit logs');
+  console.log('  - 27 fictional email logs');
   if (!cleanMode) {
     console.log('\nUse --clean flag to delete real users in next seed.');
   }

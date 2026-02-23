@@ -133,7 +133,25 @@ export async function getApplicationsForPipeline(filters?: {
 }): Promise<{ applicationsByStage: Record<Stage, ApplicationCard[]>; stats: ApplicationStats }> {
   const where: Prisma.ApplicationWhereInput = {};
 
-  if (filters?.status) {
+  if (filters?.status === 'ACTIVE') {
+    // "Active" pipeline view: show ACTIVE applications plus ACCEPTED ones
+    // still in the pipeline (AGREEMENT stage, or SIGNED within 15 days)
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+
+    where.OR = [
+      { status: 'ACTIVE' },
+      {
+        status: 'ACCEPTED',
+        currentStage: 'AGREEMENT',
+      },
+      {
+        status: 'ACCEPTED',
+        currentStage: 'SIGNED',
+        agreementSignedAt: { gte: fifteenDaysAgo },
+      },
+    ];
+  } else if (filters?.status) {
     where.status = filters.status;
   }
 
@@ -150,6 +168,7 @@ export async function getApplicationsForPipeline(filters?: {
       currentStage: true,
       status: true,
       createdAt: true,
+      agreementSignedAt: true,
       hasResume: true,
       hasAcademicBg: true,
       hasVideoIntro: true,
@@ -205,11 +224,12 @@ export async function getApplicationsForPipeline(filters?: {
 
   for (const app of applications) {
     // Determine if this application needs attention
+    // AGREEMENT stage never needs attention — the offer letter (with agreement link)
+    // is always sent on acceptance, so the ball is in the candidate's court.
     const needsAttention = app.status === 'ACTIVE' && (
       ((app.currentStage === 'APPLICATION' || app.currentStage === 'GENERAL_COMPETENCIES') && !app.person.generalCompetenciesCompleted) ||
       (app.currentStage === 'SPECIALIZED_COMPETENCIES' && app.assessments.length === 0) ||
-      (app.currentStage === 'INTERVIEW' && app.interviews.length === 0) ||
-      (app.currentStage === 'AGREEMENT')
+      (app.currentStage === 'INTERVIEW' && app.interviews.length === 0)
     );
 
     const card: ApplicationCard = {
@@ -457,7 +477,7 @@ export async function advanceApplicationStage(id: string, newStage: Stage): Prom
 }
 
 /**
- * Update application status (e.g., reject, withdraw)
+ * Update application status (e.g., accept, reject)
  *
  * @param id - Application ID
  * @param status - New status
@@ -525,7 +545,6 @@ export async function updateApplicationAgreement(
  * Delete an application
  *
  * Note: This cascades to assessments, interviews, decisions.
- * Typically, applications should be marked as WITHDRAWN instead.
  *
  * @param id - Application ID
  */
@@ -609,7 +628,6 @@ export async function getApplicationStats(filters?: {
     ACTIVE: 0,
     ACCEPTED: 0,
     REJECTED: 0,
-    WITHDRAWN: 0,
   };
 
   const statusCounts = await db.application.groupBy({
@@ -662,7 +680,7 @@ export async function getApplicationStats(filters?: {
  * - APPLICATION stage where person has not completed GC
  * - SPECIALIZED_COMPETENCIES stage where no SC assessment has been submitted
  * - INTERVIEW stage where no interview has been completed
- * - AGREEMENT stage (all apps — pending offer / countersignature)
+ * - AGREEMENT stage never needs attention (offer letter always sent on acceptance)
  *
  * @param filters - Optional position filter (status is always ACTIVE)
  * @returns Per-category counts and overall total
@@ -687,10 +705,10 @@ export async function getAttentionBreakdown(filters?: {
     db.application.count({
       where: { ...base, currentStage: 'INTERVIEW', interviews: { none: { completedAt: { not: null } } } },
     }),
-    // All AGREEMENT-stage apps need action (offer / agreement pending)
-    db.application.count({
-      where: { ...base, currentStage: 'AGREEMENT' },
-    }),
+    // AGREEMENT stage: offer letter is always sent on acceptance, so the
+    // candidate is responsible for signing — never needs attention.
+    // Return 0 to satisfy the AttentionBreakdown interface.
+    Promise.resolve(0),
   ]);
 
   return {

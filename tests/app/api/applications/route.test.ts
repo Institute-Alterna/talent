@@ -109,8 +109,7 @@ const mockStats = {
   byStatus: {
     ACTIVE: 5,
     ACCEPTED: 2,
-    REJECTED: 2,
-    WITHDRAWN: 1,
+    REJECTED: 3,
   },
   byPosition: { 'Software Engineer': 5, 'Data Analyst': 5 },
   awaitingAction: 3,

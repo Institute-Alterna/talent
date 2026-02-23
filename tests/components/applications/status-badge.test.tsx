@@ -13,7 +13,6 @@ const Status = {
   ACTIVE: 'ACTIVE' as const,
   ACCEPTED: 'ACCEPTED' as const,
   REJECTED: 'REJECTED' as const,
-  WITHDRAWN: 'WITHDRAWN' as const,
 };
 
 type StatusType = (typeof Status)[keyof typeof Status];
@@ -35,14 +34,9 @@ describe('StatusBadge', () => {
       expect(screen.getByText('Rejected')).toBeInTheDocument();
     });
 
-    it('should render WITHDRAWN status with correct label', () => {
-      render(<StatusBadge status={Status.WITHDRAWN} />);
-      expect(screen.getByText('Withdrawn')).toBeInTheDocument();
-    });
-
     it('should render all statuses without error', () => {
-      const statuses: StatusType[] = [Status.ACTIVE, Status.ACCEPTED, Status.REJECTED, Status.WITHDRAWN];
-      const labels = ['Active', 'Accepted', 'Rejected', 'Withdrawn'];
+      const statuses: StatusType[] = [Status.ACTIVE, Status.ACCEPTED, Status.REJECTED];
+      const labels = ['Active', 'Accepted', 'Rejected'];
 
       statuses.forEach((status, index) => {
         const { unmount } = render(<StatusBadge status={status} />);

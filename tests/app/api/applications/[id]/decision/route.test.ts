@@ -144,9 +144,10 @@ describe('POST /api/applications/[id]/decision', () => {
     });
 
     it('sends offer letter with agreement link on acceptance', async () => {
+      // sendEmail is forced to true for ACCEPT decisions (even if body says false)
       (parseJsonBody as jest.Mock).mockResolvedValue({
         ok: true,
-        body: { decision: 'ACCEPT', reason: 'Great fit', startDate: '2026-04-01' },
+        body: { decision: 'ACCEPT', reason: 'Great fit', sendEmail: false },
       });
 
       (db.decision.create as jest.Mock).mockResolvedValue({
@@ -207,6 +208,26 @@ describe('POST /api/applications/[id]/decision', () => {
   });
 
   describe('Validation', () => {
+    it('returns 400 when application is before INTERVIEW stage', async () => {
+      (requireApplicationAccess as jest.Mock).mockResolvedValue({
+        ok: true,
+        session: { user: { dbUserId: 'user-123' } },
+        application: { ...mockApplication, currentStage: 'APPLICATION' },
+      });
+
+      (parseJsonBody as jest.Mock).mockResolvedValue({
+        ok: true,
+        body: { decision: 'ACCEPT', reason: 'Test' },
+      });
+
+      const request = createRequest({ decision: 'ACCEPT', reason: 'Test' });
+      const response = await POST(request, { params: mockParams });
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toContain('before the interview stage');
+    });
+
     it('returns 400 when decision already exists', async () => {
       (requireApplicationAccess as jest.Mock).mockResolvedValue({
         ok: true,
