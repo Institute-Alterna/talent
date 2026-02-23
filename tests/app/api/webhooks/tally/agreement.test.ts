@@ -182,6 +182,29 @@ describe('POST /api/webhooks/tally/agreement', () => {
       expect(data.error).toContain('Application not found');
     });
 
+    it('returns 200 when application offer was withdrawn (REJECTED)', async () => {
+      const payload = createAgreementPayload({ applicationId: 'app-withdrawn' });
+      const signature = generateWebhookSignature(payload, webhookSecret);
+
+      (getApplicationByAgreementTallySubmissionId as jest.Mock).mockResolvedValue(null);
+      (getApplicationById as jest.Mock).mockResolvedValue({
+        id: 'app-withdrawn',
+        personId: 'person-123',
+        currentStage: 'AGREEMENT',
+        status: 'REJECTED',
+      });
+
+      const request = createRequest(payload, signature);
+      const response = await POST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.message).toContain('withdrawn');
+      expect(updateApplicationAgreement).not.toHaveBeenCalled();
+      expect(advanceApplicationStage).not.toHaveBeenCalled();
+    });
+
     it('returns 400 when application is not ACCEPTED', async () => {
       const payload = createAgreementPayload({ applicationId: 'app-active' });
       const signature = generateWebhookSignature(payload, webhookSecret);

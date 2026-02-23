@@ -96,6 +96,18 @@ export async function POST(request: NextRequest) {
     return webhookErrorResponse('Application not found', 404, rateLimitHeaders);
   }
 
+  // Gracefully handle withdrawn offers — return 200 to prevent Tally retries
+  if (application.status === 'REJECTED') {
+    console.log(`[Webhook Agreement] Application ${sanitizeForLog(applicationId)} offer was withdrawn — signing ignored`);
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Application offer was withdrawn — signing ignored',
+      },
+      { headers: rateLimitHeaders }
+    );
+  }
+
   // Validate application is in correct state
   if (application.status !== 'ACCEPTED') {
     console.error(`[Webhook Agreement] Application ${sanitizeForLog(applicationId)} is not ACCEPTED (status: ${application.status})`);

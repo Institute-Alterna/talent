@@ -22,6 +22,7 @@ import {
   FileDown,
   Loader2,
   Trash2,
+  XCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -64,6 +65,7 @@ interface ApplicationCardProps {
   onScheduleInterview?: (id: string) => void;
   onExportPdf?: (id: string) => void;
   onWithdraw?: (id: string) => void;
+  onWithdrawOffer?: (id: string) => void;
   isExportingPdf?: boolean;
   isAdmin?: boolean;
   className?: string;
@@ -85,6 +87,7 @@ export function ApplicationCard({
   onScheduleInterview,
   onExportPdf,
   onWithdraw,
+  onWithdrawOffer,
   isExportingPdf = false,
   isAdmin = false,
   className,
@@ -200,6 +203,18 @@ export function ApplicationCard({
                         <FileDown className="mr-2 h-4 w-4" />
                       )}
                       {isExportingPdf ? 'Exporting...' : 'Export PDF'}
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {onWithdrawOffer && isAdmin && application.status === 'ACCEPTED' && application.currentStage === 'AGREEMENT' && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => onWithdrawOffer(application.id)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      {strings.withdrawOffer.menuItem}
                     </DropdownMenuItem>
                   </>
                 )}

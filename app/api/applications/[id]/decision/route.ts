@@ -27,7 +27,6 @@ import { db } from '@/lib/db';
 import { DecisionType, Status } from '@/lib/generated/prisma/client';
 import { sanitizeForLog, sanitizeText } from '@/lib/security';
 import { escapeHtml } from '@/lib/email/templates';
-import { recruitment } from '@/config';
 
 /**
  * Valid decision types
@@ -53,16 +52,6 @@ export async function POST(
     if (!session.user.dbUserId) {
       return NextResponse.json(
         { error: 'User profile not found' },
-        { status: 400 }
-      );
-    }
-
-    // Verify application has reached the INTERVIEW stage before a decision can be made
-    const currentOrder = recruitment.stages.find(s => s.id === application.currentStage)?.order ?? 0;
-    const interviewOrder = recruitment.stages.find(s => s.id === 'INTERVIEW')?.order ?? 4;
-    if (currentOrder < interviewOrder) {
-      return NextResponse.json(
-        { error: 'Cannot make a decision before the interview stage' },
         { status: 400 }
       );
     }

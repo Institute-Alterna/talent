@@ -257,6 +257,19 @@ export const strings = {
     menuItem: 'Delete',
   },
 
+  // Withdraw Offer (AGREEMENT stage)
+  withdrawOffer: {
+    title: 'Withdraw Offer',
+    description: 'Withdraw the offer for {name}. This will reject the application before the candidate signs the agreement.',
+    reasonLabel: 'Reason',
+    reasonPlaceholder: 'Provide a reason for withdrawing this offer...',
+    reasonRequired: 'A reason is required when withdrawing an offer',
+    sendEmailLabel: 'Send rejection notification to candidate',
+    warning: 'This will reject the application and cannot be undone.',
+    confirmAction: 'Withdraw Offer',
+    menuItem: 'Withdraw Offer',
+  },
+
   // Success messages
   success: {
     saved: 'Changes saved successfully',

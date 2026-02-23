@@ -39,6 +39,7 @@ const InterviewDialog = React.lazy(() => import('@/components/applications/inter
 const CompleteInterviewDialog = React.lazy(() => import('@/components/applications/complete-interview-dialog').then(m => ({ default: m.CompleteInterviewDialog })));
 const WithdrawDialog = React.lazy(() => import('@/components/applications/withdraw-dialog').then(m => ({ default: m.WithdrawDialog })));
 const DecisionDialog = React.lazy(() => import('@/components/applications/decision-dialog').then(m => ({ default: m.DecisionDialog })));
+const WithdrawOfferDialog = React.lazy(() => import('@/components/applications/withdraw-offer-dialog').then(m => ({ default: m.WithdrawOfferDialog })));
 
 interface CandidatesPageClientProps {
   isAdmin: boolean;
@@ -114,6 +115,11 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   const [withdrawApplicationName, setWithdrawApplicationName] = React.useState<string>('');
   const [isWithdrawProcessing, setIsWithdrawProcessing] = React.useState(false);
 
+  // Withdraw offer dialog
+  const [withdrawOfferApplicationId, setWithdrawOfferApplicationId] = React.useState<string | null>(null);
+  const [withdrawOfferApplicationName, setWithdrawOfferApplicationName] = React.useState<string>('');
+  const [isWithdrawOfferProcessing, setIsWithdrawOfferProcessing] = React.useState(false);
+
   // Decision dialog
   const [isDecisionDialogOpen, setIsDecisionDialogOpen] = React.useState(false);
   const [decisionType, setDecisionType] = React.useState<'ACCEPT' | 'REJECT'>('REJECT');
@@ -156,8 +162,9 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   // Browser warning for page refresh during operations
   React.useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (isDecisionProcessing || sendingEmailTemplate !== null || 
-          isSchedulingInterview || isReschedulingInterview || isCompletingInterview) {
+      if (isDecisionProcessing || sendingEmailTemplate !== null ||
+          isSchedulingInterview || isReschedulingInterview || isCompletingInterview ||
+          isWithdrawOfferProcessing) {
         e.preventDefault();
         e.returnValue = ''; // Chrome requires returnValue to be set
       }
@@ -165,7 +172,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDecisionProcessing, sendingEmailTemplate, isSchedulingInterview, isReschedulingInterview, isCompletingInterview]);
+  }, [isDecisionProcessing, sendingEmailTemplate, isSchedulingInterview, isReschedulingInterview, isCompletingInterview, isWithdrawOfferProcessing]);
 
   // Fetch pipeline data (active view) or list data (other statuses)
   const fetchPipelineData = React.useCallback(async (force?: boolean) => {
@@ -689,6 +696,74 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     }
   }, [withdrawApplicationId, toast, fetchPipelineData]);
 
+  // Withdraw offer handlers
+  const handleWithdrawOfferClick = React.useCallback((applicationId: string) => {
+    // Find the application to get its name — check pipeline data first, then list data
+    if (pipelineData) {
+      for (const stage of Object.keys(pipelineData) as (keyof PipelineBoardData)[]) {
+        const app = pipelineData[stage].find(a => a.id === applicationId);
+        if (app) {
+          setWithdrawOfferApplicationId(applicationId);
+          setWithdrawOfferApplicationName(`${app.person.firstName} ${app.person.lastName}`);
+          return;
+        }
+      }
+    }
+
+    const listApp = listData.find(a => a.id === applicationId);
+    if (listApp) {
+      setWithdrawOfferApplicationId(applicationId);
+      setWithdrawOfferApplicationName(`${listApp.person.firstName} ${listApp.person.lastName}`);
+    }
+  }, [pipelineData, listData]);
+
+  const handleWithdrawOfferFromDetail = React.useCallback(() => {
+    if (!selectedApplication || !selectedApplicationId) return;
+    setWithdrawOfferApplicationId(selectedApplicationId);
+    setWithdrawOfferApplicationName(
+      `${selectedApplication.person.firstName} ${selectedApplication.person.lastName}`
+    );
+  }, [selectedApplication, selectedApplicationId]);
+
+  const handleWithdrawOfferConfirm = React.useCallback(async (data: { reason: string; sendEmail: boolean }) => {
+    if (!withdrawOfferApplicationId) return;
+
+    setIsWithdrawOfferProcessing(true);
+    try {
+      const response = await fetch(`/api/applications/${withdrawOfferApplicationId}/withdraw-offer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to withdraw offer');
+      }
+
+      toast({
+        title: 'Offer Withdrawn',
+        description: 'The offer has been withdrawn and the application rejected.',
+      });
+
+      // Small delay to ensure activity log updates
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Refresh detail if viewing this application
+      if (selectedApplicationId === withdrawOfferApplicationId) {
+        await fetchApplicationDetail(selectedApplicationId, true);
+      }
+      fetchPipelineData(true);
+
+      setWithdrawOfferApplicationId(null);
+      setWithdrawOfferApplicationName('');
+    } catch (err) {
+      throw err; // Let dialog handle error display
+    } finally {
+      setIsWithdrawOfferProcessing(false);
+    }
+  }, [withdrawOfferApplicationId, selectedApplicationId, toast, fetchApplicationDetail, fetchPipelineData]);
+
   // Get unique positions for filter
   const positions = React.useMemo(() => {
     if (!stats?.byPosition) return [];
@@ -753,25 +828,25 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
         ) : stats ? (
           <div className={cn('grid gap-3 grid-cols-2 md:grid-cols-4 transition-opacity duration-200', isLoading && 'opacity-60')}>
             <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Applications</span>
-              <span className="text-lg font-semibold tabular-nums">{stats.total - (stats.byStatus?.REJECTED ?? 0)}</span>
+              <span className="text-xs text-muted-foreground">{isActiveView ? "Active Applications" : "Applications"}</span>
+              <span className="text-lg font-semibold tabular-nums">{isActiveView ? stats.active : filteredListData.length}</span>
             </div>
             <button
               type="button"
-              className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between text-left w-full cursor-pointer hover:bg-accent/50 transition-colors"
-              onClick={() => setShowAttentionBreakdown(true)}
-              disabled={attentionBreakdown.total === 0}
+              className={cn('rounded-lg border bg-card px-3 py-2 flex items-center justify-between text-left w-full transition-colors', isActiveView ? 'cursor-pointer hover:bg-accent/50' : 'opacity-40 cursor-default')}
+              onClick={() => isActiveView && setShowAttentionBreakdown(true)}
+              disabled={!isActiveView || attentionBreakdown.total === 0}
             >
               <span className="text-xs text-muted-foreground">Awaiting Action</span>
-              <span className="text-lg font-semibold tabular-nums">{stats.awaitingAction}</span>
+              <span className="text-lg font-semibold tabular-nums">{isActiveView ? stats.awaitingAction : '—'}</span>
             </button>
-            <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+            <div className={cn('rounded-lg border bg-card px-3 py-2 flex items-center justify-between', !isActiveView && 'opacity-40')}>
               <span className="text-xs text-muted-foreground">Interview</span>
-              <span className="text-lg font-semibold tabular-nums">{stats.byStage?.INTERVIEW || 0}</span>
+              <span className="text-lg font-semibold tabular-nums">{isActiveView ? (stats.byStage?.INTERVIEW || 0) : '—'}</span>
             </div>
-            <div className="rounded-lg border bg-card px-3 py-2 flex items-center justify-between">
+            <div className={cn('rounded-lg border bg-card px-3 py-2 flex items-center justify-between', !isActiveView && 'opacity-40')}>
               <span className="text-xs text-muted-foreground">Recent (7d)</span>
-              <span className="text-lg font-semibold tabular-nums">{stats.recentActivity}</span>
+              <span className="text-lg font-semibold tabular-nums">{isActiveView ? stats.recentActivity : '—'}</span>
             </div>
           </div>
         ) : null}
@@ -885,6 +960,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
             onScheduleInterview={handleViewApplication}
             onExportPdf={handleExportPdf}
             onWithdraw={handleWithdrawClick}
+            onWithdrawOffer={handleWithdrawOfferClick}
             exportingPdfId={exportingPdfId}
             isAdmin={isAdmin}
             isLoading={isLoading}
@@ -932,6 +1008,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
                 onScheduleInterview={handleViewApplication}
                 onExportPdf={handleExportPdf}
                 onWithdraw={handleWithdrawClick}
+                onWithdrawOffer={handleWithdrawOfferClick}
                 exportingPdfId={exportingPdfId}
                 isAdmin={isAdmin}
                 isLoading={isLoading}
@@ -960,6 +1037,8 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
               isReschedulingInterview={isReschedulingInterview}
               isCompletingInterview={isCompletingInterview}
               isDecisionProcessing={isDecisionProcessing}
+              onWithdrawOffer={handleWithdrawOfferFromDetail}
+              isWithdrawingOffer={isWithdrawOfferProcessing}
             />
           )}
         </React.Suspense>
@@ -972,6 +1051,21 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
               onDelete={handleDeleteApplication}
               applicationName={withdrawApplicationName}
               isProcessing={isWithdrawProcessing}
+            />
+          )}
+        </React.Suspense>
+
+        <React.Suspense fallback={null}>
+          {!!withdrawOfferApplicationId && (
+            <WithdrawOfferDialog
+              isOpen={!!withdrawOfferApplicationId}
+              onClose={() => {
+                setWithdrawOfferApplicationId(null);
+                setWithdrawOfferApplicationName('');
+              }}
+              onConfirm={handleWithdrawOfferConfirm}
+              applicationName={withdrawOfferApplicationName}
+              isProcessing={isWithdrawOfferProcessing}
             />
           )}
         </React.Suspense>

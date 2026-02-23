@@ -258,10 +258,6 @@ export function ApplicationListView({
         ))}
       </div>
 
-      {/* Count footer */}
-      <p className="text-xs text-muted-foreground mt-3 text-right">
-        {applications.length} {applications.length === 1 ? 'application' : 'applications'}
-      </p>
     </div>
   );
 }

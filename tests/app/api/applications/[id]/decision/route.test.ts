@@ -208,7 +208,7 @@ describe('POST /api/applications/[id]/decision', () => {
   });
 
   describe('Validation', () => {
-    it('returns 400 when application is before INTERVIEW stage', async () => {
+    it('allows a decision at any active stage (no interview gate)', async () => {
       (requireApplicationAccess as jest.Mock).mockResolvedValue({
         ok: true,
         session: { user: { dbUserId: 'user-123' } },
@@ -217,15 +217,21 @@ describe('POST /api/applications/[id]/decision', () => {
 
       (parseJsonBody as jest.Mock).mockResolvedValue({
         ok: true,
-        body: { decision: 'ACCEPT', reason: 'Test' },
+        body: { decision: 'REJECT', reason: 'Not a good fit' },
       });
 
-      const request = createRequest({ decision: 'ACCEPT', reason: 'Test' });
-      const response = await POST(request, { params: mockParams });
-      const data = await response.json();
+      (db.decision.create as jest.Mock).mockResolvedValue({
+        id: 'decision-123',
+        decision: 'REJECT',
+        reason: 'Not a good fit',
+        decidedAt: new Date(),
+        user: { id: 'user-123', displayName: 'Admin', email: 'admin@example.com' },
+      });
 
-      expect(response.status).toBe(400);
-      expect(data.error).toContain('before the interview stage');
+      const request = createRequest({ decision: 'REJECT', reason: 'Not a good fit' });
+      const response = await POST(request, { params: mockParams });
+
+      expect(response.status).toBe(200);
     });
 
     it('returns 400 when decision already exists', async () => {

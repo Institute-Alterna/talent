@@ -60,6 +60,7 @@ import {
   Clock,
   Loader2,
   ClipboardList,
+  ShieldAlert,
 } from 'lucide-react';
 import { GCQResponsesDialog } from './gcq-responses-dialog';
 import { GC_SUBSCORE_ENTRIES, extractGCSubscores, hasGCFields } from '@/lib/gc-utils';
@@ -186,6 +187,8 @@ interface ApplicationDetailProps {
   isReschedulingInterview?: boolean;
   isCompletingInterview?: boolean;
   isDecisionProcessing?: boolean;
+  onWithdrawOffer?: () => void;
+  isWithdrawingOffer?: boolean;
 }
 
 /**
@@ -597,6 +600,8 @@ function RightPanel({
   isReschedulingInterview,
   isCompletingInterview,
   isDecisionProcessing,
+  onWithdrawOffer,
+  isWithdrawingOffer,
 }: {
   application: ApplicationDetailData;
   onSendEmail?: (template: string) => void;
@@ -610,12 +615,17 @@ function RightPanel({
   isReschedulingInterview?: boolean;
   isCompletingInterview?: boolean;
   isDecisionProcessing?: boolean;
+  onWithdrawOffer?: () => void;
+  isWithdrawingOffer?: boolean;
 }) {
   const { person, assessments, interviews, decisions } = application;
 
   const scAssessment = assessments.find(a => a.assessmentType === 'SPECIALIZED_COMPETENCIES');
   const latestInterview = interviews[0];
-  const latestDecision = decisions[0];
+  // Withdrawal decisions are shown in the Agreement section, not the Decision section
+  const withdrawalDecision = decisions.find(d => d.notes === 'Offer withdrawn at agreement stage');
+  const latestDecision = decisions.find(d => d !== withdrawalDecision) ?? null;
+  const isOfferWithdrawn = application.status === 'REJECTED' && application.currentStage === 'AGREEMENT' && !!withdrawalDecision;
 
   // --- Compute GC status once (used by all four cards) ---
   const gcConfig = recruitment.assessmentThresholds.generalCompetencies;
@@ -627,11 +637,12 @@ function RightPanel({
   const isActionable = application.status === 'ACTIVE';
 
   // Track if any operation is in progress
-  const isAnyOperationInProgress = sendingEmailTemplate !== null || 
-    isSchedulingInterview === true || 
-    isReschedulingInterview === true || 
-    isCompletingInterview === true || 
-    isDecisionProcessing === true;
+  const isAnyOperationInProgress = sendingEmailTemplate !== null ||
+    isSchedulingInterview === true ||
+    isReschedulingInterview === true ||
+    isCompletingInterview === true ||
+    isDecisionProcessing === true ||
+    isWithdrawingOffer === true;
 
   return (
     <div className="space-y-4">
@@ -731,7 +742,7 @@ function RightPanel({
                       />
                     </>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">
+                    <p className="text-xs text-muted-foreground">
                       {strings.statuses.applicationRejected}
                     </p>
                   )}
@@ -820,7 +831,7 @@ function RightPanel({
                       )}
                     </>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">
+                    <p className="text-xs text-muted-foreground">
                       {strings.statuses.applicationRejected}
                     </p>
                   )}
@@ -962,7 +973,7 @@ function RightPanel({
                       ) : null}
                     </>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">
+                    <p className="text-xs text-muted-foreground">
                       {strings.statuses.applicationRejected}
                     </p>
                   )}
@@ -1089,18 +1100,41 @@ function RightPanel({
         <div className="border rounded-lg p-4">
           <div className="flex items-center justify-between mb-3">
             <h4 className="font-medium text-sm">Agreement</h4>
-            {application.agreementSignedAt ? (
+            {isOfferWithdrawn ? (
+              <Badge variant="destructive" className="text-xs">
+                <ShieldAlert className="h-3 w-3 mr-1" /> Withdrawn
+              </Badge>
+            ) : application.agreementSignedAt ? (
               <Badge variant="default" className="text-xs">
                 <CheckCircle className="h-3 w-3 mr-1" /> Signed
               </Badge>
             ) : (
               <Badge variant="secondary" className="text-xs">
-                <Clock className="h-3 w-3 mr-1" /> Pending Signature
+                <Clock className="h-3 w-3 mr-1" /> Pending
               </Badge>
             )}
           </div>
 
-          {application.agreementSignedAt && application.agreementData ? (
+          {isOfferWithdrawn ? (
+            <div className="space-y-2">
+              {withdrawalDecision.user && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Withdrawn By</span>
+                  <span className="text-right">{withdrawalDecision.user.displayName}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Date</span>
+                <span className="text-right">{formatDateTime(withdrawalDecision.decidedAt)}</span>
+              </div>
+              <div className="mt-2 pt-2 border-t">
+                <p className="text-xs text-muted-foreground mb-1">Reason</p>
+                <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded p-2">
+                  {withdrawalDecision.reason}
+                </p>
+              </div>
+            </div>
+          ) : application.agreementSignedAt && application.agreementData ? (
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Legal Name</span>
@@ -1172,9 +1206,27 @@ function RightPanel({
               </div>
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground text-center py-2">
-              Awaiting agreement signature from candidate
-            </p>
+            <div className="text-center py-2 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Awaiting agreement signature from candidate
+              </p>
+              {onWithdrawOffer && isAdmin && application.status === 'ACCEPTED' && application.currentStage === 'AGREEMENT' && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="text-xs py-2"
+                  onClick={onWithdrawOffer}
+                  disabled={isAnyOperationInProgress}
+                >
+                  {isWithdrawingOffer ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <ShieldAlert className="h-3 w-3 mr-1" />
+                  )}
+                  {strings.withdrawOffer.menuItem}
+                </Button>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -1227,6 +1279,8 @@ export function ApplicationDetail({
   isReschedulingInterview,
   isCompletingInterview,
   isDecisionProcessing,
+  onWithdrawOffer,
+  isWithdrawingOffer,
 }: ApplicationDetailProps) {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
@@ -1310,6 +1364,8 @@ export function ApplicationDetail({
                         isReschedulingInterview={isReschedulingInterview}
                         isCompletingInterview={isCompletingInterview}
                         isDecisionProcessing={isDecisionProcessing}
+                        onWithdrawOffer={onWithdrawOffer}
+                        isWithdrawingOffer={isWithdrawingOffer}
                       />
                     </div>
                   </ScrollArea>
@@ -1370,6 +1426,8 @@ export function ApplicationDetail({
                   isReschedulingInterview={isReschedulingInterview}
                   isCompletingInterview={isCompletingInterview}
                   isDecisionProcessing={isDecisionProcessing}
+                  onWithdrawOffer={onWithdrawOffer}
+                  isWithdrawingOffer={isWithdrawingOffer}
                 />
               </div>
             </TabsContent>
