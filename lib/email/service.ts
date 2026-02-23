@@ -21,7 +21,6 @@ import {
   type EmailTemplateName,
 } from './config';
 import { logEmailSent } from '@/lib/audit';
-import { recruitment } from '@/config/recruitment';
 
 /**
  * Email send result
@@ -241,7 +240,9 @@ export async function sendApplicationReceived(
   position: string,
   applicationDate: Date
 ): Promise<SendResult> {
-  const gcLink = buildAssessmentLink(appUrls.tallyGCForm, personId);
+  const gcLink = appUrls.tallyGCForm
+    ? buildAssessmentLink(appUrls.tallyGCForm, personId)
+    : '';
 
   return sendEmail({
     to,
@@ -268,7 +269,9 @@ export async function sendGCInvitation(
   firstName: string,
   position: string
 ): Promise<SendResult> {
-  const gcLink = buildAssessmentLink(appUrls.tallyGCForm, personId);
+  const gcLink = appUrls.tallyGCForm
+    ? buildAssessmentLink(appUrls.tallyGCForm, personId)
+    : '';
 
   return sendEmail({
     to,
@@ -331,7 +334,6 @@ export async function sendInterviewInvitation(
       POSITION: escapeHtml(position),
       INTERVIEWER_NAME: escapeHtml(interviewerName),
       SCHEDULING_LINK: schedulingLink,
-      INTERVIEW_DURATION: recruitment.interview.duration,
     },
     personId,
     applicationId,
@@ -376,6 +378,10 @@ export async function sendOfferLetter(
   startDate: Date,
   additionalDetails?: string
 ): Promise<SendResult> {
+  const agreementLink = appUrls.tallyAgreementForm
+    ? buildAssessmentLink(appUrls.tallyAgreementForm, personId, applicationId)
+    : '';
+
   return sendEmail({
     to,
     template: EMAIL_TEMPLATES.OFFER_LETTER,
@@ -384,6 +390,7 @@ export async function sendOfferLetter(
       POSITION: escapeHtml(position),
       START_DATE: formatEmailDate(startDate),
       ADDITIONAL_DETAILS: additionalDetails ? escapeHtml(additionalDetails) : '',
+      AGREEMENT_LINK: agreementLink,
     },
     personId,
     applicationId,

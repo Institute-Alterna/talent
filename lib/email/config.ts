@@ -45,8 +45,9 @@ export const rateLimitConfig = {
  */
 export const appUrls = {
   baseUrl: process.env.NEXTAUTH_URL || 'http://localhost:3000',
-  tallyGCForm: process.env.TALLY_FORM_GC_URL || 'https://tally.so/r/woqXNx',
-  tallySpecializedFormBase: process.env.TALLY_FORM_SPECIALIZED_BASE_URL || 'https://tally.so/r/',
+  tallyGCForm: process.env.GC_BASE_URL || undefined,
+  tallySpecializedFormBase: process.env.SC_BASE_URL || undefined,
+  tallyAgreementForm: process.env.AGREEMENT_BASE_URL || undefined,
 };
 
 /**

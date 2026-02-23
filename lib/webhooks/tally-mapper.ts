@@ -6,7 +6,7 @@
  */
 
 import type { CreatePersonData } from '@/types/person';
-import type { CreateApplicationData } from '@/types/application';
+import type { CreateApplicationData, AgreementData } from '@/types/application';
 
 /**
  * Tally webhook payload structure
@@ -486,6 +486,104 @@ export function extractSCAssessmentData(payload: TallyWebhookPayload): SCAssessm
     personId,
     score,
     rawData: {},
+    tallySubmissionId: submissionId,
+  };
+}
+
+/**
+ * Field key mappings for agreement signing form
+ */
+export const AGREEMENT_FIELD_KEYS = {
+  applicationId: 'question_14Oda4',
+  legalFirstName: 'question_9Zx9jK',
+  legalMiddleName: 'question_eryQWJ',
+  legalLastName: 'question_WRQEVL',
+  preferredFirstName: 'question_a4k5qW',
+  preferredLastName: 'question_6K4jEo',
+  profilePicture: 'question_7KjLr6',
+  biography: 'question_8L2alk',
+  dateOfBirth: 'question_DpbkGX',
+  country: 'question_Xo9Jbe',
+  privacyPolicy: 'question_QRjell',
+  signature: 'question_P941qP',
+  entityRepresented: 'question_po5y2y',
+  serviceHours: 'question_LKV72z',
+} as const;
+
+/**
+ * Agreement signing result data
+ */
+export interface AgreementSigningResult {
+  applicationId: string;
+  agreementData: AgreementData;
+  tallySubmissionId: string;
+}
+
+/**
+ * Extract agreement signing data from webhook payload
+ *
+ * @param payload - The Tally webhook payload
+ * @returns Agreement signing data
+ */
+export function extractAgreementData(payload: TallyWebhookPayload): AgreementSigningResult {
+  const { fields, submissionId } = payload.data;
+
+  const applicationIdField = findFieldByKey(fields, AGREEMENT_FIELD_KEYS.applicationId);
+  const applicationId = getStringValue(applicationIdField);
+
+  if (!applicationId) {
+    throw new Error('Application ID (Internal ID) is required but missing from agreement webhook');
+  }
+
+  const legalFirstNameField = findFieldByKey(fields, AGREEMENT_FIELD_KEYS.legalFirstName);
+  const legalFirstName = getStringValue(legalFirstNameField);
+
+  if (!legalFirstName) {
+    throw new Error('Legal first name is required but missing from agreement webhook');
+  }
+
+  const legalLastNameField = findFieldByKey(fields, AGREEMENT_FIELD_KEYS.legalLastName);
+  const legalLastName = getStringValue(legalLastNameField);
+
+  if (!legalLastName) {
+    throw new Error('Legal last name is required but missing from agreement webhook');
+  }
+
+  // Extract checkbox/boolean value for privacy policy
+  const privacyPolicyField = findFieldByKey(fields, AGREEMENT_FIELD_KEYS.privacyPolicy);
+  let privacyPolicyAccepted: boolean | undefined;
+  if (privacyPolicyField) {
+    if (typeof privacyPolicyField.value === 'boolean') {
+      privacyPolicyAccepted = privacyPolicyField.value;
+    } else if (Array.isArray(privacyPolicyField.value) && privacyPolicyField.value.length > 0) {
+      privacyPolicyAccepted = true;
+    }
+  }
+
+  // Extract dropdown/select value for service hours
+  const serviceHoursField = findFieldByKey(fields, AGREEMENT_FIELD_KEYS.serviceHours);
+  const serviceHours = getDropdownValue(serviceHoursField) || getStringValue(serviceHoursField);
+
+  const agreementData: AgreementData = {
+    applicationId,
+    legalFirstName,
+    legalMiddleName: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.legalMiddleName)),
+    legalLastName,
+    preferredFirstName: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.preferredFirstName)),
+    preferredLastName: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.preferredLastName)),
+    profilePictureUrl: getFileUrl(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.profilePicture)),
+    biography: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.biography)),
+    dateOfBirth: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.dateOfBirth)),
+    country: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.country)),
+    privacyPolicyAccepted,
+    signatureUrl: getFileUrl(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.signature)),
+    entityRepresented: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.entityRepresented)),
+    serviceHours,
+  };
+
+  return {
+    applicationId,
+    agreementData,
     tallySubmissionId: submissionId,
   };
 }

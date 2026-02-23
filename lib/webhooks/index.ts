@@ -28,11 +28,13 @@ export {
   type GCSubscores,
   type GCRawData,
   type SCAssessmentResult,
+  type AgreementSigningResult,
   // Field key mappings
   APPLICATION_FIELD_KEYS,
   PACKAGE_CHECKBOX_IDS,
   GC_ASSESSMENT_FIELD_KEYS,
   SC_ASSESSMENT_FIELD_KEYS,
+  AGREEMENT_FIELD_KEYS,
   // Extraction functions
   findFieldByKey,
   getStringValue,
@@ -43,6 +45,7 @@ export {
   extractApplicationData,
   extractGCAssessmentData,
   extractSCAssessmentData,
+  extractAgreementData,
   validateRequiredFields,
 } from './tally-mapper';
 

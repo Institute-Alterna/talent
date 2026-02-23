@@ -40,11 +40,34 @@ export interface Application {
   hasVideoIntro: boolean;
   hasPreviousExp: boolean;
   hasOtherFile: boolean;
+  agreementSignedAt: Date | null;
+  agreementTallySubmissionId: string | null;
+  agreementData: unknown;
   tallySubmissionId: string;
   tallyResponseId: string | null;
   tallyFormId: string | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * Parsed agreement data from the Tally agreement signing form
+ */
+export interface AgreementData {
+  applicationId: string;
+  legalFirstName: string;
+  legalMiddleName?: string;
+  legalLastName: string;
+  preferredFirstName?: string;
+  preferredLastName?: string;
+  profilePictureUrl?: string;
+  biography?: string;
+  dateOfBirth?: string;
+  country?: string;
+  privacyPolicyAccepted?: boolean;
+  signatureUrl?: string;
+  entityRepresented?: string;
+  serviceHours?: string;
 }
 
 /**

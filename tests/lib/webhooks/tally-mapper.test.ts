@@ -13,11 +13,12 @@ import {
   extractPersonData,
   extractApplicationData,
   extractGCAssessmentData,
-  
+  extractAgreementData,
   validateRequiredFields,
   APPLICATION_FIELD_KEYS,
   PACKAGE_CHECKBOX_IDS,
   GC_ASSESSMENT_FIELD_KEYS,
+  AGREEMENT_FIELD_KEYS,
   type TallyWebhookPayload,
   type TallyField,
 } from '@/lib/webhooks/tally-mapper';
@@ -403,6 +404,164 @@ describe('Tally Field Mapper', () => {
     it('returns missing field keys', () => {
       const result = validateRequiredFields(payload, ['q1', 'q2', 'q3', 'q4']);
       expect(result).toEqual(['q2', 'q3', 'q4']);
+    });
+  });
+
+  describe('extractAgreementData', () => {
+    const validPayload: TallyWebhookPayload = {
+      eventId: 'evt-1',
+      createdAt: '2024-01-01T00:00:00Z',
+      data: {
+        responseId: 'resp-1',
+        submissionId: 'sub-agree-1',
+        respondentId: 'resp-123',
+        formId: 'form-agreement',
+        formName: 'Team Agreement',
+        createdAt: '2024-01-01T00:00:00Z',
+        fields: [
+          { key: AGREEMENT_FIELD_KEYS.applicationId, label: 'Internal ID', type: 'HIDDEN_FIELDS', value: 'app-123' },
+          { key: AGREEMENT_FIELD_KEYS.legalFirstName, label: 'First Legal Name', type: 'INPUT_TEXT', value: 'John' },
+          { key: AGREEMENT_FIELD_KEYS.legalMiddleName, label: 'Middle Legal Name', type: 'INPUT_TEXT', value: 'Michael' },
+          { key: AGREEMENT_FIELD_KEYS.legalLastName, label: 'Last Legal Name', type: 'INPUT_TEXT', value: 'Doe' },
+          { key: AGREEMENT_FIELD_KEYS.preferredFirstName, label: 'First Preferred', type: 'INPUT_TEXT', value: 'Johnny' },
+          { key: AGREEMENT_FIELD_KEYS.preferredLastName, label: 'Last Preferred', type: 'INPUT_TEXT', value: 'D' },
+          {
+            key: AGREEMENT_FIELD_KEYS.profilePicture,
+            label: 'Profile Picture',
+            type: 'FILE_UPLOAD',
+            value: [{ id: 'pic-1', name: 'pic.jpg', url: 'https://tally.so/files/pic.jpg', mimeType: 'image/jpeg', size: 50000 }],
+          },
+          { key: AGREEMENT_FIELD_KEYS.biography, label: 'Biography', type: 'TEXTAREA', value: 'A developer.' },
+          { key: AGREEMENT_FIELD_KEYS.dateOfBirth, label: 'Date of Birth', type: 'INPUT_DATE', value: '1990-05-15' },
+          { key: AGREEMENT_FIELD_KEYS.country, label: 'Country', type: 'DROPDOWN', value: 'United States' },
+          {
+            key: AGREEMENT_FIELD_KEYS.privacyPolicy,
+            label: 'Privacy Policy',
+            type: 'CHECKBOXES',
+            value: [{ id: 'pp-1', text: 'I accept' }],
+          },
+          {
+            key: AGREEMENT_FIELD_KEYS.signature,
+            label: 'Signature',
+            type: 'SIGNATURE',
+            value: [{ id: 'sig-1', name: 'sig.png', url: 'https://tally.so/files/sig.png', mimeType: 'image/png', size: 10000 }],
+          },
+          { key: AGREEMENT_FIELD_KEYS.entityRepresented, label: 'Entity', type: 'INPUT_TEXT', value: 'Self' },
+          { key: AGREEMENT_FIELD_KEYS.serviceHours, label: 'Service Hours', type: 'DROPDOWN', value: '20 hours per week' },
+        ],
+      },
+    };
+
+    it('extracts all fields from valid payload', () => {
+      const result = extractAgreementData(validPayload);
+
+      expect(result.applicationId).toBe('app-123');
+      expect(result.tallySubmissionId).toBe('sub-agree-1');
+      expect(result.agreementData).toEqual({
+        applicationId: 'app-123',
+        legalFirstName: 'John',
+        legalMiddleName: 'Michael',
+        legalLastName: 'Doe',
+        preferredFirstName: 'Johnny',
+        preferredLastName: 'D',
+        profilePictureUrl: 'https://tally.so/files/pic.jpg',
+        biography: 'A developer.',
+        dateOfBirth: '1990-05-15',
+        country: 'United States',
+        privacyPolicyAccepted: true,
+        signatureUrl: 'https://tally.so/files/sig.png',
+        entityRepresented: 'Self',
+        serviceHours: '20 hours per week',
+      });
+    });
+
+    it('throws on missing required applicationId', () => {
+      const payloadWithoutAppId = {
+        ...validPayload,
+        data: {
+          ...validPayload.data,
+          fields: validPayload.data.fields.filter((f) => f.key !== AGREEMENT_FIELD_KEYS.applicationId),
+        },
+      };
+
+      expect(() => extractAgreementData(payloadWithoutAppId)).toThrow('Application ID');
+    });
+
+    it('throws on missing required legal first name', () => {
+      const payloadWithoutName = {
+        ...validPayload,
+        data: {
+          ...validPayload.data,
+          fields: validPayload.data.fields.filter((f) => f.key !== AGREEMENT_FIELD_KEYS.legalFirstName),
+        },
+      };
+
+      expect(() => extractAgreementData(payloadWithoutName)).toThrow('Legal first name');
+    });
+
+    it('throws on missing required legal last name', () => {
+      const payloadWithoutName = {
+        ...validPayload,
+        data: {
+          ...validPayload.data,
+          fields: validPayload.data.fields.filter((f) => f.key !== AGREEMENT_FIELD_KEYS.legalLastName),
+        },
+      };
+
+      expect(() => extractAgreementData(payloadWithoutName)).toThrow('Legal last name');
+    });
+
+    it('handles optional fields gracefully', () => {
+      const minimalPayload: TallyWebhookPayload = {
+        ...validPayload,
+        data: {
+          ...validPayload.data,
+          fields: [
+            { key: AGREEMENT_FIELD_KEYS.applicationId, label: 'Internal ID', type: 'HIDDEN_FIELDS', value: 'app-456' },
+            { key: AGREEMENT_FIELD_KEYS.legalFirstName, label: 'First', type: 'INPUT_TEXT', value: 'Jane' },
+            { key: AGREEMENT_FIELD_KEYS.legalLastName, label: 'Last', type: 'INPUT_TEXT', value: 'Smith' },
+          ],
+        },
+      };
+
+      const result = extractAgreementData(minimalPayload);
+
+      expect(result.applicationId).toBe('app-456');
+      expect(result.agreementData.legalFirstName).toBe('Jane');
+      expect(result.agreementData.legalLastName).toBe('Smith');
+      expect(result.agreementData.preferredFirstName).toBeUndefined();
+      expect(result.agreementData.biography).toBeUndefined();
+      expect(result.agreementData.profilePictureUrl).toBeUndefined();
+      expect(result.agreementData.signatureUrl).toBeUndefined();
+    });
+
+    it('extracts file URLs from SIGNATURE and FILE_UPLOAD fields', () => {
+      const result = extractAgreementData(validPayload);
+
+      expect(result.agreementData.signatureUrl).toBe('https://tally.so/files/sig.png');
+      expect(result.agreementData.profilePictureUrl).toBe('https://tally.so/files/pic.jpg');
+    });
+
+    it('handles checkbox field for privacy policy', () => {
+      const result = extractAgreementData(validPayload);
+      expect(result.agreementData.privacyPolicyAccepted).toBe(true);
+    });
+
+    it('handles boolean privacy policy field', () => {
+      const boolPayload: TallyWebhookPayload = {
+        ...validPayload,
+        data: {
+          ...validPayload.data,
+          fields: validPayload.data.fields.map((f) =>
+            f.key === AGREEMENT_FIELD_KEYS.privacyPolicy
+              ? { ...f, type: 'CHECKBOX', value: true }
+              : f
+          ),
+        },
+      };
+
+      const result = extractAgreementData(boolPayload);
+      expect(result.agreementData.privacyPolicyAccepted).toBe(true);
     });
   });
 });

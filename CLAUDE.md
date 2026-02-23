@@ -207,7 +207,7 @@ Schema is the source of truth — refer to `prisma/schema.prisma` directly.
 **Variables:**
 - Common: `{{PERSON_FIRST_NAME}}`, `{{POSITION}}`, `{{APPLICATION_DATE}}`, `{{CURRENT_YEAR}}`
 - Assessment: `{{GC_ASSESSMENT_LINK}}`, `{{SC_ASSESSMENT_LINK}}`
-- Interview: `{{INTERVIEWER_NAME}}`, `{{SCHEDULING_LINK}}`, `{{INTERVIEW_DURATION}}`
+- Interview: `{{INTERVIEWER_NAME}}`, `{{SCHEDULING_LINK}}`
 - Onboarding: `{{ALTERNA_EMAIL}}`, `{{TEMPORARY_PASSWORD}}`, `{{START_DATE}}`
 - Branding: `{{ORGANIZATION_SHORT_NAME}}`, `{{LOGO_URL}}`, `{{PRIMARY_COLOR}}`
 

@@ -40,7 +40,7 @@ import {
   logStageChange,
   logStatusChange,
 } from '@/lib/audit';
-import { sendGCInvitation } from '@/lib/email';
+import { sendApplicationReceived, sendGCInvitation } from '@/lib/email';
 import { sanitizeForLog } from '@/lib/security';
 
 /**
@@ -134,6 +134,23 @@ export async function POST(request: NextRequest) {
     },
     ip
   );
+
+  // Send application-received confirmation email (non-fatal)
+  try {
+    await sendApplicationReceived(
+      person.id,
+      application.id,
+      person.email,
+      person.firstName,
+      application.position,
+      application.createdAt
+    );
+  } catch (emailError) {
+    console.error(
+      '[Webhook] Failed to send application-received email:',
+      emailError instanceof Error ? emailError.message : emailError
+    );
+  }
 
   // Determine next steps based on GC status
   let nextStep: 'send_gc_assessment' | 'advance_to_specialized' | 'reject';

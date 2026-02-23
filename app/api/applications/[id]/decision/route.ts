@@ -19,9 +19,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApplicationAccess, parseJsonBody, type RouteParams } from '@/lib/api-helpers';
 import {
   updateApplicationStatus,
+  advanceApplicationStage,
 } from '@/lib/services/applications';
 import { sendRejection, sendOfferLetter } from '@/lib/email';
-import { logDecisionMade, logStatusChange } from '@/lib/audit';
+import { logDecisionMade, logStatusChange, logStageChange } from '@/lib/audit';
 import { db } from '@/lib/db';
 import { DecisionType, Status } from '@/lib/generated/prisma/client';
 import { sanitizeForLog, sanitizeText } from '@/lib/security';
@@ -151,6 +152,19 @@ export async function POST(
       session.user.dbUserId,
       `Decision: ${decision}`
     );
+
+    // Advance to AGREEMENT stage on acceptance
+    if (decision === 'ACCEPT') {
+      await advanceApplicationStage(application.id, 'AGREEMENT');
+      await logStageChange(
+        application.id,
+        application.personId,
+        application.currentStage,
+        'AGREEMENT',
+        session.user.dbUserId,
+        'Auto-advanced: Application accepted'
+      );
+    }
 
     // Send email if requested
     let emailResult = null;

@@ -144,6 +144,23 @@ export interface ApplicationDetailData {
       displayName: string;
     };
   }>;
+  agreementSignedAt: string | null;
+  agreementData: {
+    applicationId: string;
+    legalFirstName: string;
+    legalMiddleName?: string;
+    legalLastName: string;
+    preferredFirstName?: string;
+    preferredLastName?: string;
+    profilePictureUrl?: string;
+    biography?: string;
+    dateOfBirth?: string;
+    country?: string;
+    privacyPolicyAccepted?: boolean;
+    signatureUrl?: string;
+    entityRepresented?: string;
+    serviceHours?: string;
+  } | null;
 }
 
 interface ApplicationDetailProps {
@@ -1066,6 +1083,101 @@ function RightPanel({
           </div>
         )}
       </div>
+
+      {/* Agreement */}
+      {(application.agreementSignedAt || application.currentStage === 'AGREEMENT' || application.currentStage === 'SIGNED') && (
+        <div className="border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-medium text-sm">Agreement</h4>
+            {application.agreementSignedAt ? (
+              <Badge variant="default" className="text-xs">
+                <CheckCircle className="h-3 w-3 mr-1" /> Signed
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">
+                <Clock className="h-3 w-3 mr-1" /> Pending Signature
+              </Badge>
+            )}
+          </div>
+
+          {application.agreementSignedAt && application.agreementData ? (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Legal Name</span>
+                <span className="text-right">
+                  {application.agreementData.legalFirstName}
+                  {application.agreementData.legalMiddleName ? ` ${application.agreementData.legalMiddleName}` : ''}
+                  {` ${application.agreementData.legalLastName}`}
+                </span>
+              </div>
+              {(application.agreementData.preferredFirstName || application.agreementData.preferredLastName) && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Preferred Name</span>
+                  <span className="text-right">
+                    {[application.agreementData.preferredFirstName, application.agreementData.preferredLastName].filter(Boolean).join(' ')}
+                  </span>
+                </div>
+              )}
+              {application.agreementData.dateOfBirth && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Date of Birth</span>
+                  <span className="text-right">{application.agreementData.dateOfBirth}</span>
+                </div>
+              )}
+              {application.agreementData.country && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Country</span>
+                  <span className="text-right">{application.agreementData.country}</span>
+                </div>
+              )}
+              {application.agreementData.entityRepresented && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Entity</span>
+                  <span className="text-right">{application.agreementData.entityRepresented}</span>
+                </div>
+              )}
+              {application.agreementData.serviceHours && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Service Hours</span>
+                  <span className="text-right">{application.agreementData.serviceHours}</span>
+                </div>
+              )}
+              {application.agreementData.biography && (
+                <div className="mt-2 pt-2 border-t">
+                  <p className="text-xs text-muted-foreground mb-1">Biography</p>
+                  <p className="text-sm whitespace-pre-wrap bg-muted/50 rounded p-2">
+                    {application.agreementData.biography}
+                  </p>
+                </div>
+              )}
+              {application.agreementData.profilePictureUrl && (
+                <div className="mt-2 pt-2 border-t">
+                  <p className="text-xs text-muted-foreground mb-1">Profile Picture</p>
+                  <a href={application.agreementData.profilePictureUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                    <ExternalLink className="h-3 w-3" /> View Picture
+                  </a>
+                </div>
+              )}
+              {application.agreementData.signatureUrl && (
+                <div className="mt-2 pt-2 border-t">
+                  <p className="text-xs text-muted-foreground mb-1">Signature</p>
+                  <a href={application.agreementData.signatureUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                    <ExternalLink className="h-3 w-3" /> View Signature
+                  </a>
+                </div>
+              )}
+              <div className="flex justify-between text-sm mt-2 pt-2 border-t">
+                <span className="text-muted-foreground">Signed</span>
+                <span className="text-right">{formatDateTime(application.agreementSignedAt)}</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-2">
+              Awaiting agreement signature from candidate
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -322,4 +322,29 @@ describe('Email Template Files', () => {
     expect(template).toContain('<!DOCTYPE html>');
     expect(template).toContain('</html>');
   });
+
+  it('offer letter template contains agreement link variable', () => {
+    const template = loadTemplate('decision/offer-letter', 'html');
+    expect(template).not.toBeNull();
+    expect(template).toContain('{{AGREEMENT_LINK}}');
+    expect(template).toContain('Sign Agreement');
+  });
+
+  it('interview invitation template contains ground rules', () => {
+    const template = loadTemplate('interview/interview-invitation', 'html');
+    expect(template).not.toBeNull();
+    expect(template).toContain('Please consider the following');
+    expect(template).toContain('Camera must be enabled');
+    expect(template).toContain('quiet, distraction-free environment');
+    expect(template).toContain('video call');
+  });
+
+  it('interview invitation template contains interviewer section', () => {
+    const template = loadTemplate('interview/interview-invitation', 'html');
+    expect(template).not.toBeNull();
+    expect(template).toContain('Your Interviewer');
+    expect(template).toContain('{{INTERVIEWER_NAME}}');
+    expect(template).toContain('Duration & Format');
+    expect(template).toContain('25 minute video call');
+  });
 });

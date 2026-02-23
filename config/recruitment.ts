@@ -30,9 +30,6 @@ export const recruitment = {
 
   // Interview settings
   interview: {
-    // Default duration shown in email templates
-    duration: '25-30 minutes',
-
     // Days to wait before sending reminder (0 = no reminder)
     reminderDays: 3,
   },

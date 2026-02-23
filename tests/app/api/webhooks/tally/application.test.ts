@@ -56,6 +56,7 @@ jest.mock('@/lib/audit', () => ({
 }));
 
 jest.mock('@/lib/email', () => ({
+  sendApplicationReceived: jest.fn().mockResolvedValue({ success: true }),
   sendGCInvitation: jest.fn().mockResolvedValue({ success: true }),
 }));
 
@@ -67,7 +68,7 @@ import {
   updateApplicationStatus,
   countOtherActiveApplicationsAtStage,
 } from '@/lib/services/applications';
-import { sendGCInvitation } from '@/lib/email';
+import { sendApplicationReceived, sendGCInvitation } from '@/lib/email';
 
 // Helper to set NODE_ENV without TypeScript errors
 const setNodeEnv = (env: string) => {
@@ -376,6 +377,92 @@ describe('POST /api/webhooks/tally/application', () => {
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.data.nextStep).toBe('send_gc_assessment');
+    });
+  });
+
+  describe('Application-received email', () => {
+    it('auto-sends application-received email on new application', async () => {
+      const payload = createApplicationPayload();
+      const signature = generateWebhookSignature(payload, webhookSecret);
+
+      const mockPerson = { id: 'person-email-auto', email: 'auto@example.com', firstName: 'Auto', lastName: 'User' };
+      const mockApplication = {
+        id: 'app-email-auto',
+        personId: 'person-email-auto',
+        position: 'Software Developer',
+        currentStage: 'APPLICATION',
+        status: 'ACTIVE',
+        createdAt: new Date(),
+        hasResume: false, hasAcademicBg: false, hasVideoIntro: false,
+        hasPreviousExp: false, hasOtherFile: false,
+        resumeUrl: null, academicBackground: null, videoLink: null,
+        previousExperience: null, otherFileUrl: null,
+      };
+
+      (getApplicationByTallySubmissionId as jest.Mock).mockResolvedValue(null);
+      (findOrCreatePerson as jest.Mock).mockResolvedValue({ person: mockPerson, created: true });
+      (createApplication as jest.Mock).mockResolvedValue(mockApplication);
+      (countOtherActiveApplicationsAtStage as jest.Mock).mockResolvedValue(0);
+
+      const request = createRequest(payload, signature);
+      await POST(request);
+
+      expect(sendApplicationReceived).toHaveBeenCalledWith(
+        'person-email-auto',
+        'app-email-auto',
+        'auto@example.com',
+        'Auto',
+        'Software Developer',
+        expect.any(Date)
+      );
+    });
+
+    it('application-received email failure is non-fatal', async () => {
+      const payload = createApplicationPayload();
+      const signature = generateWebhookSignature(payload, webhookSecret);
+
+      const mockPerson = { id: 'person-nonfatal', email: 'nonfatal@example.com', firstName: 'Non', lastName: 'Fatal' };
+      const mockApplication = {
+        id: 'app-nonfatal',
+        personId: 'person-nonfatal',
+        position: 'Software Developer',
+        currentStage: 'APPLICATION',
+        status: 'ACTIVE',
+        createdAt: new Date(),
+        hasResume: false, hasAcademicBg: false, hasVideoIntro: false,
+        hasPreviousExp: false, hasOtherFile: false,
+        resumeUrl: null, academicBackground: null, videoLink: null,
+        previousExperience: null, otherFileUrl: null,
+      };
+
+      (getApplicationByTallySubmissionId as jest.Mock).mockResolvedValue(null);
+      (findOrCreatePerson as jest.Mock).mockResolvedValue({ person: mockPerson, created: true });
+      (createApplication as jest.Mock).mockResolvedValue(mockApplication);
+      (countOtherActiveApplicationsAtStage as jest.Mock).mockResolvedValue(0);
+      (sendApplicationReceived as jest.Mock).mockRejectedValue(new Error('SMTP down'));
+
+      const request = createRequest(payload, signature);
+      const response = await POST(request);
+      const data = await response.json();
+
+      // Webhook should still succeed despite email failure
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+    });
+
+    it('does not send application-received email for duplicate submissions', async () => {
+      const payload = createApplicationPayload({ submissionId: 'dup-email-test' });
+      const signature = generateWebhookSignature(payload, webhookSecret);
+
+      (getApplicationByTallySubmissionId as jest.Mock).mockResolvedValue({
+        id: 'existing-app',
+        personId: 'person-123',
+      });
+
+      const request = createRequest(payload, signature);
+      await POST(request);
+
+      expect(sendApplicationReceived).not.toHaveBeenCalled();
     });
   });
 

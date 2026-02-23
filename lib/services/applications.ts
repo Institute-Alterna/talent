@@ -16,6 +16,7 @@ import type {
   ApplicationListItem,
   ApplicationCard,
   ApplicationDetail,
+  AgreementData,
   CreateApplicationData,
   UpdateApplicationData,
   ApplicationStats,
@@ -263,7 +264,30 @@ export async function getApplicationById(id: string): Promise<Application | null
 export async function getApplicationDetail(id: string): Promise<ApplicationDetail | null> {
   const application = await db.application.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      personId: true,
+      position: true,
+      currentStage: true,
+      status: true,
+      resumeUrl: true,
+      academicBackground: true,
+      previousExperience: true,
+      videoLink: true,
+      otherFileUrl: true,
+      hasResume: true,
+      hasAcademicBg: true,
+      hasVideoIntro: true,
+      hasPreviousExp: true,
+      hasOtherFile: true,
+      agreementSignedAt: true,
+      agreementTallySubmissionId: true,
+      agreementData: true,
+      tallySubmissionId: true,
+      tallyResponseId: true,
+      tallyFormId: true,
+      createdAt: true,
+      updatedAt: true,
       person: {
         select: {
           id: true,
@@ -444,6 +468,52 @@ export async function updateApplicationStatus(id: string, status: Status): Promi
     where: { id },
     data: {
       status,
+      updatedAt: new Date(),
+    },
+  });
+
+  return application;
+}
+
+/**
+ * Get application by agreement Tally submission ID
+ *
+ * Used for idempotency checks on agreement webhooks.
+ *
+ * @param agreementTallySubmissionId - Agreement Tally submission ID
+ * @returns Application or null
+ */
+export async function getApplicationByAgreementTallySubmissionId(
+  agreementTallySubmissionId: string
+): Promise<Application | null> {
+  const application = await db.application.findUnique({
+    where: { agreementTallySubmissionId },
+  });
+
+  return application;
+}
+
+/**
+ * Update application with agreement signing data
+ *
+ * @param id - Application ID
+ * @param data - Agreement data
+ * @returns Updated application
+ */
+export async function updateApplicationAgreement(
+  id: string,
+  data: {
+    agreementSignedAt: Date;
+    agreementTallySubmissionId: string;
+    agreementData: AgreementData;
+  }
+): Promise<Application> {
+  const application = await db.application.update({
+    where: { id },
+    data: {
+      agreementSignedAt: data.agreementSignedAt,
+      agreementTallySubmissionId: data.agreementTallySubmissionId,
+      agreementData: data.agreementData as unknown as Prisma.InputJsonValue,
       updatedAt: new Date(),
     },
   });

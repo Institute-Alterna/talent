@@ -41,7 +41,6 @@ const SAMPLE_VARIABLES: Record<string, string> = {
   // Interview
   INTERVIEWER_NAME: 'Sarah Martinez',
   SCHEDULING_LINK: 'https://cal.com/alterna/interview',
-  INTERVIEW_DURATION: '25-30 minutes',
 
   // Assessment links
   GC_ASSESSMENT_LINK: 'https://tally.so/r/woqXNx?who=sample-person-id',

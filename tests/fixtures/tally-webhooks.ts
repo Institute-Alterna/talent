@@ -9,6 +9,7 @@ import {
   PACKAGE_CHECKBOX_IDS,
   GC_ASSESSMENT_FIELD_KEYS,
   SC_ASSESSMENT_FIELD_KEYS,
+  AGREEMENT_FIELD_KEYS,
   type TallyWebhookPayload,
 } from '@/lib/webhooks';
 
@@ -301,6 +302,138 @@ export function createSCAssessmentPayload(overrides?: {
           label: 'Total Score',
           type: 'CALCULATED',
           value: score,
+        },
+      ],
+    },
+  };
+}
+
+/**
+ * Create an agreement signing webhook payload
+ */
+export function createAgreementPayload(overrides?: {
+  applicationId?: string;
+  legalFirstName?: string;
+  legalLastName?: string;
+  submissionId?: string;
+}): TallyWebhookPayload {
+  const {
+    applicationId = 'app-123',
+    legalFirstName = 'John',
+    legalLastName = 'Doe',
+    submissionId = `sub-agree-${Date.now()}`,
+  } = overrides || {};
+
+  return {
+    eventId: `evt-agree-${Date.now()}`,
+    createdAt: new Date().toISOString(),
+    data: {
+      responseId: `resp-agree-${Date.now()}`,
+      submissionId,
+      respondentId: `resp-agree-${Date.now()}`,
+      formId: 'form-agreement',
+      formName: 'Team Agreement',
+      createdAt: new Date().toISOString(),
+      fields: [
+        {
+          key: AGREEMENT_FIELD_KEYS.applicationId,
+          label: 'Internal ID',
+          type: 'HIDDEN_FIELDS',
+          value: applicationId,
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.legalFirstName,
+          label: 'First Legal Name',
+          type: 'INPUT_TEXT',
+          value: legalFirstName,
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.legalMiddleName,
+          label: 'Middle Legal Name',
+          type: 'INPUT_TEXT',
+          value: 'Michael',
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.legalLastName,
+          label: 'Last Legal Name',
+          type: 'INPUT_TEXT',
+          value: legalLastName,
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.preferredFirstName,
+          label: 'First Preferred Name',
+          type: 'INPUT_TEXT',
+          value: 'Johnny',
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.preferredLastName,
+          label: 'Last Preferred Name',
+          type: 'INPUT_TEXT',
+          value: 'D',
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.profilePicture,
+          label: 'Profile Picture',
+          type: 'FILE_UPLOAD',
+          value: [
+            {
+              id: 'file-pic-1',
+              name: 'profile.jpg',
+              url: 'https://tally.so/files/profile.jpg',
+              mimeType: 'image/jpeg',
+              size: 50000,
+            },
+          ],
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.biography,
+          label: 'Biography',
+          type: 'TEXTAREA',
+          value: 'A passionate software developer.',
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.dateOfBirth,
+          label: 'Date of Birth',
+          type: 'INPUT_DATE',
+          value: '1990-05-15',
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.country,
+          label: 'Country',
+          type: 'DROPDOWN',
+          value: 'United States',
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.privacyPolicy,
+          label: 'Privacy Policy',
+          type: 'CHECKBOXES',
+          value: [{ id: 'privacy-1', text: 'I accept the privacy policy' }],
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.signature,
+          label: 'Signature',
+          type: 'SIGNATURE',
+          value: [
+            {
+              id: 'sig-1',
+              name: 'signature.png',
+              url: 'https://tally.so/files/signature.png',
+              mimeType: 'image/png',
+              size: 10000,
+            },
+          ],
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.entityRepresented,
+          label: 'Entity Represented',
+          type: 'INPUT_TEXT',
+          value: 'Self',
+        },
+        {
+          key: AGREEMENT_FIELD_KEYS.serviceHours,
+          label: 'Service Hours',
+          type: 'DROPDOWN',
+          value: '20 hours per week',
         },
       ],
     },

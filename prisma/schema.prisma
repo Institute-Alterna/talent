@@ -211,6 +211,19 @@ model Application {
   hasOtherFile Boolean @default(false)
 
   // =========================================================================
+  // Agreement Signing
+  // =========================================================================
+
+  /// When the agreement was signed by the candidate
+  agreementSignedAt DateTime?
+
+  /// Tally submission ID for the agreement form (unique, for idempotency)
+  agreementTallySubmissionId String? @unique
+
+  /// Raw agreement data from the Tally form (JSON)
+  agreementData Json?
+
+  // =========================================================================
   // Tally Integration
   // =========================================================================
 
@@ -266,6 +279,7 @@ model Application {
   @@index([createdAt])
   @@index([status, currentStage])
   @@index([personId, status])
+  @@index([agreementTallySubmissionId])
 }
 
 /// Recruitment pipeline stages
