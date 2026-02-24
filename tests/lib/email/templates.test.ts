@@ -227,6 +227,36 @@ describe('Email Templates', () => {
       expect(link).toContain('who=person-abc');
       expect(link).toContain('ref=email');
     });
+
+    it('appends scId when provided', () => {
+      const link = buildAssessmentLink(
+        'https://tally.so/r/form123',
+        'person-abc',
+        'app-xyz',
+        'sc-111'
+      );
+      expect(link).toContain('scId=sc-111');
+      expect(link).toContain('who=person-abc');
+      expect(link).toContain('applicationId=app-xyz');
+    });
+
+    it('omits scId when not provided', () => {
+      const link = buildAssessmentLink(
+        'https://tally.so/r/form123',
+        'person-abc',
+        'app-xyz'
+      );
+      expect(link).not.toContain('scId');
+    });
+
+    it('each competency gets a unique link with its own scId', () => {
+      const link1 = buildAssessmentLink('https://tally.so/r/form-a', 'person-abc', 'app-xyz', 'sc-111');
+      const link2 = buildAssessmentLink('https://tally.so/r/form-b', 'person-abc', 'app-xyz', 'sc-222');
+      expect(link1).toContain('scId=sc-111');
+      expect(link2).toContain('scId=sc-222');
+      expect(link1).not.toContain('scId=sc-222');
+      expect(link2).not.toContain('scId=sc-111');
+    });
   });
 
   describe('formatEmailDate', () => {

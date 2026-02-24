@@ -60,6 +60,7 @@ export {
   sendApplicationReceived,
   sendGCInvitation,
   sendSCInvitation,
+  sendSCInvitations,
   sendInterviewInvitation,
   sendRejection,
   sendOfferLetter,

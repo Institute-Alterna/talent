@@ -164,8 +164,8 @@ export async function logAssessmentCompleted(
   personId: string,
   applicationId: string | null,
   assessmentType: string,
-  score: number,
-  passed: boolean
+  score: number | null,
+  passed: boolean | null
 ) {
   return createAuditLog({
     personId,

@@ -26,6 +26,7 @@ import {
   UserCircle,
   Settings,
   ScrollText,
+  ClipboardCheck,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -52,6 +53,11 @@ const navItems: NavItem[] = [
     href: '/candidates',
     label: strings.nav.candidates,
     icon: UserCircle,
+  },
+  {
+    href: '/competencies',
+    label: strings.nav.competencies,
+    icon: ClipboardCheck,
   },
   {
     href: '/personnel',

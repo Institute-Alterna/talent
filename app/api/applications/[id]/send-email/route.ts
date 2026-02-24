@@ -18,6 +18,7 @@ import { requireApplicationAccess, parseJsonBody, type RouteParams } from '@/lib
 import {
   sendGCInvitation,
   sendSCInvitation,
+  sendSCInvitations,
   sendInterviewInvitation,
   sendRejection,
   EMAIL_TEMPLATES,
@@ -25,7 +26,8 @@ import {
 } from '@/lib/email';
 import { escapeHtml } from '@/lib/email/templates';
 import { sanitizeForLog } from '@/lib/security';
-import { isValidURL } from '@/lib/utils';
+import { isValidURL, isValidUUID } from '@/lib/utils';
+import { db } from '@/lib/db';
 
 /**
  * Valid template names that can be sent via this endpoint
@@ -126,32 +128,106 @@ export async function POST(
       }
 
       case EMAIL_TEMPLATES.SC_INVITATION: {
-        // Send specialized competencies invitation
-        // Requires additional assessmentFormUrl
-        const assessmentFormUrl = body.assessmentFormUrl as string;
+        // Send specialized competencies invitation(s)
+        // Accepts competencyIds array for new multi-SC flow,
+        // or falls back to assessmentFormUrl for backward compatibility
+        const competencyIds = body.competencyIds as string[] | undefined;
 
-        if (!assessmentFormUrl) {
-          return NextResponse.json(
-            { error: 'assessmentFormUrl is required for specialized competencies invitation' },
-            { status: 400 }
+        if (Array.isArray(competencyIds) && competencyIds.length > 0) {
+          // New multi-SC flow
+          if (competencyIds.length > 3) {
+            return NextResponse.json(
+              { error: 'Maximum of 3 competencies can be sent at once' },
+              { status: 400 }
+            );
+          }
+
+          // Validate all IDs are valid UUIDs
+          for (const id of competencyIds) {
+            if (typeof id !== 'string' || !isValidUUID(id)) {
+              return NextResponse.json(
+                { error: `Invalid competency ID: ${id}` },
+                { status: 400 }
+              );
+            }
+          }
+
+          // Look up competencies
+          const { getCompetenciesByIds } = await import('@/lib/services/competencies');
+          const competencies = await getCompetenciesByIds(competencyIds);
+
+          if (competencies.length !== competencyIds.length) {
+            return NextResponse.json(
+              { error: 'One or more competencies not found or inactive' },
+              { status: 400 }
+            );
+          }
+
+          // Check for already-assigned SCs on this application (avoid duplicates)
+          const existingAssessments = await db.assessment.findMany({
+            where: {
+              applicationId,
+              assessmentType: 'SPECIALIZED_COMPETENCIES',
+              specialisedCompetencyId: { in: competencyIds },
+            },
+            select: { specialisedCompetencyId: true },
+          });
+
+          const alreadyAssigned = new Set(existingAssessments.map(a => a.specialisedCompetencyId));
+          const duplicates = competencyIds.filter(id => alreadyAssigned.has(id));
+
+          if (duplicates.length > 0) {
+            return NextResponse.json(
+              { error: 'One or more competencies have already been assigned to this application' },
+              { status: 400 }
+            );
+          }
+
+          // Create pending Assessment records
+          await db.assessment.createMany({
+            data: competencyIds.map(scId => ({
+              applicationId,
+              assessmentType: 'SPECIALIZED_COMPETENCIES' as const,
+              specialisedCompetencyId: scId,
+            })),
+          });
+
+          // Send the email with all SC links
+          result = await sendSCInvitations(
+            personId,
+            applicationId,
+            recipientEmail,
+            firstName,
+            position,
+            competencies.map(sc => ({ id: sc.id, name: sc.name, tallyFormUrl: sc.tallyFormUrl }))
+          );
+        } else {
+          // Legacy single-SC flow (backward compatibility)
+          const assessmentFormUrl = body.assessmentFormUrl as string;
+
+          if (!assessmentFormUrl) {
+            return NextResponse.json(
+              { error: 'competencyIds array or assessmentFormUrl is required for SC invitation' },
+              { status: 400 }
+            );
+          }
+
+          if (!isValidURL(assessmentFormUrl)) {
+            return NextResponse.json(
+              { error: 'Invalid assessmentFormUrl format' },
+              { status: 400 }
+            );
+          }
+
+          result = await sendSCInvitation(
+            personId,
+            applicationId,
+            recipientEmail,
+            firstName,
+            position,
+            assessmentFormUrl
           );
         }
-
-        if (!isValidURL(assessmentFormUrl)) {
-          return NextResponse.json(
-            { error: 'Invalid assessmentFormUrl format' },
-            { status: 400 }
-          );
-        }
-
-        result = await sendSCInvitation(
-          personId,
-          applicationId,
-          recipientEmail,
-          firstName,
-          position,
-          assessmentFormUrl
-        );
         break;
       }
 

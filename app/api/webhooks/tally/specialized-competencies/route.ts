@@ -3,19 +3,18 @@
  *
  * POST /api/webhooks/tally/specialized-competencies
  *
- * Receives specialized competencies assessment results from Tally forms.
- * Updates Application records and advances to INTERVIEW stage or rejects.
+ * Receives specialized competencies assessment submissions from Tally forms.
+ * Records the submission and awaits admin review (does NOT auto-advance or auto-reject).
  *
  * Flow:
  * 1. Verify webhook signature and IP
  * 2. Check rate limits
  * 3. Check idempotency (tallySubmissionId)
- * 4. Extract assessment data (applicationId, score)
- * 5. Verify application exists and is in correct stage
- * 6. Create Assessment record
- * 7. Advance to INTERVIEW or reject based on score
- * 8. Log to audit trail
- * 9. Return success
+ * 4. Extract assessment data (applicationId, scId, file URLs)
+ * 5. Verify application exists and is active
+ * 6. Match to existing pending assessment or create new one
+ * 7. Log to audit trail
+ * 8. Return success
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -27,27 +26,19 @@ import {
 } from '@/lib/webhooks';
 import { db } from '@/lib/db';
 import { Prisma } from '@/lib/generated/prisma/client';
-import {
-  getApplicationById,
-  advanceApplicationStage,
-  updateApplicationStatus,
-} from '@/lib/services/applications';
+import { getApplicationById } from '@/lib/services/applications';
 import {
   logWebhookReceived,
   logAssessmentCompleted,
-  logStageChange,
-  logStatusChange,
 } from '@/lib/audit';
-import { recruitment } from '@/config/recruitment';
 import { sanitizeForLog } from '@/lib/security';
 
 /**
  * POST /api/webhooks/tally/specialized-competencies
  *
- * Handle specialised competencies assessment completion from Tally
+ * Handle specialised competencies assessment submission from Tally
  */
 export async function POST(request: NextRequest) {
-  // Verify, parse, and validate webhook request
   const parsed = await parseAndVerifyWebhook(request, '[Webhook SC]');
   if (!parsed.ok) return parsed.error;
   const { payload, ip, rateLimitHeaders } = parsed;
@@ -55,18 +46,14 @@ export async function POST(request: NextRequest) {
   const { submissionId, formId, formName } = payload.data;
 
   // Check for duplicate submission (idempotency)
-  const existingAssessment = await db.assessment.findUnique({
+  const existingBySubmission = await db.assessment.findUnique({
     where: { tallySubmissionId: submissionId },
   });
 
-  if (existingAssessment) {
+  if (existingBySubmission) {
     console.log(`[Webhook SC] Duplicate submission ignored: ${sanitizeForLog(submissionId)}`);
     return NextResponse.json(
-      {
-        success: true,
-        message: 'Duplicate submission - already processed',
-        assessmentId: existingAssessment.id,
-      },
+      { success: true, message: 'Duplicate submission - already processed', assessmentId: existingBySubmission.id },
       { headers: rateLimitHeaders }
     );
   }
@@ -81,19 +68,14 @@ export async function POST(request: NextRequest) {
     return webhookErrorResponse(message, 400, rateLimitHeaders);
   }
 
-  const { applicationId, score, rawData, tallySubmissionId } = assessmentData;
+  const { applicationId, specialisedCompetencyId, submissionUrls, rawData, tallySubmissionId } = assessmentData;
 
   // Log webhook receipt
   await logWebhookReceived(
     'specialized-competencies',
     undefined,
     applicationId,
-    {
-      submissionId,
-      formId,
-      formName,
-      score,
-    },
+    { submissionId, formId, formName, specialisedCompetencyId },
     ip
   );
 
@@ -104,110 +86,74 @@ export async function POST(request: NextRequest) {
     return webhookErrorResponse('Application not found', 404, rateLimitHeaders);
   }
 
-  // Verify application is in correct stage
-  if (
-    application.currentStage !== 'SPECIALIZED_COMPETENCIES' &&
-    application.currentStage !== 'GENERAL_COMPETENCIES'
-  ) {
-    console.error(
-      `[Webhook SC] Application ${sanitizeForLog(applicationId)} is in ${sanitizeForLog(application.currentStage)} stage, expected SPECIALIZED_COMPETENCIES`
-    );
-    return webhookErrorResponse(
-      `Application is not in the correct stage for specialised assessment`,
-      400,
-      rateLimitHeaders
-    );
-  }
-
-  // Verify application is still active
+  // Verify application is active
   if (application.status !== 'ACTIVE') {
     console.error(`[Webhook SC] Application ${sanitizeForLog(applicationId)} is ${sanitizeForLog(application.status)}, not ACTIVE`);
     return webhookErrorResponse('Application is not active', 400, rateLimitHeaders);
   }
 
-  // Determine pass/fail
-  const { threshold, scale } = recruitment.assessmentThresholds.specializedCompetencies;
-  const passed = score >= threshold;
+  // Try to find a pending assessment (created when invitation was sent)
+  let assessment;
+  if (specialisedCompetencyId) {
+    const pendingAssessment = await db.assessment.findFirst({
+      where: {
+        applicationId,
+        specialisedCompetencyId,
+        assessmentType: 'SPECIALIZED_COMPETENCIES',
+        completedAt: null,
+      },
+    });
 
-  // Create Assessment record
-  const assessment = await db.assessment.create({
-    data: {
-      applicationId,
-      assessmentType: 'SPECIALIZED_COMPETENCIES',
-      score,
-      passed,
-      threshold,
-      completedAt: new Date(),
-      rawData: rawData as Prisma.InputJsonValue,
-      tallySubmissionId,
-    },
-  });
+    if (pendingAssessment) {
+      // Update existing pending assessment with submission data
+      assessment = await db.assessment.update({
+        where: { id: pendingAssessment.id },
+        data: {
+          completedAt: new Date(),
+          rawData: rawData as Prisma.InputJsonValue,
+          submissionUrls: submissionUrls as unknown as Prisma.InputJsonValue,
+          tallySubmissionId,
+        },
+      });
+    }
+  }
+
+  // If no pending assessment found, create a new one
+  if (!assessment) {
+    assessment = await db.assessment.create({
+      data: {
+        applicationId,
+        assessmentType: 'SPECIALIZED_COMPETENCIES',
+        specialisedCompetencyId: specialisedCompetencyId || null,
+        completedAt: new Date(),
+        rawData: rawData as Prisma.InputJsonValue,
+        submissionUrls: submissionUrls as unknown as Prisma.InputJsonValue,
+        tallySubmissionId,
+      },
+    });
+  }
 
   await logAssessmentCompleted(
     application.personId,
     applicationId,
-    'Specialised Competencies',
-    score,
-    passed
+    'Specialised Competency submission received',
+    null,
+    null // passed is null — awaiting admin review
   );
 
-  let newStage: string = application.currentStage;
-  let newStatus: string = application.status;
-
-  if (passed) {
-    // Advance to INTERVIEW stage
-    await advanceApplicationStage(applicationId, 'INTERVIEW');
-    newStage = 'INTERVIEW';
-
-    await logStageChange(
-      applicationId,
-      application.personId,
-      application.currentStage,
-      'INTERVIEW',
-      undefined,
-      `Specialized competencies passed with score ${score}/${scale} (threshold: ${threshold})`
-    );
-
-    // TODO: In Phase 6c, send interview scheduling email
-    // await sendEmail(person.email, 'specialized-competencies-passed', { position: application.position });
-  } else {
-    // Reject application
-    await updateApplicationStatus(applicationId, 'REJECTED');
-    newStatus = 'REJECTED';
-
-    await logStatusChange(
-      applicationId,
-      application.personId,
-      'ACTIVE',
-      'REJECTED',
-      undefined,
-      `Specialized competencies failed with score ${score}/${scale} (threshold: ${threshold})`
-    );
-
-    // TODO: In Phase 6c, send rejection email
-    // await sendEmail(person.email, 'specialized-competencies-failed', { position: application.position });
-  }
-
   console.log(
-    `[Webhook SC] Assessment processed: Application ${sanitizeForLog(applicationId)}, Score: ${sanitizeForLog(score)}/${scale} (threshold: ${threshold}), ` +
-      `Passed: ${passed}, New stage: ${newStage}, New status: ${newStatus}`
+    `[Webhook SC] Submission recorded: Application ${sanitizeForLog(applicationId)}, ` +
+    `SC: ${sanitizeForLog(specialisedCompetencyId || 'unknown')}, Assessment: ${assessment.id}`
   );
 
   return NextResponse.json(
     {
       success: true,
-      message: passed
-        ? 'Specialised competencies passed - application advanced to interview stage'
-        : 'Specialised competencies not passed - application rejected',
+      message: 'Specialised competency submission recorded — awaiting admin review',
       data: {
         assessmentId: assessment.id,
         applicationId,
-        position: application.position,
-        score,
-        threshold,
-        passed,
-        currentStage: newStage,
-        status: newStatus,
+        specialisedCompetencyId,
       },
     },
     { headers: rateLimitHeaders }

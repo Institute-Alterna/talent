@@ -148,6 +148,10 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   // Email loading state
   const [sendingEmailTemplate, setSendingEmailTemplate] = React.useState<string | null>(null);
 
+  // SC invitation / review state
+  const [isSendingSCInvitation, setIsSendingSCInvitation] = React.useState(false);
+  const [isReviewingSC, setIsReviewingSC] = React.useState(false);
+
   // Fullscreen pipeline (desktop only)
   const [isFullscreen, setIsFullscreen] = React.useState(false);
 
@@ -164,7 +168,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (isDecisionProcessing || sendingEmailTemplate !== null ||
           isSchedulingInterview || isReschedulingInterview || isCompletingInterview ||
-          isWithdrawOfferProcessing) {
+          isWithdrawOfferProcessing || isSendingSCInvitation || isReviewingSC) {
         e.preventDefault();
         e.returnValue = ''; // Chrome requires returnValue to be set
       }
@@ -172,7 +176,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [isDecisionProcessing, sendingEmailTemplate, isSchedulingInterview, isReschedulingInterview, isCompletingInterview, isWithdrawOfferProcessing]);
+  }, [isDecisionProcessing, sendingEmailTemplate, isSchedulingInterview, isReschedulingInterview, isCompletingInterview, isWithdrawOfferProcessing, isSendingSCInvitation, isReviewingSC]);
 
   // Fetch pipeline data (active view) or list data (other statuses)
   const fetchPipelineData = React.useCallback(async (force?: boolean) => {
@@ -333,6 +337,74 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       });
     } finally {
       setSendingEmailTemplate(null);
+    }
+  };
+
+  const handleSendSCInvitation = async (competencyIds: string[]) => {
+    if (!selectedApplicationId) return;
+
+    setIsSendingSCInvitation(true);
+    try {
+      const response = await fetch(`/api/applications/${selectedApplicationId}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          templateName: 'assessment/specialized-competencies-invitation',
+          competencyIds,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to send SC invitation');
+      }
+
+      toast({
+        title: 'Email Sent',
+        description: 'SC assessment invitation sent successfully',
+      });
+
+      // Small delay to ensure activity log updates
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      fetchApplicationDetail(selectedApplicationId, true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to send invitation',
+        variant: 'destructive',
+      });
+      throw err; // Re-throw so useDialogSubmit shows the error
+    } finally {
+      setIsSendingSCInvitation(false);
+    }
+  };
+
+  const handleReviewSC = async (assessmentId: string, passed: boolean) => {
+    if (!selectedApplicationId) return;
+
+    setIsReviewingSC(true);
+    try {
+      const response = await fetch(`/api/applications/${selectedApplicationId}/review-sc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assessmentId, passed }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to review assessment');
+      }
+
+      toast({ title: passed ? 'Assessment approved' : 'Assessment rejected' });
+      fetchApplicationDetail(selectedApplicationId, true);
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to review assessment',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsReviewingSC(false);
     }
   };
 
@@ -1039,6 +1111,10 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
               isDecisionProcessing={isDecisionProcessing}
               onWithdrawOffer={handleWithdrawOfferFromDetail}
               isWithdrawingOffer={isWithdrawOfferProcessing}
+              onSendSCInvitation={handleSendSCInvitation}
+              isSendingSCInvitation={isSendingSCInvitation}
+              onReviewSC={handleReviewSC}
+              isReviewingSC={isReviewingSC}
             />
           )}
         </React.Suspense>

@@ -63,6 +63,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { GCQResponsesDialog } from './gcq-responses-dialog';
+import { SCExplorerDialog } from './sc-explorer-dialog';
 import { GC_SUBSCORE_ENTRIES, extractGCSubscores, hasGCFields } from '@/lib/gc-utils';
 
 /**
@@ -114,10 +115,21 @@ export interface ApplicationDetailData {
   assessments: Array<{
     id: string;
     assessmentType: string;
-    score: string;
-    passed: boolean;
-    threshold: string;
-    completedAt: string;
+    score: string | null;
+    passed: boolean | null;
+    threshold: string | null;
+    completedAt: string | null;
+    specialisedCompetencyId: string | null;
+    specialisedCompetency: {
+      id: string;
+      name: string;
+      category: string;
+      criterion: string;
+    } | null;
+    submissionUrls: Array<{ label: string; url: string; type: string }> | null;
+    reviewedAt: string | null;
+    reviewedBy: string | null;
+    reviewer: { id: string; displayName: string } | null;
   }>;
   interviews: Array<{
     id: string;
@@ -189,6 +201,10 @@ interface ApplicationDetailProps {
   isDecisionProcessing?: boolean;
   onWithdrawOffer?: () => void;
   isWithdrawingOffer?: boolean;
+  onSendSCInvitation?: (competencyIds: string[]) => Promise<void>;
+  isSendingSCInvitation?: boolean;
+  onReviewSC?: (assessmentId: string, passed: boolean) => Promise<void>;
+  isReviewingSC?: boolean;
 }
 
 /**
@@ -602,6 +618,10 @@ function RightPanel({
   isDecisionProcessing,
   onWithdrawOffer,
   isWithdrawingOffer,
+  onSendSCInvitation,
+  isSendingSCInvitation,
+  onReviewSC,
+  isReviewingSC,
 }: {
   application: ApplicationDetailData;
   onSendEmail?: (template: string) => void;
@@ -617,10 +637,17 @@ function RightPanel({
   isDecisionProcessing?: boolean;
   onWithdrawOffer?: () => void;
   isWithdrawingOffer?: boolean;
+  onSendSCInvitation?: (competencyIds: string[]) => Promise<void>;
+  isSendingSCInvitation?: boolean;
+  onReviewSC?: (assessmentId: string, passed: boolean) => Promise<void>;
+  isReviewingSC?: boolean;
 }) {
   const { person, assessments, interviews, decisions } = application;
 
-  const scAssessment = assessments.find(a => a.assessmentType === 'SPECIALIZED_COMPETENCIES');
+  const scAssessments = assessments.filter(a => a.assessmentType === 'SPECIALIZED_COMPETENCIES');
+  const alreadyAssignedScIds = scAssessments
+    .map(a => a.specialisedCompetencyId)
+    .filter((id): id is string => id !== null);
   const latestInterview = interviews[0];
   // Withdrawal decisions are shown in the Agreement section, not the Decision section
   const withdrawalDecision = decisions.find(d => d.notes === 'Offer withdrawn at agreement stage');
@@ -642,7 +669,12 @@ function RightPanel({
     isReschedulingInterview === true ||
     isCompletingInterview === true ||
     isDecisionProcessing === true ||
-    isWithdrawingOffer === true;
+    isWithdrawingOffer === true ||
+    isSendingSCInvitation === true ||
+    isReviewingSC === true;
+
+  // SC explorer dialog state (local to RightPanel)
+  const [isSCExplorerOpen, setIsSCExplorerOpen] = React.useState(false);
 
   return (
     <div className="space-y-4">
@@ -733,7 +765,7 @@ function RightPanel({
                 <div className="text-center py-2">
                   {isActionable ? (
                     <>
-                      <p className="text-xs text-muted-foreground mb-2">Not yet completed</p>
+                      <p className="text-xs text-muted-foreground mb-2">Assessment not yet submitted</p>
                       <SendEmailButton
                         template="general-competencies-invitation"
                         onSendEmail={onSendEmail}
@@ -756,55 +788,158 @@ function RightPanel({
       {/* Specialized Competencies */}
       <div className="border rounded-lg p-4">
         {(() => {
-          const scConfig = recruitment.assessmentThresholds.specializedCompetencies;
+          const reviewedCount = scAssessments.filter(a => a.passed !== null).length;
+          const totalCount = scAssessments.length;
 
           return (
             <>
               <div className="flex items-center justify-between mb-3">
-                <h4 className="font-medium text-sm">Specialised Competencies</h4>
-                {scAssessment ? (
-                  <Badge variant={scAssessment.passed ? 'default' : 'destructive'} className="text-xs">
-                    {scAssessment.passed ? (
-                      <><CheckCircle className="h-3 w-3 mr-1" /> Passed</>
+                <div className="flex items-center gap-2">
+                  <h4 className="font-medium text-sm">Specialised Competencies</h4>
+                  {totalCount > 0 && (
+                    <Badge variant="outline" className="text-xs mx-1">
+                      {reviewedCount}/{totalCount}
+                    </Badge>
+                  )}
+                </div>
+                {totalCount === 0 ? (
+                  <Badge variant="secondary" className="text-xs">
+                    <Clock className="h-3 w-3 mr-1" /> Pending
+                  </Badge>
+                ) : reviewedCount === totalCount ? (
+                  <Badge variant={scAssessments.every(a => a.passed) ? 'default' : 'destructive'} className="text-xs">
+                    {scAssessments.every(a => a.passed) ? (
+                      <><CheckCircle className="h-3 w-3 mr-1" /> All Passed</>
                     ) : (
-                      <><XCircle className="h-3 w-3 mr-1" /> Failed</>
+                      <><XCircle className="h-3 w-3 mr-1" /> Has Failures</>
                     )}
                   </Badge>
                 ) : (
                   <Badge variant="secondary" className="text-xs">
-                    <Clock className="h-3 w-3 mr-1" /> Pending
+                    <Clock className="h-3 w-3 mr-1" /> In Progress
                   </Badge>
                 )}
               </div>
 
-              {scAssessment ? (
-                (() => {
-                  const scoreDisplay = formatScoreDisplay(scAssessment.score, scConfig.scale);
-                  return (
-                    <div className="space-y-1.5 text-sm">
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Score</span>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="font-medium cursor-help">{scoreDisplay.value}</span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{scoreDisplay.tooltip}</p>
-                          </TooltipContent>
-                        </Tooltip>
+              {/* SC assessment list */}
+              {scAssessments.length > 0 && (
+                <div className="space-y-3">
+                  {scAssessments.map((sc) => {
+                    const scName = sc.specialisedCompetency?.name || 'Unknown Competency';
+                    const scCategory = sc.specialisedCompetency?.category;
+                    const isAwaitingSubmission = sc.completedAt === null;
+                    const isAwaitingReview = sc.completedAt !== null && sc.passed === null;
+                    const isPassed = sc.passed === true;
+                    const isFailed = sc.passed === false;
+
+                    return (
+                      <div key={sc.id} className="border rounded-md p-3 space-y-2">
+                        {/* SC name + category + status */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <span className="text-sm font-medium">{scName}</span>
+                            {scCategory && (
+                              <Badge variant="outline" className="text-xs shrink-0">{scCategory}</Badge>
+                            )}
+                          </div>
+                          <div className="shrink-0">
+                            {isAwaitingSubmission && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Clock className="h-3 w-3 mr-1" /> {strings.competencies.awaitingSubmission}
+                              </Badge>
+                            )}
+                            {isAwaitingReview && (
+                              <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                                <AlertCircle className="h-3 w-3 mr-1" /> {strings.competencies.awaitingReview}
+                              </Badge>
+                            )}
+                            {isPassed && (
+                              <Badge variant="default" className="text-xs">
+                                <CheckCircle className="h-3 w-3 mr-1" /> Passed
+                              </Badge>
+                            )}
+                            {isFailed && (
+                              <Badge variant="destructive" className="text-xs">
+                                <XCircle className="h-3 w-3 mr-1" /> Failed
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Submission URLs */}
+                        {sc.completedAt && sc.submissionUrls && sc.submissionUrls.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {sc.submissionUrls.map((sub, idx) => (
+                              <a
+                                key={idx}
+                                href={sub.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded border hover:bg-muted/50 transition-colors text-primary"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                {sub.label}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Completed date */}
+                        {sc.completedAt && (
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Submitted</span>
+                            <span>{formatDateShort(sc.completedAt)}</span>
+                          </div>
+                        )}
+
+                        {/* Admin review buttons */}
+                        {isAdmin && isAwaitingReview && onReviewSC && (
+                          <div className="flex gap-2 pt-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-7 flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                              onClick={() => onReviewSC(sc.id, false)}
+                              disabled={isAnyOperationInProgress}
+                            >
+                              {isReviewingSC ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <XCircle className="h-3 w-3 mr-1" />
+                              )}
+                              {strings.competencies.markFailed}
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="text-xs h-7 flex-1"
+                              onClick={() => onReviewSC(sc.id, true)}
+                              disabled={isAnyOperationInProgress}
+                            >
+                              {isReviewingSC ? (
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              ) : (
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                              )}
+                              {strings.competencies.markPassed}
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Reviewer info */}
+                        {sc.reviewer && sc.reviewedAt && (
+                          <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t">
+                            <span>Reviewed by {sc.reviewer.displayName}</span>
+                            <span>{formatDateShort(sc.reviewedAt)}</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Threshold</span>
-                        <span>{scConfig.threshold}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Completed</span>
-                        <span>{formatDateShort(scAssessment.completedAt)}</span>
-                      </div>
-                    </div>
-                  );
-                })()
-              ) : (
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Footer: Send Assessment button or status messages */}
+              {scAssessments.length === 0 && (
                 <div className="text-center py-2">
                   {isActionable ? (
                     <>
@@ -817,17 +952,9 @@ function RightPanel({
                           {strings.interview.gcFailed}
                         </p>
                       ) : (
-                        <>
-                          <p className="text-xs text-muted-foreground mb-2">
-                            Ready for assessment
-                          </p>
-                          <SendEmailButton
-                            template="specialized-competencies-invitation"
-                            onSendEmail={onSendEmail}
-                            sendingEmailTemplate={sendingEmailTemplate}
-                            disabled={isAnyOperationInProgress}
-                          />
-                        </>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Ready to receive specialised assessment
+                        </p>
                       )}
                     </>
                   ) : (
@@ -836,6 +963,45 @@ function RightPanel({
                     </p>
                   )}
                 </div>
+              )}
+
+              {/* Send Assessment button (shown when GC passed and application is active) */}
+              {isActionable && gcPassed && onSendSCInvitation && (
+                <div className="mt-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-7 w-full"
+                    onClick={() => setIsSCExplorerOpen(true)}
+                    disabled={isAnyOperationInProgress}
+                  >
+                    {isSendingSCInvitation ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="h-3 w-3 mr-1" />
+                        Send Assessment
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
+              {/* SC Explorer Dialog */}
+              {onSendSCInvitation && (
+                <SCExplorerDialog
+                  isOpen={isSCExplorerOpen}
+                  onClose={() => setIsSCExplorerOpen(false)}
+                  onConfirm={async (competencyIds) => {
+                    await onSendSCInvitation(competencyIds);
+                    setIsSCExplorerOpen(false);
+                  }}
+                  isProcessing={isSendingSCInvitation}
+                  alreadyAssignedIds={alreadyAssignedScIds}
+                />
               )}
             </>
           );
@@ -1066,7 +1232,7 @@ function RightPanel({
               // Normal flow - show both buttons
               return (
                 <>
-                  <p className="text-xs text-muted-foreground mb-2">No decision yet</p>
+                  <p className="text-xs text-muted-foreground mb-2">No decision has been made yet</p>
                   <div className="flex justify-center gap-2">
                     <Button
                       size="sm"
@@ -1281,6 +1447,10 @@ export function ApplicationDetail({
   isDecisionProcessing,
   onWithdrawOffer,
   isWithdrawingOffer,
+  onSendSCInvitation,
+  isSendingSCInvitation,
+  onReviewSC,
+  isReviewingSC,
 }: ApplicationDetailProps) {
   const isDesktop = useMediaQuery('(min-width: 1024px)');
 
@@ -1313,7 +1483,7 @@ export function ApplicationDetail({
   if (isDesktop) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-[95vw] sm:max-w-6xl h-[90vh] flex flex-col p-0 rounded-2xl shadow-2xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-6xl h-[90vh] flex flex-col gap-0 p-0 rounded-2xl shadow-2xl">
           {/* Header */}
           <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -1339,16 +1509,16 @@ export function ApplicationDetail({
                 <DetailSkeleton />
               </div>
             ) : (
-              <div className="flex flex-col lg:flex-row h-full">
+              <div className="flex flex-col lg:flex-row h-full min-w-0">
                 {/* Left Panel - 70% */}
-                <ScrollArea className="flex-1 lg:w-[70%]">
+                <ScrollArea className="flex-1 lg:w-[70%] min-w-0">
                   <div className="p-6">
                     <LeftPanel application={application} auditLogs={auditLogs} />
                   </div>
                 </ScrollArea>
 
                 {/* Right Panel - 30% */}
-                <div className="lg:w-[30%] lg:min-w-[300px] border-t lg:border-t-0 lg:border-l bg-muted/30">
+                <div className="lg:w-[30%] lg:min-w-[280px] border-t lg:border-t-0 lg:border-l bg-muted/30">
                   <ScrollArea className="h-full">
                     <div className="p-6">
                       <RightPanel
@@ -1366,6 +1536,10 @@ export function ApplicationDetail({
                         isDecisionProcessing={isDecisionProcessing}
                         onWithdrawOffer={onWithdrawOffer}
                         isWithdrawingOffer={isWithdrawingOffer}
+                        onSendSCInvitation={onSendSCInvitation}
+                        isSendingSCInvitation={isSendingSCInvitation}
+                        onReviewSC={onReviewSC}
+                        isReviewingSC={isReviewingSC}
                       />
                     </div>
                   </ScrollArea>
@@ -1381,7 +1555,7 @@ export function ApplicationDetail({
   // Mobile: Bottom sheet with tabs
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="bottom" className="h-[92vh] rounded-t-2xl flex flex-col p-0">
+      <SheetContent side="bottom" className="h-[92vh] rounded-t-2xl flex flex-col gap-0 p-0">
         {/* Header */}
         <SheetHeader className="px-4 pt-4 pb-2 border-b shrink-0">
           <SheetTitle className="text-lg font-bold text-left leading-tight">
@@ -1428,6 +1602,10 @@ export function ApplicationDetail({
                   isDecisionProcessing={isDecisionProcessing}
                   onWithdrawOffer={onWithdrawOffer}
                   isWithdrawingOffer={isWithdrawingOffer}
+                  onSendSCInvitation={onSendSCInvitation}
+                  isSendingSCInvitation={isSendingSCInvitation}
+                  onReviewSC={onReviewSC}
+                  isReviewingSC={isReviewingSC}
                 />
               </div>
             </TabsContent>

@@ -17,6 +17,7 @@ import {
   sendApplicationReceived,
   sendGCInvitation,
   sendSCInvitation,
+  sendSCInvitations,
   sendInterviewInvitation,
   sendRejection,
   sendOfferLetter,
@@ -218,6 +219,54 @@ describe('Email Service', () => {
         'Jane',
         'Data Analyst',
         'https://tally.so/r/specialized-form'
+      );
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('sendSCInvitations', () => {
+    it('sends invitation for a single competency', async () => {
+      const result = await sendSCInvitations(
+        'person-123',
+        'app-456',
+        'candidate@example.com',
+        'Jane',
+        'Data Analyst',
+        [{ id: 'sc-aaa', name: 'Python', tallyFormUrl: 'https://tally.so/r/python' }]
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('sends invitation for two competencies', async () => {
+      const result = await sendSCInvitations(
+        'person-123',
+        'app-456',
+        'candidate@example.com',
+        'Jane',
+        'Data Analyst',
+        [
+          { id: 'sc-aaa', name: 'Python', tallyFormUrl: 'https://tally.so/r/python' },
+          { id: 'sc-bbb', name: 'SQL', tallyFormUrl: 'https://tally.so/r/sql' },
+        ]
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('sends invitation for three competencies', async () => {
+      const result = await sendSCInvitations(
+        'person-123',
+        'app-456',
+        'candidate@example.com',
+        'Jane',
+        'Data Analyst',
+        [
+          { id: 'sc-aaa', name: 'Python', tallyFormUrl: 'https://tally.so/r/python' },
+          { id: 'sc-bbb', name: 'SQL', tallyFormUrl: 'https://tally.so/r/sql' },
+          { id: 'sc-ccc', name: 'Tableau', tallyFormUrl: 'https://tally.so/r/tableau' },
+        ]
       );
 
       expect(result.success).toBe(true);

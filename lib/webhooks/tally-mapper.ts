@@ -138,7 +138,8 @@ export const GC_ASSESSMENT_FIELD_KEYS = {
 export const SC_ASSESSMENT_FIELD_KEYS = {
   applicationId: 'question_AppId', // Hidden field with application ID
   personId: 'question_PzkEpx', // Hidden field with person ID (fallback)
-  score: 'question_Score', // Calculated total score
+  score: 'question_Score', // Calculated total score (optional)
+  specialisedCompetencyId: 'question_ScId', // Hidden field with SC definition ID
 } as const;
 
 /**
@@ -443,18 +444,58 @@ export function extractGCAssessmentData(payload: TallyWebhookPayload): GCAssessm
 }
 
 /**
+ * Submission URL extracted from a Tally file field
+ */
+export interface SubmissionUrl {
+  label: string;
+  url: string;
+  type: string;
+}
+
+/**
  * SC assessment result data
  */
 export interface SCAssessmentResult {
   applicationId: string;
   personId?: string;
-  score: number;
+  specialisedCompetencyId?: string;
+  score?: number;
+  submissionUrls: SubmissionUrl[];
   rawData: Record<string, unknown>;
   tallySubmissionId: string;
 }
 
 /**
+ * Extract file URLs from all file upload fields in the payload
+ *
+ * @param fields - Array of Tally fields
+ * @returns Array of submission URL objects
+ */
+export function extractFileUrls(fields: TallyField[]): SubmissionUrl[] {
+  const urls: SubmissionUrl[] = [];
+
+  for (const field of fields) {
+    if (!Array.isArray(field.value) || field.value.length === 0) continue;
+
+    for (const item of field.value) {
+      if (typeof item === 'object' && item !== null && 'url' in item) {
+        const fileUpload = item as TallyFileUpload;
+        urls.push({
+          label: field.label,
+          url: fileUpload.url,
+          type: fileUpload.mimeType,
+        });
+      }
+    }
+  }
+
+  return urls;
+}
+
+/**
  * Extract specialized competencies assessment data from webhook payload
+ *
+ * Score extraction is optional — SC assessments are reviewed by admins.
  *
  * @param payload - The Tally webhook payload
  * @returns SC assessment data
@@ -474,18 +515,26 @@ export function extractSCAssessmentData(payload: TallyWebhookPayload): SCAssessm
   const personIdField = findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.personId);
   const personId = getStringValue(personIdField);
 
+  // Score is optional — admin reviews SC submissions manually
   const scoreField = findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.score);
   const score = getNumberValue(scoreField);
 
-  if (score === undefined) {
-    throw new Error('Score is required but missing from specialized assessment webhook');
-  }
+  // Extract specialised competency definition ID (optional)
+  const scIdField = findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.specialisedCompetencyId);
+  const specialisedCompetencyId = getStringValue(scIdField);
+
+  // Extract all file URLs from the submission
+  const submissionUrls = extractFileUrls(fields);
 
   return {
     applicationId,
     personId,
+    specialisedCompetencyId,
     score,
-    rawData: {},
+    submissionUrls,
+    rawData: {
+      fields: payload.data.fields,
+    },
     tallySubmissionId: submissionId,
   };
 }

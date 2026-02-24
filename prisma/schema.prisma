@@ -315,16 +315,16 @@ model Assessment {
   assessmentType AssessmentType
 
   /// Score achieved (0-100)
-  score Decimal @db.Decimal(5, 2)
+  score Decimal? @db.Decimal(5, 2)
 
   /// Whether the assessment was passed (score >= threshold)
-  passed Boolean
+  passed Boolean?
 
   /// Passing threshold for this assessment
-  threshold Decimal @db.Decimal(5, 2)
+  threshold Decimal? @db.Decimal(5, 2)
 
-  /// When the assessment was completed
-  completedAt DateTime
+  /// When the assessment was completed (null for pending assessments)
+  completedAt DateTime?
 
   /// Raw assessment data/answers (JSON format)
   rawData Json?
@@ -338,6 +338,18 @@ model Assessment {
 
   /// Reference to Application (for SPECIALIZED_COMPETENCIES)
   applicationId String?
+
+  /// Reference to SpecialisedCompetency definition (for SPECIALIZED_COMPETENCIES type)
+  specialisedCompetencyId String?
+
+  /// Extracted submission URLs from Tally (JSON array of {label, url, type})
+  submissionUrls Json?
+
+  /// When an admin reviewed this assessment (marked pass/fail)
+  reviewedAt DateTime?
+
+  /// Admin who reviewed this assessment
+  reviewedBy String?
 
   // =========================================================================
   // Tally Integration
@@ -366,6 +378,12 @@ model Assessment {
   /// The application this assessment is for (specialized competencies)
   application Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
+  /// The specialised competency definition this assessment is for
+  specialisedCompetency SpecialisedCompetency? @relation(fields: [specialisedCompetencyId], references: [id], onDelete: SetNull)
+
+  /// The admin who reviewed this assessment
+  reviewer User? @relation("AssessmentReviewer", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
   // =========================================================================
   // Indexes
   // =========================================================================
@@ -373,12 +391,54 @@ model Assessment {
   @@index([personId])
   @@index([applicationId])
   @@index([assessmentType])
+  @@index([specialisedCompetencyId])
+  @@index([reviewedBy])
 }
 
 /// Types of assessments
 enum AssessmentType {
   GENERAL_COMPETENCIES
   SPECIALIZED_COMPETENCIES
+}
+
+// =============================================================================
+// SPECIALISED COMPETENCY MODEL
+// =============================================================================
+// Defines specialised competency assessments that can be assigned to candidates.
+// Each SC has its own Tally form and evaluation criterion.
+// Soft-deleted via isActive flag to preserve historical assessment data.
+// =============================================================================
+
+model SpecialisedCompetency {
+  /// Unique identifier (UUID)
+  id String @id @default(uuid())
+
+  /// Display name of the competency (e.g. "Code Review", "Instructional Design")
+  name String
+
+  /// Category for grouping/display (e.g. "Technical", "Creative")
+  category String
+
+  /// URL to the Tally form for this assessment
+  tallyFormUrl String
+
+  /// Evaluation criterion — what the candidate must demonstrate
+  criterion String @db.Text
+
+  /// Whether this SC is active (false = soft-deleted)
+  isActive Boolean @default(true)
+
+  /// Record creation timestamp
+  createdAt DateTime @default(now())
+
+  /// Last update timestamp
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  assessments Assessment[]
+
+  @@index([isActive])
+  @@index([category])
 }
 
 // =============================================================================
@@ -517,10 +577,11 @@ model User {
   lastSyncedAt DateTime?
 
   // Relations
-  interviews Interview[]
-  decisions  Decision[]
-  auditLogs  AuditLog[]
-  sentEmails EmailLog[]
+  interviews          Interview[]
+  decisions           Decision[]
+  auditLogs           AuditLog[]
+  sentEmails          EmailLog[]
+  reviewedAssessments Assessment[] @relation("AssessmentReviewer")
 
   @@index([oktaUserId])
   @@index([email])

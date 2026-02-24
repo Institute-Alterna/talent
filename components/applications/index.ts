@@ -16,3 +16,4 @@ export { InterviewDialog, type InterviewDialogProps, type InterviewDialogData, t
 export { CompleteInterviewDialog, type CompleteInterviewDialogProps, type CompleteInterviewData } from './complete-interview-dialog';
 export { WithdrawOfferDialog, type WithdrawOfferDialogProps } from './withdraw-offer-dialog';
 export { GCQResponsesDialog } from './gcq-responses-dialog';
+export { SCExplorerDialog } from './sc-explorer-dialog';

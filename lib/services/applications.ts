@@ -205,8 +205,7 @@ export async function getApplicationsForPipeline(filters?: {
       },
       assessments: {
         where: { assessmentType: 'SPECIALIZED_COMPETENCIES' },
-        select: { id: true },
-        take: 1,
+        select: { id: true, completedAt: true, passed: true },
       },
     },
     orderBy: { createdAt: 'desc' },
@@ -228,7 +227,10 @@ export async function getApplicationsForPipeline(filters?: {
     // is always sent on acceptance, so the ball is in the candidate's court.
     const needsAttention = app.status === 'ACTIVE' && (
       ((app.currentStage === 'APPLICATION' || app.currentStage === 'GENERAL_COMPETENCIES') && !app.person.generalCompetenciesCompleted) ||
-      (app.currentStage === 'SPECIALIZED_COMPETENCIES' && app.assessments.length === 0) ||
+      (app.currentStage === 'SPECIALIZED_COMPETENCIES' && (
+        app.assessments.length === 0 ||
+        app.assessments.some(a => a.passed === null)
+      )) ||
       (app.currentStage === 'INTERVIEW' && app.interviews.length === 0)
     );
 
@@ -343,6 +345,24 @@ export async function getApplicationDetail(id: string): Promise<ApplicationDetai
           threshold: true,
           completedAt: true,
           rawData: true,
+          specialisedCompetencyId: true,
+          specialisedCompetency: {
+            select: {
+              id: true,
+              name: true,
+              category: true,
+              criterion: true,
+            },
+          },
+          submissionUrls: true,
+          reviewedAt: true,
+          reviewedBy: true,
+          reviewer: {
+            select: {
+              id: true,
+              displayName: true,
+            },
+          },
         },
         orderBy: { completedAt: 'desc' },
       },
@@ -678,7 +698,8 @@ export async function getApplicationStats(filters?: {
  *
  * Canonical logic — must match `needsAttention` in `getApplicationsForPipeline`:
  * - APPLICATION stage where person has not completed GC
- * - SPECIALIZED_COMPETENCIES stage where no SC assessment has been submitted
+ * - SPECIALIZED_COMPETENCIES stage where no SC assessment has been submitted,
+ *   or all SC assessments are completed but at least one awaits admin review
  * - INTERVIEW stage where no interview has been completed
  * - AGREEMENT stage never needs attention (offer letter always sent on acceptance)
  *
@@ -698,7 +719,16 @@ export async function getAttentionBreakdown(filters?: {
       where: { ...base, currentStage: { in: ['APPLICATION', 'GENERAL_COMPETENCIES'] }, person: { generalCompetenciesCompleted: false } },
     }),
     db.application.count({
-      where: { ...base, currentStage: 'SPECIALIZED_COMPETENCIES', assessments: { none: { assessmentType: 'SPECIALIZED_COMPETENCIES' } } },
+      where: {
+        ...base,
+        currentStage: 'SPECIALIZED_COMPETENCIES',
+        OR: [
+          // No SC assessments submitted at all
+          { assessments: { none: { assessmentType: 'SPECIALIZED_COMPETENCIES' } } },
+          // At least one SC assessment awaiting admin review (passed is null)
+          { assessments: { some: { assessmentType: 'SPECIALIZED_COMPETENCIES', passed: null } } },
+        ],
+      },
     }),
     // No completed interview yet — matches needsAttention card logic
     // (app.interviews only selects completedAt rows, so length === 0 means no completion)

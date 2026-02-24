@@ -28,6 +28,7 @@ export {
   type GCSubscores,
   type GCRawData,
   type SCAssessmentResult,
+  type SubmissionUrl,
   type AgreementSigningResult,
   // Field key mappings
   APPLICATION_FIELD_KEYS,

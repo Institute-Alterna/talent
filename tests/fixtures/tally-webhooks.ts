@@ -265,14 +265,57 @@ export function createSCAssessmentPayload(overrides?: {
   applicationId?: string;
   personId?: string;
   score?: number;
+  scId?: string;
   submissionId?: string;
+  withFileUpload?: boolean;
 }): TallyWebhookPayload {
   const {
     applicationId = 'app-123',
     personId = 'person-123',
-    score = 80,
+    score,
+    scId = 'sc-def0-1234-5678-9abc-def012345678',
     submissionId = `sub-sc-${Date.now()}`,
+    withFileUpload = false,
   } = overrides || {};
+
+  const fields: TallyWebhookPayload['data']['fields'] = [
+    {
+      key: `${SC_ASSESSMENT_FIELD_KEYS.applicationId}_hidden`,
+      label: 'Application ID',
+      type: 'HIDDEN_FIELDS',
+      value: applicationId,
+    },
+    {
+      key: `${SC_ASSESSMENT_FIELD_KEYS.personId}_hidden`,
+      label: 'Person ID',
+      type: 'HIDDEN_FIELDS',
+      value: personId,
+    },
+    {
+      key: `${SC_ASSESSMENT_FIELD_KEYS.specialisedCompetencyId}_hidden`,
+      label: 'SC Definition ID',
+      type: 'HIDDEN_FIELDS',
+      value: scId,
+    },
+  ];
+
+  if (score !== undefined) {
+    fields.push({
+      key: `${SC_ASSESSMENT_FIELD_KEYS.score}_calc`,
+      label: 'Total Score',
+      type: 'CALCULATED',
+      value: score,
+    });
+  }
+
+  if (withFileUpload) {
+    fields.push({
+      key: 'question_FileUpload_work_sample',
+      label: 'Work Sample',
+      type: 'FILE_UPLOAD',
+      value: [{ id: 'file-abc', name: 'sample.pdf', url: 'https://storage.example.com/sample.pdf', mimeType: 'application/pdf', size: 12345 }],
+    });
+  }
 
   return {
     eventId: `evt-sc-${Date.now()}`,
@@ -284,26 +327,7 @@ export function createSCAssessmentPayload(overrides?: {
       formId: 'form-sc',
       formName: 'Specialised Competencies Assessment',
       createdAt: new Date().toISOString(),
-      fields: [
-        {
-          key: `${SC_ASSESSMENT_FIELD_KEYS.applicationId}_hidden`,
-          label: 'Application ID',
-          type: 'HIDDEN_FIELDS',
-          value: applicationId,
-        },
-        {
-          key: `${SC_ASSESSMENT_FIELD_KEYS.personId}_hidden`,
-          label: 'Person ID',
-          type: 'HIDDEN_FIELDS',
-          value: personId,
-        },
-        {
-          key: `${SC_ASSESSMENT_FIELD_KEYS.score}_calc`,
-          label: 'Total Score',
-          type: 'CALCULATED',
-          value: score,
-        },
-      ],
+      fields,
     },
   };
 }

@@ -214,17 +214,22 @@ export function findMissingVariables(
  * @param baseUrl - Base Tally form URL
  * @param personId - Person ID to embed
  * @param applicationId - Optional application ID
+ * @param scId - Optional specialised competency ID
  * @returns Full URL with parameters
  */
 export function buildAssessmentLink(
   baseUrl: string,
   personId: string,
-  applicationId?: string
+  applicationId?: string,
+  scId?: string
 ): string {
   const url = new URL(baseUrl);
   url.searchParams.set('who', personId);
   if (applicationId) {
     url.searchParams.set('applicationId', applicationId);
+  }
+  if (scId) {
+    url.searchParams.set('scId', scId);
   }
   return url.toString();
 }

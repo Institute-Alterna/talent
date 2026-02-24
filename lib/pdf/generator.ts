@@ -157,10 +157,10 @@ export function sanitizeApplicationData(application: ApplicationDetail): Sanitiz
       assessment.assessmentType === 'GENERAL_COMPETENCIES'
         ? pdfLabels.assessments.generalCompetencies
         : pdfLabels.assessments.specializedCompetencies,
-    score: sanitizeNumber(assessment.score.toString(), 2),
-    passed: sanitizeBoolean(assessment.passed),
-    threshold: sanitizeNumber(assessment.threshold.toString(), 2),
-    completedAt: formatDate(assessment.completedAt),
+    score: assessment.score != null ? sanitizeNumber(assessment.score.toString(), 2) : '—',
+    passed: assessment.passed != null ? sanitizeBoolean(assessment.passed) : '—',
+    threshold: assessment.threshold != null ? sanitizeNumber(assessment.threshold.toString(), 2) : '—',
+    completedAt: assessment.completedAt ? formatDate(assessment.completedAt) : '—',
   }));
 
   // Sanitize interviews (using PDF-specific functions - no HTML escaping)

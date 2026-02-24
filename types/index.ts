@@ -10,6 +10,7 @@ export * from './shared';
 export * from './person';
 export * from './application';
 export * from './user';
+export * from './competency';
 
 // Re-export commonly used Prisma enums for convenience
 export type {

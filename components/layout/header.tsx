@@ -198,6 +198,7 @@ export function Header({ user, onSignOut }: HeaderProps) {
 function getPageInfo(pathname: string): { title: string; subtitle: string } | null {
   if (pathname.startsWith('/dashboard')) return { title: 'Dashboard', subtitle: 'Overview' };
   if (pathname.startsWith('/candidates')) return { title: 'Candidates', subtitle: 'Recruitment pipeline' };
+  if (pathname.startsWith('/competencies')) return { title: 'Competencies', subtitle: 'Manage specialised competency assessments' };
   if (pathname.startsWith('/personnel')) return { title: 'Personnel', subtitle: 'Manage team & permissions' };
   if (pathname.startsWith('/log')) return { title: 'Audit Log', subtitle: 'System activity history' };
   if (pathname.startsWith('/settings')) return { title: 'Settings', subtitle: 'Preferences & profile' };

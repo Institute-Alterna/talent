@@ -315,6 +315,62 @@ export async function sendSCInvitation(
 }
 
 /**
+ * Send specialised competencies invitation(s)
+ *
+ * Sends a single email with one or more SC assessment links.
+ * For a single SC, the list contains one item with a button.
+ * For multiple SCs, the list contains multiple items with links.
+ */
+export async function sendSCInvitations(
+  personId: string,
+  applicationId: string,
+  to: string,
+  firstName: string,
+  position: string,
+  competencies: Array<{ id: string; name: string; tallyFormUrl: string }>
+): Promise<SendResult> {
+  if (competencies.length === 1) {
+    // Single SC — use a single-item list with a button
+    const sc = competencies[0];
+    const scLink = buildAssessmentLink(sc.tallyFormUrl, personId, applicationId, sc.id);
+
+    const scListHtml = `<li style="margin-bottom: 12px;"><p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 28px 0;"><a href="${scLink}" style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; display: inline-block; background-color: {{PRIMARY_COLOR}}; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 4px; font-weight: 500;">Start Assessment</a></p><p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0 0 20px 0; color: #666666; font-size: 14px;">If the button doesn&rsquo;t work, copy and paste this link into your browser:<br><a href="${scLink}" style="color: {{PRIMARY_COLOR}}; word-break: break-all;">${scLink}</a></p></li>`;
+
+    return sendEmail({
+      to,
+      template: EMAIL_TEMPLATES.SC_INVITATION,
+      variables: {
+        PERSON_FIRST_NAME: escapeHtml(firstName),
+        POSITION: escapeHtml(position),
+        SC_ASSESSMENT_LIST: scListHtml,
+      },
+      personId,
+      applicationId,
+      priority: 'high',
+    });
+  }
+
+  // Multiple SCs — build a list of links
+  const scListHtml = competencies.map((sc) => {
+    const scLink = buildAssessmentLink(sc.tallyFormUrl, personId, applicationId, sc.id);
+    return `<li style="margin-bottom: 12px;"><strong>${escapeHtml(sc.name)}</strong><br><a href="${scLink}" style="color: {{PRIMARY_COLOR}}; text-decoration: underline;">Start Assessment</a></li>`;
+  }).join('');
+
+  return sendEmail({
+    to,
+    template: EMAIL_TEMPLATES.SC_INVITATION,
+    variables: {
+      PERSON_FIRST_NAME: escapeHtml(firstName),
+      POSITION: escapeHtml(position),
+      SC_ASSESSMENT_LIST: scListHtml,
+    },
+    personId,
+    applicationId,
+    priority: 'high',
+  });
+}
+
+/**
  * Send interview invitation
  */
 export async function sendInterviewInvitation(

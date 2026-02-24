@@ -10,14 +10,16 @@
  *
  * What this creates:
  * - 2 sample users (1 admin, 1 hiring manager)
+ * - 8 specialised competency definitions (7 active, 1 soft-deleted)
  * - 10 sample persons (unique individuals)
  * - 11 sample applications (including one person with 2 applications)
- * - Sample assessments (general on Person, specialized on Application)
+ * - Sample GC assessments (linked to Person) and SC assessments (linked to Application
+ *   via SpecialisedCompetency — no scores, admin-reviewed pass/fail, with submissionUrls)
  * - Sample interviews and decisions
  * - Sample audit logs and email logs
  * - 1 person who has completed the full pipeline (SIGNED stage)
- * - Edge cases: interview completed but no decision, SC passed awaiting advance,
- *   rejected at interview stage
+ * - Edge cases: SC pending submission, SC failed review, interview completed but no
+ *   decision, rejected at interview stage
  */
 
 import 'dotenv/config';
@@ -93,6 +95,7 @@ async function main() {
   await prisma.decision.deleteMany();
   await prisma.interview.deleteMany();
   await prisma.assessment.deleteMany();
+  await prisma.specialisedCompetency.deleteMany();
   await prisma.application.deleteMany();
   await prisma.person.deleteMany();
   
@@ -569,6 +572,92 @@ async function main() {
   });
   console.log(`✓ Created 11 fictional application records\n`);
 
+  // Create SpecialisedCompetency definitions
+  console.log('Creating specialised competency definitions...');
+
+  const scInstructionalDesign = await prisma.specialisedCompetency.create({
+    data: {
+      name: 'Instructional Design Fundamentals',
+      category: 'Creative',
+      tallyFormUrl: 'https://tally.so/r/sc-instructional-design',
+      criterion: 'Design a short micro-lesson outline (5–10 minutes) for a remote learner audience on a topic of your choice. Include learning objectives, content structure, and a brief assessment method.',
+      isActive: true,
+    },
+  });
+
+  const scPeopleOps = await prisma.specialisedCompetency.create({
+    data: {
+      name: 'People Operations & Culture',
+      category: 'Leadership',
+      tallyFormUrl: 'https://tally.so/r/sc-people-ops',
+      criterion: 'Draft a short culture onboarding plan for a new remote volunteer joining a globally distributed team. Address communication norms, tools, and first-week expectations.',
+      isActive: true,
+    },
+  });
+
+  const scVideoProduction = await prisma.specialisedCompetency.create({
+    data: {
+      name: 'Video Production Portfolio',
+      category: 'Creative',
+      tallyFormUrl: 'https://tally.so/r/sc-video-production',
+      criterion: 'Submit up to three samples of previously edited educational or training video content. Include a brief note on your editing approach for each piece.',
+      isActive: true,
+    },
+  });
+
+  const scCurriculumFacilitation = await prisma.specialisedCompetency.create({
+    data: {
+      name: 'Curriculum Facilitation',
+      category: 'Communication',
+      tallyFormUrl: 'https://tally.so/r/sc-curriculum-facilitation',
+      criterion: 'Describe or record a 5–10 minute facilitation session you have led. Explain how you adapted your delivery to an asynchronous or hybrid learning environment.',
+      isActive: true,
+    },
+  });
+
+  const scProgrammeCoordination = await prisma.specialisedCompetency.create({
+    data: {
+      name: 'Programme Coordination',
+      category: 'Leadership',
+      tallyFormUrl: 'https://tally.so/r/sc-programme-coordination',
+      criterion: 'Outline a coordination plan for a multi-stakeholder education programme. Include how you would manage task tracking, stakeholder updates, and deadline escalation.',
+      isActive: true,
+    },
+  });
+
+  const scDataAnalysis = await prisma.specialisedCompetency.create({
+    data: {
+      name: 'Data Analysis & Visualisation',
+      category: 'Analytical',
+      tallyFormUrl: 'https://tally.so/r/sc-data-analysis',
+      criterion: 'Analyse a provided dataset (or a public one of your choice) and produce a short written summary of key findings supported by at least one chart or visual.',
+      isActive: true,
+    },
+  });
+
+  const scCurriculumDevelopment = await prisma.specialisedCompetency.create({
+    data: {
+      name: 'Curriculum Development',
+      category: 'Creative',
+      tallyFormUrl: 'https://tally.so/r/sc-curriculum-development',
+      criterion: 'Develop a sample unit plan (3–5 sessions) for a remote learning context targeting adolescent or adult learners. Include objectives, sequencing rationale, and suggested materials.',
+      isActive: true,
+    },
+  });
+
+  // Soft-deleted example — retained for historical assessment references
+  await prisma.specialisedCompetency.create({
+    data: {
+      name: 'Written Communication',
+      category: 'Communication',
+      tallyFormUrl: 'https://tally.so/r/sc-written-comms',
+      criterion: 'Write a 400-word brief for a fictional educational campaign targeting underserved communities. Include the campaign goal, audience, key message, and one call to action.',
+      isActive: false,
+    },
+  });
+
+  console.log(`✓ Created 8 specialised competency definitions (7 active, 1 soft-deleted)\n`);
+
   // Create Assessments
   console.log('Creating fictional assessment records...');
 
@@ -910,82 +999,127 @@ async function main() {
     ],
   });
 
-  // Specialised Competencies assessments (linked to Application)
+  // Specialised Competencies assessments (linked to Application via SpecialisedCompetency)
+  // New model: no numeric score/threshold — admin manually reviews each SC and marks pass/fail.
+  // completedAt: null  → assigned to candidate, not yet submitted
+  // completedAt set    → candidate submitted via Tally webhook
+  // passed: null       → submitted but not yet reviewed
+  // passed: true/false → admin has reviewed and recorded outcome
   await prisma.assessment.createMany({
     data: [
-      // Application 3 (Jan's Chief People Officer): Passed SC
+      // Application 3 (Jan's Chief People Officer): People Ops SC — submitted, reviewed, passed
       {
         applicationId: app3.id,
+        specialisedCompetencyId: scPeopleOps.id,
         assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
-        score: 485,
         passed: true,
-        threshold: 400,
         completedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        reviewedAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
+        reviewedBy: adminUser.id,
+        submissionUrls: [
+          { label: 'Culture Onboarding Plan', url: 'https://tally.so/r/submission-003-people-ops.pdf', type: 'file' },
+        ],
         tallySubmissionId: 'tally-sc-003',
       },
-      // Application 4 (Diego's Video Editor): Passed SC
+      // Application 4 (Diego's Video Editor): Video Production SC — submitted, reviewed, passed
       {
         applicationId: app4.id,
+        specialisedCompetencyId: scVideoProduction.id,
         assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
-        score: 520,
         passed: true,
-        threshold: 400,
         completedAt: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000),
+        reviewedAt: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000),
+        reviewedBy: adminUser.id,
+        submissionUrls: [
+          { label: 'Sample Video 1 — Intro Module', url: 'https://vimeo.com/diegoramirez/sample-edit-1', type: 'url' },
+          { label: 'Sample Video 2 — Tutorial Recap', url: 'https://vimeo.com/diegoramirez/sample-edit-2', type: 'url' },
+          { label: 'Sample Video 3 — Documentary Short', url: 'https://vimeo.com/diegoramirez/sample-edit-3', type: 'url' },
+        ],
         tallySubmissionId: 'tally-sc-004',
       },
-      // Application 2 (Maria's Instructional Designer): Failed SC but can still interview
+      // Application 2 (Maria's Instructional Designer): Instructional Design SC — submitted, reviewed, failed
       {
         applicationId: app2.id,
+        specialisedCompetencyId: scInstructionalDesign.id,
         assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
-        score: 350,
         passed: false,
-        threshold: 400,
         completedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+        reviewedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        reviewedBy: adminUser.id,
+        submissionUrls: [
+          { label: 'Micro-Lesson Outline', url: 'https://tally.so/r/submission-002-id.pdf', type: 'file' },
+        ],
         tallySubmissionId: 'tally-sc-002',
       },
-      // Application 8 (Amara's Course Facilitator): Passed SC — strong performance
+      // Application 2 (Maria's Instructional Designer): Curriculum Development SC — pending submission
+      {
+        applicationId: app2.id,
+        specialisedCompetencyId: scCurriculumDevelopment.id,
+        assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
+        // completedAt omitted — candidate has not yet submitted
+        // passed omitted — not yet reviewed
+      },
+      // Application 8 (Amara's Course Facilitator): Curriculum Facilitation SC — submitted, reviewed, passed
       {
         applicationId: app8.id,
+        specialisedCompetencyId: scCurriculumFacilitation.id,
         assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
-        score: 540,
         passed: true,
-        threshold: 400,
         completedAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+        reviewedAt: new Date(Date.now() - 34 * 24 * 60 * 60 * 1000),
+        reviewedBy: adminUser.id,
+        submissionUrls: [
+          { label: 'Facilitation Session Recording', url: 'https://drive.google.com/file/d/amara-facilitation-sample', type: 'url' },
+          { label: 'Session Notes', url: 'https://tally.so/r/submission-008-facilitation.pdf', type: 'file' },
+        ],
         tallySubmissionId: 'tally-sc-008',
       },
-      // Application 9 (Fatou's Programme Coordinator): Passed SC
+      // Application 9 (Fatou's Programme Coordinator): Programme Coordination SC — submitted, reviewed, passed
       {
         applicationId: app9.id,
+        specialisedCompetencyId: scProgrammeCoordination.id,
         assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
-        score: 450,
         passed: true,
-        threshold: 400,
         completedAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+        reviewedAt: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000),
+        reviewedBy: adminUser.id,
+        submissionUrls: [
+          { label: 'Coordination Plan Document', url: 'https://tally.so/r/submission-009-coordination.pdf', type: 'file' },
+        ],
         tallySubmissionId: 'tally-sc-009',
       },
-      // Application 10 (Kenji's Data Analyst): Passed SC — strong analytical skills
+      // Application 10 (Kenji's Data Analyst): Data Analysis SC — submitted, reviewed, passed (ready to advance)
       {
         applicationId: app10.id,
+        specialisedCompetencyId: scDataAnalysis.id,
         assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
-        score: 470,
         passed: true,
-        threshold: 400,
         completedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+        reviewedAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
+        reviewedBy: adminUser.id,
+        submissionUrls: [
+          { label: 'Analysis Report', url: 'https://tally.so/r/submission-010-data.pdf', type: 'file' },
+          { label: 'Supporting Charts', url: 'https://tally.so/r/submission-010-charts.pdf', type: 'file' },
+        ],
         tallySubmissionId: 'tally-sc-010',
       },
-      // Application 11 (Priya's Curriculum Developer): Passed SC
+      // Application 11 (Priya's Curriculum Developer): Curriculum Development SC — submitted, reviewed, passed
       {
         applicationId: app11.id,
+        specialisedCompetencyId: scCurriculumDevelopment.id,
         assessmentType: AssessmentType.SPECIALIZED_COMPETENCIES,
-        score: 420,
         passed: true,
-        threshold: 400,
         completedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        reviewedAt: new Date(Date.now() - 24 * 24 * 60 * 60 * 1000),
+        reviewedBy: adminUser.id,
+        submissionUrls: [
+          { label: 'Unit Plan Document', url: 'https://tally.so/r/submission-011-curriculum.pdf', type: 'file' },
+        ],
         tallySubmissionId: 'tally-sc-011',
       },
     ],
   });
-  console.log(`✓ Created 16 fictional assessment records\n`);
+  console.log(`✓ Created 17 fictional assessment records (9 GC, 8 SC)\n`);
 
   // Create Interviews (linked to Application)
   console.log('Creating fictional interview records...');
@@ -1154,8 +1288,17 @@ async function main() {
         applicationId: app2.id,
         action: 'SPECIALIZED_COMPETENCIES assessment completed',
         actionType: ActionType.UPDATE,
-        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 350, passed: false },
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', scName: 'Instructional Design Fundamentals', submissionCount: 1 },
         createdAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person2.id,
+        applicationId: app2.id,
+        userId: adminUser.id,
+        action: 'SC assessment reviewed: Instructional Design Fundamentals',
+        actionType: ActionType.UPDATE,
+        details: { scName: 'Instructional Design Fundamentals', result: 'fail' },
+        createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
       },
 
       // ── App3: Jan — INTERVIEW, ACTIVE ──
@@ -1197,8 +1340,17 @@ async function main() {
         applicationId: app3.id,
         action: 'SPECIALIZED_COMPETENCIES assessment completed',
         actionType: ActionType.UPDATE,
-        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 485, passed: true },
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', scName: 'People Operations & Culture', submissionCount: 1 },
         createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person3.id,
+        applicationId: app3.id,
+        userId: adminUser.id,
+        action: 'SC assessment reviewed: People Operations & Culture',
+        actionType: ActionType.UPDATE,
+        details: { scName: 'People Operations & Culture', result: 'pass' },
+        createdAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
       },
       {
         personId: person3.id,
@@ -1258,8 +1410,17 @@ async function main() {
         applicationId: app4.id,
         action: 'SPECIALIZED_COMPETENCIES assessment completed',
         actionType: ActionType.UPDATE,
-        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 520, passed: true },
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', scName: 'Video Production Portfolio', submissionCount: 3 },
         createdAt: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person4.id,
+        applicationId: app4.id,
+        userId: adminUser.id,
+        action: 'SC assessment reviewed: Video Production Portfolio',
+        actionType: ActionType.UPDATE,
+        details: { scName: 'Video Production Portfolio', result: 'pass' },
+        createdAt: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000),
       },
       {
         personId: person4.id,
@@ -1425,8 +1586,17 @@ async function main() {
         applicationId: app8.id,
         action: 'SPECIALIZED_COMPETENCIES assessment completed',
         actionType: ActionType.UPDATE,
-        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 540, passed: true },
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', scName: 'Curriculum Facilitation', submissionCount: 2 },
         createdAt: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person7.id,
+        applicationId: app8.id,
+        userId: adminUser.id,
+        action: 'SC assessment reviewed: Curriculum Facilitation',
+        actionType: ActionType.UPDATE,
+        details: { scName: 'Curriculum Facilitation', result: 'pass' },
+        createdAt: new Date(Date.now() - 34 * 24 * 60 * 60 * 1000),
       },
       {
         personId: person7.id,
@@ -1530,8 +1700,17 @@ async function main() {
         applicationId: app9.id,
         action: 'SPECIALIZED_COMPETENCIES assessment completed',
         actionType: ActionType.UPDATE,
-        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 450, passed: true },
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', scName: 'Programme Coordination', submissionCount: 1 },
         createdAt: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person8.id,
+        applicationId: app9.id,
+        userId: adminUser.id,
+        action: 'SC assessment reviewed: Programme Coordination',
+        actionType: ActionType.UPDATE,
+        details: { scName: 'Programme Coordination', result: 'pass' },
+        createdAt: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000),
       },
       {
         personId: person8.id,
@@ -1600,8 +1779,17 @@ async function main() {
         applicationId: app10.id,
         action: 'SPECIALIZED_COMPETENCIES assessment completed',
         actionType: ActionType.UPDATE,
-        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 470, passed: true },
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', scName: 'Data Analysis & Visualisation', submissionCount: 2 },
         createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person9.id,
+        applicationId: app10.id,
+        userId: adminUser.id,
+        action: 'SC assessment reviewed: Data Analysis & Visualisation',
+        actionType: ActionType.UPDATE,
+        details: { scName: 'Data Analysis & Visualisation', result: 'pass' },
+        createdAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
       },
 
       // ── App11: Priya — INTERVIEW, REJECTED (rejected post-interview) ──
@@ -1643,8 +1831,17 @@ async function main() {
         applicationId: app11.id,
         action: 'SPECIALIZED_COMPETENCIES assessment completed',
         actionType: ActionType.UPDATE,
-        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', score: 420, passed: true },
+        details: { assessmentType: 'SPECIALIZED_COMPETENCIES', scName: 'Curriculum Development', submissionCount: 1 },
         createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+      },
+      {
+        personId: person10.id,
+        applicationId: app11.id,
+        userId: adminUser.id,
+        action: 'SC assessment reviewed: Curriculum Development',
+        actionType: ActionType.UPDATE,
+        details: { scName: 'Curriculum Development', result: 'pass' },
+        createdAt: new Date(Date.now() - 24 * 24 * 60 * 60 * 1000),
       },
       {
         personId: person10.id,
@@ -1693,7 +1890,7 @@ async function main() {
       },
     ],
   });
-  console.log(`✓ Created 66 fictional audit logs\n`);
+  console.log(`✓ Created 73 fictional audit logs\n`);
 
   // Create Email Logs (can link to Person, Application, or both)
   console.log('Creating fictional email logs...');
@@ -1976,12 +2173,13 @@ async function main() {
   if (realUsers.length > 0) {
     console.log(`  - ${realUsers.length} real user(s) preserved`);
   }
+  console.log('  - 8 specialised competency definitions (7 active, 1 soft-deleted)');
   console.log('  - 10 fictional persons (unique individuals)');
   console.log('  - 11 fictional application records (including 2 from same person)');
-  console.log('  - 16 fictional assessment records (9 GC, 7 SC)');
+  console.log('  - 17 fictional assessment records (9 GC, 8 SC)');
   console.log('  - 5 fictional interview records');
   console.log('  - 4 fictional decision records');
-  console.log('  - 66 fictional audit logs');
+  console.log('  - 73 fictional audit logs');
   console.log('  - 27 fictional email logs');
   if (!cleanMode) {
     console.log('\nUse --clean flag to delete real users in next seed.');

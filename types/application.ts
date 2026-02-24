@@ -141,16 +141,36 @@ export interface GCAssessmentSummary {
 }
 
 /**
+ * Individual submission URL from a Tally form response
+ */
+export interface SubmissionUrl {
+  label: string;
+  url: string;
+  type: string;
+}
+
+/**
  * Assessment detail for application view
  */
 export interface AssessmentDetail {
   id: string;
   assessmentType: AssessmentType;
-  score: Decimal;
-  passed: boolean;
-  threshold: Decimal;
-  completedAt: Date;
+  score: Decimal | null;
+  passed: boolean | null;
+  threshold: Decimal | null;
+  completedAt: Date | null;
   rawData: unknown;
+  specialisedCompetencyId: string | null;
+  specialisedCompetency: {
+    id: string;
+    name: string;
+    category: string;
+    criterion: string;
+  } | null;
+  submissionUrls: SubmissionUrl[] | null;
+  reviewedAt: Date | null;
+  reviewedBy: string | null;
+  reviewer: { id: string; displayName: string } | null;
 }
 
 /**

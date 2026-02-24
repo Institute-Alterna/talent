@@ -54,6 +54,15 @@ export const recruitment = {
     'Project Coordinator',
   ],
 
+  // Specialised competency categories
+  scCategories: [
+    'Technical',
+    'Creative',
+    'Leadership',
+    'Communication',
+    'Analytical',
+  ],
+
   // Education levels for dropdown
   educationLevels: [
     'High School',
