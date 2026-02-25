@@ -98,7 +98,7 @@ export function WithdrawOfferDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 pb-4">
           {/* Error message */}
           <InlineError message={error} />
 

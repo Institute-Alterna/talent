@@ -18,6 +18,8 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { branding } from '@/config';
 import { ThemeProvider } from '@/components/providers/theme-provider';
+import { ToastProvider } from '@/hooks/use-toast';
+import { ToastContainer } from '@/components/shared/toast-container';
 
 // Load Geist fonts from Google Fonts
 const geistSans = Geist({
@@ -52,7 +54,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            {children}
+            <ToastContainer />
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

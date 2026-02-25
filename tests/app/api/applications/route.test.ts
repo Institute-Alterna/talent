@@ -113,7 +113,7 @@ const mockStats = {
   },
   byPosition: { 'Software Engineer': 5, 'Data Analyst': 5 },
   awaitingAction: 3,
-  breakdown: { awaitingGC: 1, awaitingSC: 1, pendingInterviews: 0, pendingAgreement: 1, total: 3 },
+  breakdown: { awaitingGC: 1, gcFailedPendingRejection: 0, awaitingSC: 1, pendingInterviews: 0, pendingAgreement: 1, total: 3 },
   recentActivity: 8,
 };
 

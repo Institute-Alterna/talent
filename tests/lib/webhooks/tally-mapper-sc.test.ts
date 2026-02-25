@@ -151,16 +151,17 @@ describe('extractFileUrls', () => {
 // ---------------------------------------------------------------------------
 
 describe('extractSCAssessmentData', () => {
-  it('throws when applicationId is missing', () => {
+  it('returns undefined applicationId when the hidden field is absent', () => {
+    // Real SC forms (SCA | Design, etc.) do not embed a hidden application-ID
+    // field; the route handler resolves it via respondentId instead.
     const fields = baseFields.filter(
       (f) => !f.key.startsWith(SC_ASSESSMENT_FIELD_KEYS.applicationId)
     );
-    expect(() => extractSCAssessmentData(makePayload(fields))).toThrow(
-      'Application ID is required'
-    );
+    const result = extractSCAssessmentData(makePayload(fields));
+    expect(result.applicationId).toBeUndefined();
   });
 
-  it('extracts applicationId and personId', () => {
+  it('extracts applicationId and personId when hidden fields are present', () => {
     const result = extractSCAssessmentData(makePayload(baseFields));
     expect(result.applicationId).toBe('app-1111-2222-3333-444444444444');
     expect(result.personId).toBe('person-aaaa-bbbb-cccc-dddddddddddd');

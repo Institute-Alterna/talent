@@ -32,6 +32,7 @@ import { Search, RefreshCw, Maximize2, Minimize2, AlertTriangle } from 'lucide-r
 import { useToast } from '@/hooks/use-toast';
 import { useMediaQuery } from '@/hooks';
 import { cn } from '@/lib/utils';
+import { strings } from '@/config/strings';
 
 // Lazy-load heavy dialog components — only needed on user interaction
 const ApplicationDetail = React.lazy(() => import('@/components/applications/application-detail').then(m => ({ default: m.ApplicationDetail })));
@@ -56,6 +57,7 @@ interface PipelineResponse {
     awaitingAction: number;
     breakdown: {
       awaitingGC: number;
+      gcFailedPendingRejection: number;
       awaitingSC: number;
       pendingInterviews: number;
       pendingAgreement: number;
@@ -316,12 +318,20 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to send email');
+        if (response.status === 429) {
+          toast({
+            title: strings.toasts.rateLimitTitle,
+            description: strings.toasts.rateLimitDescription,
+            variant: 'destructive',
+          });
+          return;
+        }
+        throw new Error(data.error || strings.toasts.emailError);
       }
 
       toast({
-        title: 'Email Sent',
-        description: 'The email has been sent successfully',
+        title: strings.toasts.emailSent,
+        description: strings.toasts.emailSentDescription,
       });
 
       // Small delay to ensure activity log updates
@@ -332,7 +342,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     } catch (err) {
       toast({
         title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to send email',
+        description: err instanceof Error ? err.message : strings.toasts.emailError,
         variant: 'destructive',
       });
     } finally {
@@ -356,11 +366,19 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
       if (!response.ok) {
         const data = await response.json();
+        if (response.status === 429) {
+          toast({
+            title: strings.toasts.rateLimitTitle,
+            description: strings.toasts.rateLimitDescription,
+            variant: 'destructive',
+          });
+          return;
+        }
         throw new Error(data.error || 'Failed to send SC invitation');
       }
 
       toast({
-        title: 'Email Sent',
+        title: strings.toasts.emailSent,
         description: 'SC assessment invitation sent successfully',
       });
 
@@ -844,7 +862,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
   // Derive attention breakdown from server stats — single source of truth
   const attentionBreakdown = React.useMemo(() => {
-    if (!stats?.breakdown) return { awaitingGC: 0, awaitingSC: 0, pendingInterviews: 0, pendingAgreement: 0, total: 0 };
+    if (!stats?.breakdown) return { awaitingGC: 0, gcFailedPendingRejection: 0, awaitingSC: 0, pendingInterviews: 0, pendingAgreement: 0, total: 0 };
     return stats.breakdown;
   }, [stats]);
 

@@ -19,12 +19,8 @@ export const recruitment = {
   // Minimum passing scores for assessments (with scale)
   assessmentThresholds: {
     generalCompetencies: {
-      threshold: 800,
+      threshold: 700,
       scale: 1000,
-    },
-    specializedCompetencies: {
-      threshold: 400,
-      scale: 600,
     },
   },
 

@@ -272,6 +272,7 @@ export interface ScheduleInterviewData {
  */
 export interface AttentionBreakdown {
   awaitingGC: number;
+  gcFailedPendingRejection: number;
   awaitingSC: number;
   pendingInterviews: number;
   pendingAgreement: number;

@@ -30,17 +30,14 @@ import {
   createApplication,
   getApplicationByTallySubmissionId,
   advanceApplicationStage,
-  updateApplicationStatus,
-  countOtherActiveApplicationsAtStage,
 } from '@/lib/services/applications';
 import {
   logWebhookReceived,
   logPersonCreated,
   logApplicationCreated,
   logStageChange,
-  logStatusChange,
 } from '@/lib/audit';
-import { sendApplicationReceived, sendGCInvitation } from '@/lib/email';
+import { sendApplicationReceived } from '@/lib/email';
 import { sanitizeForLog } from '@/lib/security';
 
 /**
@@ -153,15 +150,15 @@ export async function POST(request: NextRequest) {
   }
 
   // Determine next steps based on GC status
-  let nextStep: 'send_gc_assessment' | 'advance_to_specialized' | 'reject';
+  let nextStep: 'awaiting_gc' | 'advance_to_specialized' | 'awaiting_gc_decision';
   let statusMessage: string;
 
   if (!person.generalCompetenciesCompleted) {
-    // Person hasn't taken GC yet - advance to GENERAL_COMPETENCIES and send invite
-    nextStep = 'send_gc_assessment';
+    // Person hasn't taken GC yet — advance to GENERAL_COMPETENCIES stage.
+    // The GC invitation email is sent manually by the admin.
+    nextStep = 'awaiting_gc';
     statusMessage = 'Application received. General competencies assessment pending.';
 
-    // Advance application to GENERAL_COMPETENCIES stage
     await advanceApplicationStage(application.id, 'GENERAL_COMPETENCIES');
     await logStageChange(
       application.id,
@@ -169,44 +166,17 @@ export async function POST(request: NextRequest) {
       'APPLICATION',
       'GENERAL_COMPETENCIES',
       undefined,
-      'Auto-advanced: GCQ invite sent on application receipt'
+      'Auto-advanced: awaiting general competencies assessment'
     );
-
-    // Deduplicate: only send the email if no other active app for this person
-    // is already at GENERAL_COMPETENCIES (they would have already received the invite)
-    const othersAtGC = await countOtherActiveApplicationsAtStage(
-      person.id,
-      'GENERAL_COMPETENCIES',
-      application.id
-    );
-
-    if (othersAtGC === 0) {
-      try {
-        await sendGCInvitation(
-          person.id,
-          application.id,
-          person.email,
-          person.firstName,
-          application.position
-        );
-      } catch (emailError) {
-        // Email failure is non-fatal — recorded in EmailLog, admin can resend manually
-        console.error(
-          '[Webhook] Failed to send GCQ invite:',
-          emailError instanceof Error ? emailError.message : emailError
-        );
-      }
-    }
   } else {
     // Person has already completed GC
     const passedGC = await hasPassedGeneralCompetencies(person.id);
 
     if (passedGC) {
-      // GC passed - advance to next stage
+      // GC passed — advance to next stage
       nextStep = 'advance_to_specialized';
       statusMessage = 'Application received. Advancing to specialised competencies stage.';
 
-      // Advance the application stage
       await advanceApplicationStage(application.id, 'SPECIALIZED_COMPETENCIES');
       await logStageChange(
         application.id,
@@ -216,24 +186,20 @@ export async function POST(request: NextRequest) {
         undefined,
         'Auto-advanced: Person already passed general competencies'
       );
-
-      // TODO: In Phase 6c, send specialized competencies email if configured
     } else {
-      // GC failed - reject this application
-      nextStep = 'reject';
-      statusMessage = 'Application received but rejected: General competencies not passed.';
+      // GC failed — keep application active at GC stage for admin to reject manually
+      nextStep = 'awaiting_gc_decision';
+      statusMessage = 'Application received. General competencies not passed — awaiting admin decision.';
 
-      await updateApplicationStatus(application.id, 'REJECTED');
-      await logStatusChange(
+      await advanceApplicationStage(application.id, 'GENERAL_COMPETENCIES');
+      await logStageChange(
         application.id,
         person.id,
-        'ACTIVE',
-        'REJECTED',
+        'APPLICATION',
+        'GENERAL_COMPETENCIES',
         undefined,
-        'Auto-rejected: Person previously failed general competencies'
+        'Auto-advanced: Person previously failed general competencies — awaiting admin decision'
       );
-
-      // TODO: In Phase 6c, send rejection email
     }
   }
 

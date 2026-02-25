@@ -35,6 +35,7 @@ interface DashboardResponse {
     awaitingAction: number;
     breakdown: {
       awaitingGC: number;
+      gcFailedPendingRejection: number;
       awaitingSC: number;
       pendingInterviews: number;
       pendingAgreement: number;

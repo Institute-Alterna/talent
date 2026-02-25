@@ -81,7 +81,7 @@ const mockGetRecentAuditLogs = getRecentAuditLogs as jest.MockedFunction<typeof 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockGetAttentionBreakdown = getAttentionBreakdown as jest.MockedFunction<any>;
 
-const zeroBreakdown = { awaitingGC: 0, awaitingSC: 0, pendingInterviews: 0, pendingAgreement: 0, total: 0 };
+const zeroBreakdown = { awaitingGC: 0, gcFailedPendingRejection: 0, awaitingSC: 0, pendingInterviews: 0, pendingAgreement: 0, total: 0 };
 
 describe('Dashboard API Routes', () => {
   beforeEach(() => {
@@ -138,6 +138,7 @@ describe('Dashboard API Routes', () => {
       // Mock attention breakdown via shared service function
       mockGetAttentionBreakdown.mockResolvedValueOnce({
         awaitingGC: 3,
+        gcFailedPendingRejection: 0,
         awaitingSC: 1,
         pendingInterviews: 2,
         pendingAgreement: 2,

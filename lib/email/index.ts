@@ -22,6 +22,7 @@ export {
   verifyConnection,
   getDefaultMailOptions,
   closeTransporter,
+  resetTransporter,
   createTestTransporter,
   getTestPreviewUrl,
 } from './transporter';

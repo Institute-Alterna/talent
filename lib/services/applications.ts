@@ -225,8 +225,13 @@ export async function getApplicationsForPipeline(filters?: {
     // Determine if this application needs attention
     // AGREEMENT stage never needs attention — the offer letter (with agreement link)
     // is always sent on acceptance, so the ball is in the candidate's court.
+    const gcThreshold = recruitment.assessmentThresholds.generalCompetencies.threshold;
+    const gcFailed = app.person.generalCompetenciesCompleted &&
+      parseFloat(app.person.generalCompetenciesScore?.toString() || '0') < gcThreshold;
+
     const needsAttention = app.status === 'ACTIVE' && (
-      ((app.currentStage === 'APPLICATION' || app.currentStage === 'GENERAL_COMPETENCIES') && !app.person.generalCompetenciesCompleted) ||
+      ((app.currentStage === 'APPLICATION' || app.currentStage === 'GENERAL_COMPETENCIES') &&
+        (!app.person.generalCompetenciesCompleted || gcFailed)) ||
       (app.currentStage === 'SPECIALIZED_COMPETENCIES' && (
         app.assessments.length === 0 ||
         app.assessments.some(a => a.passed === null)
@@ -697,7 +702,8 @@ export async function getApplicationStats(filters?: {
  * Get the attention breakdown for active applications.
  *
  * Canonical logic — must match `needsAttention` in `getApplicationsForPipeline`:
- * - APPLICATION stage where person has not completed GC
+ * - APPLICATION/GC stage where person has not completed GC
+ * - APPLICATION/GC stage where person completed GC but failed (pending admin rejection)
  * - SPECIALIZED_COMPETENCIES stage where no SC assessment has been submitted,
  *   or all SC assessments are completed but at least one awaits admin review
  * - INTERVIEW stage where no interview has been completed
@@ -714,9 +720,19 @@ export async function getAttentionBreakdown(filters?: {
     ...(filters?.position ? { position: filters.position } : {}),
   };
 
-  const [awaitingGC, awaitingSC, pendingInterviews, pendingAgreement] = await Promise.all([
+  const gcThreshold = recruitment.assessmentThresholds.generalCompetencies.threshold;
+
+  const [awaitingGC, gcFailedPendingRejection, awaitingSC, pendingInterviews, pendingAgreement] = await Promise.all([
     db.application.count({
       where: { ...base, currentStage: { in: ['APPLICATION', 'GENERAL_COMPETENCIES'] }, person: { generalCompetenciesCompleted: false } },
+    }),
+    // GC completed but failed — admin must reject manually
+    db.application.count({
+      where: {
+        ...base,
+        currentStage: { in: ['APPLICATION', 'GENERAL_COMPETENCIES'] },
+        person: { generalCompetenciesCompleted: true, generalCompetenciesScore: { lt: gcThreshold } },
+      },
     }),
     db.application.count({
       where: {
@@ -743,10 +759,11 @@ export async function getAttentionBreakdown(filters?: {
 
   return {
     awaitingGC,
+    gcFailedPendingRejection,
     awaitingSC,
     pendingInterviews,
     pendingAgreement,
-    total: awaitingGC + awaitingSC + pendingInterviews + pendingAgreement,
+    total: awaitingGC + gcFailedPendingRejection + awaitingSC + pendingInterviews + pendingAgreement,
   };
 }
 

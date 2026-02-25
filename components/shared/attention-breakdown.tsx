@@ -45,6 +45,7 @@ interface AttentionBreakdownPanelProps {
 
 const BREAKDOWN_ITEMS: { key: keyof Omit<AttentionBreakdown, 'total'>; label: string }[] = [
   { key: 'awaitingGC', label: 'Awaiting General Competencies' },
+  { key: 'gcFailedPendingRejection', label: 'GC Failed — Pending Rejection' },
   { key: 'awaitingSC', label: 'Awaiting Specialised Competencies' },
   { key: 'pendingInterviews', label: 'Pending Interviews' },
   { key: 'pendingAgreement', label: 'Pending Agreement' },

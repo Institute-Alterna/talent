@@ -6,12 +6,11 @@
  */
 
 import { db } from '@/lib/db';
-import { getTransporter, getDefaultMailOptions } from './transporter';
+import { getTransporter, getDefaultMailOptions, resetTransporter } from './transporter';
 import { renderTemplate, htmlToPlainText, buildAssessmentLink, formatEmailDate, escapeHtml } from './templates';
 import {
   canSendNow,
   recordSent,
-  enqueue,
   getRateLimitStatus,
 } from './queue';
 import {
@@ -21,6 +20,21 @@ import {
   type EmailTemplateName,
 } from './config';
 import { logEmailSent } from '@/lib/audit';
+
+/**
+ * Detect SMTP connection errors that warrant a transporter reset
+ */
+function isConnectionError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return (
+    msg.includes('econnreset') ||
+    msg.includes('econnrefused') ||
+    msg.includes('etimedout') ||
+    msg.includes('socket') ||
+    msg.includes('connection')
+  );
+}
 
 /**
  * Email send result
@@ -118,7 +132,6 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendResult> 
     personId,
     applicationId,
     sentBy,
-    priority = 'normal',
     skipRateLimit = false,
   } = options;
 
@@ -154,23 +167,18 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendResult> 
     const status = getRateLimitStatus();
     console.warn(
       `[Email] Rate limit reached. Sent: ${status.sentLastHour}/${status.hourlyLimit} per hour, ` +
-        `${status.sentLastDay}/${status.dailyLimit} per day. Queueing email.`
+        `${status.sentLastDay}/${status.dailyLimit} per day.`
     );
 
-    // Queue for later
-    enqueue({
-      recipient: to,
-      subject,
-      html,
-      text,
-      priority,
-      metadata: { personId, applicationId, sentBy, emailLogId: emailLog?.id },
-    });
+    // Mark as failed so admins can resend via the UI when limits clear
+    if (emailLog) {
+      await updateEmailLog(emailLog.id, 'FAILED', 'Rate limit reached');
+    }
 
     return {
       success: false,
-      queued: true,
-      error: 'Rate limit reached, email queued',
+      queued: false,
+      error: 'Rate limit reached. Please try again later.',
       emailLogId: emailLog?.id,
     };
   }
@@ -211,6 +219,11 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendResult> 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`[Email] Failed to send ${template} to ${to}:`, errorMessage);
+
+    // Reset transporter on connection errors so the next attempt gets a fresh connection
+    if (isConnectionError(error)) {
+      resetTransporter();
+    }
 
     // Update email log
     if (emailLog) {

@@ -35,13 +35,11 @@ import {
 import {
   getApplicationsAwaitingGCResult,
   advanceMultipleApplications,
-  rejectMultipleApplications,
 } from '@/lib/services/applications';
 import {
   logWebhookReceived,
   logAssessmentCompleted,
   logStageChange,
-  logStatusChange,
 } from '@/lib/audit';
 import { recruitment } from '@/config/recruitment';
 import { sanitizeForLog } from '@/lib/security';
@@ -154,57 +152,31 @@ export async function POST(request: NextRequest) {
   const applicationIds = awaitingApplications.map((a) => a.id);
 
   let applicationsAdvanced = 0;
-  let applicationsRejected = 0;
 
-  if (applicationIds.length > 0) {
-    if (passed) {
-      // Advance all applications to SPECIALIZED_COMPETENCIES
-      await advanceMultipleApplications(applicationIds, 'SPECIALIZED_COMPETENCIES');
-      applicationsAdvanced = applicationIds.length;
+  if (applicationIds.length > 0 && passed) {
+    // Advance all applications to SPECIALIZED_COMPETENCIES
+    await advanceMultipleApplications(applicationIds, 'SPECIALIZED_COMPETENCIES');
+    applicationsAdvanced = applicationIds.length;
 
-      // Log stage changes for each application
-      for (const app of awaitingApplications) {
-        await logStageChange(
-          app.id,
-          personId,
-          app.currentStage,
-          'SPECIALIZED_COMPETENCIES',
-          undefined,
-          `General competencies passed with score ${score}/${scale} (threshold: ${threshold})`
-        );
-      }
-
-      // TODO: In Phase 6c, send success emails for each application
-      // for (const app of awaitingApplications) {
-      //   await sendEmail(person.email, 'general-competencies-passed', { position: app.position });
-      // }
-    } else {
-      // Reject all applications
-      await rejectMultipleApplications(applicationIds);
-      applicationsRejected = applicationIds.length;
-
-      // Log status changes for each application
-      for (const app of awaitingApplications) {
-        await logStatusChange(
-          app.id,
-          personId,
-          'ACTIVE',
-          'REJECTED',
-          undefined,
-          `General competencies failed with score ${score}/${scale} (threshold: ${threshold})`
-        );
-      }
-
-      // TODO: In Phase 6c, send rejection emails for each application
-      // for (const app of awaitingApplications) {
-      //   await sendEmail(person.email, 'general-competencies-failed', { position: app.position });
-      // }
+    // Log stage changes for each application
+    for (const app of awaitingApplications) {
+      await logStageChange(
+        app.id,
+        personId,
+        app.currentStage,
+        'SPECIALIZED_COMPETENCIES',
+        undefined,
+        `General competencies passed with score ${score}/${scale} (threshold: ${threshold})`
+      );
     }
   }
 
+  // If GC failed, applications stay active at their current stage.
+  // The admin will see them flagged as "needs attention" and must reject manually.
+
   console.log(
     `[Webhook GC] Assessment processed: Person ${sanitizeForLog(personId)}, Score: ${sanitizeForLog(score)}/${scale} (threshold: ${threshold}), ` +
-      `Passed: ${passed}, Applications advanced: ${applicationsAdvanced}, rejected: ${applicationsRejected}`
+      `Passed: ${passed}, Applications advanced: ${applicationsAdvanced}`
   );
 
   return NextResponse.json(
@@ -212,7 +184,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: passed
         ? 'General competencies passed - applications advanced'
-        : 'General competencies not passed - applications rejected',
+        : 'General competencies not passed - awaiting admin decision',
       data: {
         assessmentId: assessment.id,
         personId,
@@ -220,7 +192,6 @@ export async function POST(request: NextRequest) {
         threshold,
         passed,
         applicationsAdvanced,
-        applicationsRejected,
         applicationIds,
       },
     },

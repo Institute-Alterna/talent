@@ -5,6 +5,7 @@
  * Tests use mocked Prisma client to avoid database dependencies.
  */
 
+import { recruitment } from '@/config/recruitment';
 import { db } from '@/lib/db';
 import {
   getPersons,
@@ -20,6 +21,10 @@ import {
   deletePerson,
   searchPersons,
 } from '@/lib/services/persons';
+
+const GC_THRESHOLD = recruitment.assessmentThresholds.generalCompetencies.threshold;
+const GC_PASSING_SCORE = GC_THRESHOLD + 150; // clearly above threshold
+const GC_FAILING_SCORE = GC_THRESHOLD - 50; // clearly below threshold
 
 // Mock the database
 jest.mock('@/lib/db', () => ({
@@ -230,7 +235,7 @@ describe('Person Service', () => {
       const updatedPerson = {
         ...mockPerson,
         generalCompetenciesCompleted: true,
-        generalCompetenciesScore: 850,
+        generalCompetenciesScore: GC_PASSING_SCORE,
         generalCompetenciesPassedAt: new Date(),
       };
 
@@ -238,14 +243,14 @@ describe('Person Service', () => {
 
       await updateGeneralCompetencies('person-123', {
         generalCompetenciesCompleted: true,
-        generalCompetenciesScore: 850, // Threshold is 800
+        generalCompetenciesScore: GC_PASSING_SCORE,
       });
 
       expect(db.person.update).toHaveBeenCalledWith({
         where: { id: 'person-123' },
         data: expect.objectContaining({
           generalCompetenciesCompleted: true,
-          generalCompetenciesScore: 850,
+          generalCompetenciesScore: GC_PASSING_SCORE,
           generalCompetenciesPassedAt: expect.any(Date),
         }),
       });
@@ -255,7 +260,7 @@ describe('Person Service', () => {
       const updatedPerson = {
         ...mockPerson,
         generalCompetenciesCompleted: true,
-        generalCompetenciesScore: 700,
+        generalCompetenciesScore: GC_FAILING_SCORE,
         generalCompetenciesPassedAt: null,
       };
 
@@ -263,14 +268,14 @@ describe('Person Service', () => {
 
       await updateGeneralCompetencies('person-123', {
         generalCompetenciesCompleted: true,
-        generalCompetenciesScore: 700, // Below threshold of 800
+        generalCompetenciesScore: GC_FAILING_SCORE,
       });
 
       expect(db.person.update).toHaveBeenCalledWith({
         where: { id: 'person-123' },
         data: expect.objectContaining({
           generalCompetenciesCompleted: true,
-          generalCompetenciesScore: 700,
+          generalCompetenciesScore: GC_FAILING_SCORE,
           generalCompetenciesPassedAt: null,
         }),
       });
@@ -281,7 +286,7 @@ describe('Person Service', () => {
     it('returns true when score meets threshold', async () => {
       (db.person.findUnique as jest.Mock).mockResolvedValue({
         generalCompetenciesCompleted: true,
-        generalCompetenciesScore: 850,
+        generalCompetenciesScore: GC_PASSING_SCORE,
       });
 
       const result = await hasPassedGeneralCompetencies('person-123');
@@ -292,7 +297,7 @@ describe('Person Service', () => {
     it('returns false when score below threshold', async () => {
       (db.person.findUnique as jest.Mock).mockResolvedValue({
         generalCompetenciesCompleted: true,
-        generalCompetenciesScore: 700,
+        generalCompetenciesScore: GC_FAILING_SCORE,
       });
 
       const result = await hasPassedGeneralCompetencies('person-123');

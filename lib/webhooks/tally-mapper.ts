@@ -454,9 +454,12 @@ export interface SubmissionUrl {
 
 /**
  * SC assessment result data
+ *
+ * `applicationId` is optional — SC forms may not embed a hidden application-ID
+ * field.  When absent the route handler resolves it via `respondentId`.
  */
 export interface SCAssessmentResult {
-  applicationId: string;
+  applicationId: string | undefined;
   personId?: string;
   specialisedCompetencyId?: string;
   score?: number;
@@ -506,11 +509,8 @@ export function extractSCAssessmentData(payload: TallyWebhookPayload): SCAssessm
   const applicationIdField = findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.applicationId);
   const applicationId = getStringValue(applicationIdField);
 
-  if (!applicationId) {
-    throw new Error(
-      'Application ID is required but missing from specialized assessment webhook'
-    );
-  }
+  // applicationId is optional — SC forms often omit the hidden field.
+  // When undefined the route handler resolves it via payload.data.respondentId.
 
   const personIdField = findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.personId);
   const personId = getStringValue(personIdField);

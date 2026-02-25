@@ -39,10 +39,10 @@ export function getTransporter(): Transporter<SMTPTransport.SentMessageInfo> {
       user: smtpConfig.auth.user,
       pass: smtpConfig.auth.pass,
     },
-    // Timeouts
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 10000,
-    socketTimeout: 30000, // 30 seconds for sending
+    // Timeouts (must fit within Vercel's 10s serverless limit)
+    connectionTimeout: 5000,
+    greetingTimeout: 5000,
+    socketTimeout: 8000,
   };
 
   transporter = nodemailer.createTransport(smtpOptions);
@@ -87,6 +87,23 @@ export function getDefaultMailOptions() {
 export function closeTransporter(): void {
   if (transporter) {
     transporter.close();
+    transporter = null;
+  }
+}
+
+/**
+ * Reset the transporter after a connection error
+ *
+ * Closes and nulls the singleton so the next call to getTransporter()
+ * creates a fresh connection. Use when detecting ECONNRESET, ETIMEDOUT, etc.
+ */
+export function resetTransporter(): void {
+  if (transporter) {
+    try {
+      transporter.close();
+    } catch {
+      // Ignore close errors — connection is already broken
+    }
     transporter = null;
   }
 }

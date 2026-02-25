@@ -293,18 +293,19 @@ export async function POST(
     }
 
     // Check result
-    if (!result.success && !result.queued) {
+    if (!result.success) {
+      // Differentiate rate-limit errors from other failures
+      const isRateLimit = result.error?.toLowerCase().includes('rate limit');
       return NextResponse.json(
         { error: result.error || 'Failed to send email' },
-        { status: 500 }
+        { status: isRateLimit ? 429 : 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: result.queued
-        ? 'Email queued for delivery (rate limit reached)'
-        : 'Email sent successfully',
+      queued: false,
+      message: 'Email sent successfully',
       emailLogId: result.emailLogId,
       messageId: result.messageId,
     });

@@ -125,7 +125,7 @@ describe('Email Service', () => {
       expect(result.error).toContain('Template not found');
     });
 
-    it('queues email when rate limited', async () => {
+    it('fails explicitly when rate limited', async () => {
       // Fill up hourly limit
       for (let i = 0; i < 100; i++) {
         await import('@/lib/email/queue').then((m) => m.recordSent(`test${i}@example.com`));
@@ -143,7 +143,8 @@ describe('Email Service', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.queued).toBe(true);
+      expect(result.queued).toBe(false);
+      expect(result.error).toMatch(/rate limit/i);
     });
 
     it('skips rate limiting when skipRateLimit is true', async () => {

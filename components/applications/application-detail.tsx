@@ -765,7 +765,7 @@ function RightPanel({
                 <div className="text-center py-2">
                   {isActionable ? (
                     <>
-                      <p className="text-xs text-muted-foreground mb-2">Assessment not yet submitted</p>
+                      <p className="text-xs text-muted-foreground opacity-60 mb-2">Assessment not yet submitted</p>
                       <SendEmailButton
                         template="general-competencies-invitation"
                         onSendEmail={onSendEmail}
@@ -952,7 +952,7 @@ function RightPanel({
                           {strings.interview.gcFailed}
                         </p>
                       ) : (
-                        <p className="text-xs text-muted-foreground mb-2">
+                        <p className="text-xs text-muted-foreground">
                           Ready to receive specialised assessment
                         </p>
                       )}
@@ -967,7 +967,7 @@ function RightPanel({
 
               {/* Send Assessment button (shown when GC passed and application is active) */}
               {isActionable && gcPassed && onSendSCInvitation && (
-                <div className="mt-3">
+                <div className="mt-2">
                   <Button
                     size="sm"
                     variant="outline"
@@ -1030,7 +1030,7 @@ function RightPanel({
                   )
                 ) : (
                   <Badge variant="secondary" className="text-xs">
-                    <Clock className="h-3 w-3 mr-1" /> Not Scheduled
+                    <Clock className="h-3 w-3 mr-1" /> Pending
                   </Badge>
                 )}
               </div>

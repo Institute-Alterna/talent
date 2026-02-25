@@ -68,7 +68,66 @@ export async function POST(request: NextRequest) {
     return webhookErrorResponse(message, 400, rateLimitHeaders);
   }
 
-  const { applicationId, specialisedCompetencyId, submissionUrls, rawData, tallySubmissionId } = assessmentData;
+  let { applicationId } = assessmentData;
+  const { specialisedCompetencyId, submissionUrls, rawData, tallySubmissionId } = assessmentData;
+
+  // ---------------------------------------------------------------------------
+  // Resolve applicationId via respondentId when the form omits the hidden field
+  // ---------------------------------------------------------------------------
+  if (!applicationId) {
+    const { respondentId } = payload.data;
+    console.log(`[Webhook SC] applicationId missing — resolving via respondentId ${sanitizeForLog(respondentId)}`);
+
+    const person = await db.person.findFirst({
+      where: { tallyRespondentId: respondentId },
+      include: {
+        applications: {
+          where: { status: 'ACTIVE' },
+          include: {
+            assessments: {
+              where: {
+                assessmentType: 'SPECIALIZED_COMPETENCIES',
+                completedAt: null,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!person) {
+      console.error(`[Webhook SC] No person found for respondentId: ${sanitizeForLog(respondentId)}`);
+      return webhookErrorResponse(
+        'Candidate not found — no person matched this respondent ID',
+        404,
+        rateLimitHeaders
+      );
+    }
+
+    const pendingByApp = person.applications.flatMap((app) =>
+      app.assessments.map((a) => ({ assessmentId: a.id, applicationId: app.id, createdAt: a.createdAt }))
+    );
+
+    if (pendingByApp.length === 0) {
+      console.error(`[Webhook SC] No pending SC assessments for respondentId: ${sanitizeForLog(respondentId)}`);
+      return webhookErrorResponse(
+        'No pending specialised competency assessment found for this candidate',
+        404,
+        rateLimitHeaders
+      );
+    }
+
+    if (pendingByApp.length > 1) {
+      // Ambiguous — use the most recently created pending assessment
+      pendingByApp.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      console.warn(
+        `[Webhook SC] Multiple pending SC assessments for respondentId ${sanitizeForLog(respondentId)} — using most recent`
+      );
+    }
+
+    applicationId = pendingByApp[0].applicationId;
+    console.log(`[Webhook SC] Resolved applicationId: ${sanitizeForLog(applicationId)} via respondentId`);
+  }
 
   // Log webhook receipt
   await logWebhookReceived(

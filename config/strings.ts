@@ -143,7 +143,7 @@ export const strings = {
     requirementNotMet: 'Candidate must pass General Competencies first',
     noInterviewScheduled: 'No interview has been scheduled yet',
     gcNotCompleted: 'General Competencies assessment must be completed first',
-    gcFailed: 'Candidate did not pass General Competencies',
+    gcFailed: 'General Competencies failed',
     // Dialog strings
     scheduleInterview: 'Schedule Interview',
     scheduleDescription: 'Send an interview invitation to the candidate for:',
@@ -305,6 +305,15 @@ export const strings = {
     warning: 'This will reject the application and cannot be undone.',
     confirmAction: 'Withdraw Offer',
     menuItem: 'Withdraw Offer',
+  },
+
+  // Toast notifications
+  toasts: {
+    emailSent: 'Email Sent',
+    emailSentDescription: 'The email has been sent successfully',
+    emailError: 'Failed to send email',
+    rateLimitTitle: 'Rate Limit Reached',
+    rateLimitDescription: 'The email could not be sent due to rate limiting. Please try again later.',
   },
 
   // Success messages
