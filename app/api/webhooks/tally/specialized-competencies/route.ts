@@ -174,10 +174,37 @@ export async function POST(request: NextRequest) {
           tallySubmissionId,
         },
       });
+    } else {
+      // Check for a completed-but-unreviewed assessment (re-submission before review)
+      const unreviewedAssessment = await db.assessment.findFirst({
+        where: {
+          applicationId,
+          specialisedCompetencyId,
+          assessmentType: 'SPECIALIZED_COMPETENCIES',
+          completedAt: { not: null },
+          passed: null,
+        },
+      });
+
+      if (unreviewedAssessment) {
+        // Update the existing unreviewed assessment with new submission data
+        assessment = await db.assessment.update({
+          where: { id: unreviewedAssessment.id },
+          data: {
+            completedAt: new Date(),
+            rawData: rawData as Prisma.InputJsonValue,
+            submissionUrls: submissionUrls as unknown as Prisma.InputJsonValue,
+            tallySubmissionId,
+          },
+        });
+        console.log(
+          `[Webhook SC] Re-submission updated existing unreviewed assessment: ${assessment.id}`
+        );
+      }
     }
   }
 
-  // If no pending assessment found, create a new one
+  // If no pending/unreviewed assessment found, create a new one
   if (!assessment) {
     assessment = await db.assessment.create({
       data: {

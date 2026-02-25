@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { strings } from '@/config';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { InlineError } from '@/components/shared/inline-error';
@@ -46,6 +47,7 @@ export interface DecisionData {
   reason: string;
   notes?: string;
   sendEmail: boolean;
+  startDate?: string;
 }
 
 export function DecisionDialog({
@@ -59,6 +61,7 @@ export function DecisionDialog({
   const [reason, setReason] = React.useState('');
   const [notes, setNotes] = React.useState('');
   const [sendEmail, setSendEmail] = React.useState(true);
+  const [startDate, setStartDate] = React.useState('');
 
   const isReject = decision === 'REJECT';
   // ACCEPT always sends the offer letter (contains agreement link)
@@ -72,12 +75,13 @@ export function DecisionDialog({
           reason: reason.trim(),
           notes: notes.trim() || undefined,
           sendEmail: isAccept ? true : sendEmail,
+          startDate: isAccept && startDate ? startDate : undefined,
         }),
       onClose,
       isProcessing,
       validate: () =>
-        isReject && !reason.trim()
-          ? strings.decision.reasonGdprNote
+        !reason.trim()
+          ? (isReject ? strings.decision.reasonGdprNote : 'A reason is required')
           : null,
     });
 
@@ -87,6 +91,7 @@ export function DecisionDialog({
       setReason('');
       setNotes('');
       setSendEmail(true);
+      setStartDate('');
     }
   }, [isOpen]);
 
@@ -118,7 +123,7 @@ export function DecisionDialog({
           <div className="space-y-2">
             <Label htmlFor="decision-reason">
               {strings.decision.reasonLabel}
-              {isReject && <span className="text-destructive ml-1">*</span>}
+              <span className="text-destructive ml-1">*</span>
             </Label>
             <Textarea
               id="decision-reason"
@@ -127,7 +132,7 @@ export function DecisionDialog({
               onChange={(e) => setReason(e.target.value)}
               disabled={isDisabled}
               rows={3}
-              className={isReject && !reason.trim() && error ? 'border-destructive' : ''}
+              className={!reason.trim() && error ? 'border-destructive' : ''}
             />
             {isReject && (
               <p className="text-xs text-muted-foreground">
@@ -148,6 +153,26 @@ export function DecisionDialog({
               rows={2}
             />
           </div>
+
+          {/* Start date — ACCEPT only */}
+          {isAccept && (
+            <div className="space-y-2">
+              <Label htmlFor="decision-start-date">
+                Proposed Start Date
+              </Label>
+              <Input
+                id="decision-start-date"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                disabled={isDisabled}
+                min={new Date().toISOString().split('T')[0]}
+              />
+              <p className="text-xs text-muted-foreground">
+                If left blank, defaults to two weeks from today.
+              </p>
+            </div>
+          )}
 
           {/* Send email — always on for ACCEPT, checkbox for REJECT */}
           {isAccept ? (

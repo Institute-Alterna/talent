@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAccess, requireAdmin, parseJsonBody, type RouteParams } from '@/lib/api-helpers';
-import { getCompetencyById, updateCompetency, deactivateCompetency, reactivateCompetency } from '@/lib/services/competencies';
+import { getCompetencyById, updateCompetency, deactivateCompetency, reactivateCompetency, hardDeleteCompetency } from '@/lib/services/competencies';
 import { isValidUUID, isValidURL } from '@/lib/utils';
 import { recruitment } from '@/config/recruitment';
 import { sanitizeForLog } from '@/lib/security';
@@ -159,6 +159,18 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const existing = await getCompetencyById(id);
     if (!existing) {
       return NextResponse.json({ error: 'Competency not found' }, { status: 404 });
+    }
+
+    // Hard delete when ?force=true — only if no assessments reference it
+    const force = new URL(request.url).searchParams.get('force') === 'true';
+    if (force) {
+      try {
+        const competency = await hardDeleteCompetency(id);
+        return NextResponse.json({ competency, message: 'Competency permanently deleted' });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Cannot hard-delete competency';
+        return NextResponse.json({ error: msg }, { status: 400 });
+      }
     }
 
     if (!existing.isActive) {

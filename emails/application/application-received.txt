@@ -1,0 +1,19 @@
+We've received your application.
+
+Hey {{PERSON_FIRST_NAME}},
+
+Thank you for your interest in joining {{ORGANIZATION_SHORT_NAME}}. This email is to confirm we have successfully received your application for the {{POSITION}} role submitted on {{APPLICATION_DATE}}.
+
+We would like to cordially remind you that all applications are reviewed by humans, not filtered by AI. Therefore, you may expect a response within 2-5 business days regarding the next steps in the recruitment process.
+
+As part of our selection process, we invite you to complete a brief General Competencies Questionnaire. This questionnaire helps us understand your skills and your skills in the workplace, which will take approximately 15-20 minutes to complete.
+
+You may contact us at https://alterna.dev/contact/ if you need any accommodations or wish to have your questionnaire minutes count towards community service hours.
+
+Start Questionnaire: {{GC_ASSESSMENT_LINK}}
+
+---
+
+Sent to {{PERSON_EMAIL}} on {{SENT_TIME}} (Coordinated Universal Time). Please do not reply to this email as this is an unmonitored inbox.
+
+{{ORGANIZATION_SHORT_NAME}} is an equal opportunity provider committed to inclusion and diversity. Our recruitment process is driven by a merit-first approach that does not discriminate candidates due to their ethnicity, religion, sexual orientation, identity, national origin, disability, or any other legally protected characteristic.

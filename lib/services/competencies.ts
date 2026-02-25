@@ -82,6 +82,25 @@ export async function reactivateCompetency(id: string): Promise<SpecialisedCompe
 }
 
 /**
+ * Hard-delete a specialised competency if no assessments reference it
+ *
+ * @returns The deleted competency, or throws if assessments exist
+ */
+export async function hardDeleteCompetency(id: string): Promise<SpecialisedCompetency> {
+  const assessmentCount = await db.assessment.count({
+    where: { specialisedCompetencyId: id },
+  });
+
+  if (assessmentCount > 0) {
+    throw new Error(
+      `Cannot hard-delete: ${assessmentCount} assessment(s) reference this competency. Deactivate it instead.`
+    );
+  }
+
+  return db.specialisedCompetency.delete({ where: { id } });
+}
+
+/**
  * Get competencies by IDs (for bulk operations like sending invitations)
  */
 export async function getCompetenciesByIds(ids: string[]): Promise<SpecialisedCompetency[]> {

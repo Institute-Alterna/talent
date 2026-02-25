@@ -20,6 +20,7 @@ import {
   type EmailTemplateName,
 } from './config';
 import { logEmailSent } from '@/lib/audit';
+import { branding } from '@/config';
 
 /**
  * Detect SMTP connection errors that warrant a transporter reset
@@ -135,8 +136,11 @@ export async function sendEmail(options: SendEmailOptions): Promise<SendResult> 
     skipRateLimit = false,
   } = options;
 
-  // Render template
-  const { html, text, subject } = renderTemplate(template, variables);
+  // Render template — inject PERSON_EMAIL so all templates can display the recipient address
+  const { html, text, subject } = renderTemplate(template, {
+    PERSON_EMAIL: to,
+    ...variables,
+  });
 
   if (!html && !text) {
     console.error(`[Email] Template not found: ${template}`);
@@ -347,7 +351,8 @@ export async function sendSCInvitations(
     const sc = competencies[0];
     const scLink = buildAssessmentLink(sc.tallyFormUrl, personId, applicationId, sc.id);
 
-    const scListHtml = `<li style="margin-bottom: 12px;"><p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 28px 0;"><a href="${scLink}" style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; display: inline-block; background-color: {{PRIMARY_COLOR}}; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 4px; font-weight: 500;">Start Assessment</a></p><p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0 0 20px 0; color: #666666; font-size: 14px;">If the button doesn&rsquo;t work, copy and paste this link into your browser:<br><a href="${scLink}" style="color: {{PRIMARY_COLOR}}; word-break: break-all;">${scLink}</a></p></li>`;
+    const primaryColor = branding.primaryColor;
+    const scListHtml = `<li style="margin-bottom: 12px;"><p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 28px 0;"><a href="${scLink}" style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; display: inline-block; background-color: ${primaryColor}; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 4px; font-weight: 500;">Start Assessment</a></p><p style="font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; margin: 0 0 20px 0; color: #666666; font-size: 14px;">If the button doesn&rsquo;t work, copy and paste this link into your browser:<br><a href="${scLink}" style="color: ${primaryColor}; word-break: break-all;">${scLink}</a></p></li>`;
 
     return sendEmail({
       to,
@@ -364,9 +369,10 @@ export async function sendSCInvitations(
   }
 
   // Multiple SCs — build a list of links
+  const primaryColor = branding.primaryColor;
   const scListHtml = competencies.map((sc) => {
     const scLink = buildAssessmentLink(sc.tallyFormUrl, personId, applicationId, sc.id);
-    return `<li style="margin-bottom: 12px;"><strong>${escapeHtml(sc.name)}</strong><br><a href="${scLink}" style="color: {{PRIMARY_COLOR}}; text-decoration: underline;">Start Assessment</a></li>`;
+    return `<li style="margin-bottom: 12px;"><strong>${escapeHtml(sc.name)}</strong><br><a href="${scLink}" style="color: ${primaryColor}; text-decoration: underline;">Start Assessment</a></li>`;
   }).join('');
 
   return sendEmail({
@@ -448,7 +454,10 @@ export async function sendOfferLetter(
   additionalDetails?: string
 ): Promise<SendResult> {
   const agreementLink = appUrls.tallyAgreementForm
-    ? buildAssessmentLink(appUrls.tallyAgreementForm, personId, applicationId)
+    ? buildAssessmentLink(appUrls.tallyAgreementForm, personId, applicationId, undefined, {
+        firstName,
+        position,
+      })
     : '';
 
   return sendEmail({

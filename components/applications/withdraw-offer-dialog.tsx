@@ -65,25 +65,36 @@ export function WithdrawOfferDialog({
           : null,
     });
 
+  const [countdownStarted, setCountdownStarted] = React.useState(false);
+
   // Reset form and countdown when dialog opens/closes
   React.useEffect(() => {
     if (isOpen) {
       setReason('');
       setSendEmail(true);
       setCountdown(5);
+      setCountdownStarted(false);
     }
   }, [isOpen]);
 
-  // Countdown timer
+  // Start countdown when reason becomes non-empty for the first time
   React.useEffect(() => {
-    if (!isOpen || countdown <= 0) return;
+    if (!countdownStarted && reason.trim().length > 0) {
+      setCountdownStarted(true);
+      setCountdown(5);
+    }
+  }, [reason, countdownStarted]);
+
+  // Countdown timer — only runs after started
+  React.useEffect(() => {
+    if (!isOpen || !countdownStarted || countdown <= 0) return;
     const timer = setInterval(() => {
       setCountdown(prev => prev - 1);
     }, 1000);
     return () => clearInterval(timer);
-  }, [isOpen, countdown]);
+  }, [isOpen, countdownStarted, countdown]);
 
-  const isCountdownActive = countdown > 0;
+  const isCountdownActive = !countdownStarted || countdown > 0;
 
   return (
     <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>

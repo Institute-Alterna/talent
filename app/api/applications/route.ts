@@ -96,6 +96,16 @@ export async function GET(request: NextRequest) {
       ? (statusParam as Status)
       : undefined;
 
+    // Parse createdAfter date filter
+    const createdAfterRaw = searchParams.get('createdAfter');
+    let createdAfter: Date | undefined;
+    if (createdAfterRaw) {
+      const parsed = new Date(createdAfterRaw);
+      if (!Number.isNaN(parsed.getTime())) {
+        createdAfter = parsed;
+      }
+    }
+
     // Parse pagination with bounds
     const pageRaw = parseInt(searchParams.get('page') || '1', 10);
     const page = Number.isNaN(pageRaw) || pageRaw < 1 ? 1 : pageRaw;
@@ -124,6 +134,7 @@ export async function GET(request: NextRequest) {
         limit,
         sortBy,
         sortOrder,
+        createdAfter,
       }),
       getApplicationStats({
         status,

@@ -22,7 +22,8 @@ import { Badge } from '@/components/ui/badge';
 import { InlineError } from '@/components/shared/inline-error';
 import { useDialogSubmit } from '@/hooks';
 import { strings, recruitment } from '@/config';
-import { CheckCircle, AlertTriangle, Loader2, Mail } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { CheckCircle, AlertTriangle, Loader2, Mail, Search } from 'lucide-react';
 import type { SpecialisedCompetencyOption } from '@/types';
 
 interface SCExplorerDialogProps {
@@ -44,6 +45,7 @@ export function SCExplorerDialog({
   const [isLoading, setIsLoading] = React.useState(true);
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   const categories = React.useMemo(
     () => ['all', ...recruitment.scCategories] as const,
@@ -55,6 +57,7 @@ export function SCExplorerDialog({
     if (!isOpen) {
       setSelectedIds([]);
       setSelectedCategory('all');
+      setSearchQuery('');
       return;
     }
 
@@ -66,9 +69,20 @@ export function SCExplorerDialog({
       .finally(() => setIsLoading(false));
   }, [isOpen]);
 
-  const filteredCompetencies = selectedCategory === 'all'
-    ? competencies
-    : competencies.filter(c => c.category === selectedCategory);
+  const filteredCompetencies = React.useMemo(() => {
+    let filtered = selectedCategory === 'all'
+      ? competencies
+      : competencies.filter(c => c.category === selectedCategory);
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter(
+        c => c.name.toLowerCase().includes(query) || c.criterion.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
+  }, [competencies, selectedCategory, searchQuery]);
 
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => {
@@ -115,6 +129,17 @@ export function SCExplorerDialog({
               {cat === 'all' ? 'All' : cat}
             </button>
           ))}
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search by name or criterion..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 h-8 text-xs"
+          />
         </div>
 
         {/* SC grid */}

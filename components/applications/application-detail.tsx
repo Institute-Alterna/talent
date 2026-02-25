@@ -64,6 +64,7 @@ import {
 } from 'lucide-react';
 import { GCQResponsesDialog } from './gcq-responses-dialog';
 import { SCExplorerDialog } from './sc-explorer-dialog';
+import { SCReviewDialog } from './sc-review-dialog';
 import { GC_SUBSCORE_ENTRIES, extractGCSubscores, hasGCFields } from '@/lib/gc-utils';
 
 /**
@@ -656,8 +657,12 @@ function RightPanel({
 
   // --- Compute GC status once (used by all four cards) ---
   const gcConfig = recruitment.assessmentThresholds.generalCompetencies;
+  // Prefer the threshold stored at assessment time over the current config value
+  const gcAssessmentThreshold = person.assessments?.[0]?.threshold
+    ? parseFloat(person.assessments[0].threshold)
+    : gcConfig.threshold;
   const gcScore = parseFloat(person.generalCompetenciesScore || '0');
-  const gcPassed = person.generalCompetenciesCompleted && gcScore >= gcConfig.threshold;
+  const gcPassed = person.generalCompetenciesCompleted && gcScore >= gcAssessmentThreshold;
   const gcFailed = person.generalCompetenciesCompleted && !gcPassed;
   const gcNotCompleted = !person.generalCompetenciesCompleted;
   const gcScoreDisplay = formatScoreDisplay(person.generalCompetenciesScore, gcConfig.scale);
@@ -675,6 +680,9 @@ function RightPanel({
 
   // SC explorer dialog state (local to RightPanel)
   const [isSCExplorerOpen, setIsSCExplorerOpen] = React.useState(false);
+
+  // SC review dialog state (local to RightPanel)
+  const [scReviewAssessment, setScReviewAssessment] = React.useState<typeof scAssessments[number] | null>(null);
 
   return (
     <div className="space-y-4">
@@ -767,7 +775,7 @@ function RightPanel({
                     <>
                       <p className="text-xs text-muted-foreground opacity-60 mb-2">Assessment not yet submitted</p>
                       <SendEmailButton
-                        template="general-competencies-invitation"
+                        template="assessment/general-competencies-invitation"
                         onSendEmail={onSendEmail}
                         sendingEmailTemplate={sendingEmailTemplate}
                         disabled={isAnyOperationInProgress}
@@ -892,44 +900,27 @@ function RightPanel({
                           </div>
                         )}
 
-                        {/* Admin review buttons */}
+                        {/* Admin review button — opens confirmation dialog */}
                         {isAdmin && isAwaitingReview && onReviewSC && (
-                          <div className="flex gap-2 pt-1">
+                          <div className="pt-1">
                             <Button
                               size="sm"
                               variant="outline"
-                              className="text-xs h-7 flex-1 border-red-200 text-red-600 hover:bg-red-50"
-                              onClick={() => onReviewSC(sc.id, false)}
+                              className="text-xs h-7 w-full"
+                              onClick={() => setScReviewAssessment(sc)}
                               disabled={isAnyOperationInProgress}
                             >
-                              {isReviewingSC ? (
-                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                              ) : (
-                                <XCircle className="h-3 w-3 mr-1" />
-                              )}
-                              {strings.competencies.markFailed}
-                            </Button>
-                            <Button
-                              size="sm"
-                              className="text-xs h-7 flex-1"
-                              onClick={() => onReviewSC(sc.id, true)}
-                              disabled={isAnyOperationInProgress}
-                            >
-                              {isReviewingSC ? (
-                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                              ) : (
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                              )}
-                              {strings.competencies.markPassed}
+                              <ClipboardList className="h-3 w-3 mr-1" />
+                              {strings.competencies.reviewAssessment}
                             </Button>
                           </div>
                         )}
 
                         {/* Reviewer info */}
                         {sc.reviewer && sc.reviewedAt && (
-                          <div className="flex justify-between text-xs text-muted-foreground pt-1 border-t">
-                            <span>Reviewed by {sc.reviewer.displayName}</span>
-                            <span>{formatDateShort(sc.reviewedAt)}</span>
+                          <div className="text-xs text-muted-foreground pt-1 border-t space-y-0.5">
+                            <p>Reviewed by {sc.reviewer.displayName}</p>
+                            <p>{formatDateShort(sc.reviewedAt)}</p>
                           </div>
                         )}
                       </div>
@@ -1001,6 +992,20 @@ function RightPanel({
                   }}
                   isProcessing={isSendingSCInvitation}
                   alreadyAssignedIds={alreadyAssignedScIds}
+                />
+              )}
+
+              {/* SC Review Dialog */}
+              {onReviewSC && (
+                <SCReviewDialog
+                  isOpen={scReviewAssessment !== null}
+                  onClose={() => setScReviewAssessment(null)}
+                  onConfirm={async (assessmentId, passed) => {
+                    await onReviewSC(assessmentId, passed);
+                    setScReviewAssessment(null);
+                  }}
+                  isProcessing={isReviewingSC}
+                  assessment={scReviewAssessment}
                 />
               )}
             </>

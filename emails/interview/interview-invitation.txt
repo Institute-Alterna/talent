@@ -1,0 +1,26 @@
+Interview Invitation
+
+Hey {{PERSON_FIRST_NAME}},
+
+Great news! We're pleased to invite you to an interview for the {{POSITION}} position at {{ORGANIZATION_SHORT_NAME}}.
+
+Your Interviewer: {{INTERVIEWER_NAME}}
+Duration & Format: 25 minute video call
+
+Please consider the following:
+- Camera must be enabled throughout the interview
+- Ensure you are in a quiet, distraction-free environment
+- Feel free to ask questions at any point
+- Please join on time; contact us in advance if you need to reschedule
+
+Please use the link below to schedule a time that works best for you:
+
+Schedule Interview: {{SCHEDULING_LINK}}
+
+If you need to reschedule or have any questions, please contact us at {{SUPPORT_EMAIL}}.
+
+---
+
+Sent to {{PERSON_EMAIL}} on {{SENT_TIME}} (Coordinated Universal Time). Please do not reply to this email as this is an unmonitored inbox.
+
+{{ORGANIZATION_SHORT_NAME}} is an equal opportunity provider committed to inclusion and diversity. Our recruitment process is driven by a merit-first approach that does not discriminate candidates due to their ethnicity, religion, sexual orientation, identity, national origin, disability, or any other legally protected characteristic.

@@ -221,7 +221,8 @@ export function buildAssessmentLink(
   baseUrl: string,
   personId: string,
   applicationId?: string,
-  scId?: string
+  scId?: string,
+  extras?: Record<string, string>
 ): string {
   const url = new URL(baseUrl);
   url.searchParams.set('who', personId);
@@ -230,6 +231,11 @@ export function buildAssessmentLink(
   }
   if (scId) {
     url.searchParams.set('scId', scId);
+  }
+  if (extras) {
+    for (const [key, value] of Object.entries(extras)) {
+      url.searchParams.set(key, value);
+    }
   }
   return url.toString();
 }

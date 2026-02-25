@@ -101,6 +101,9 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   const [positionFilter, setPositionFilter] = React.useState<string>('all');
   const [needsAttentionFilter, setNeedsAttentionFilter] = React.useState(false);
   const [showAttentionBreakdown, setShowAttentionBreakdown] = React.useState(false);
+  const [showOlderApplications, setShowOlderApplications] = React.useState(false);
+  const [listPage, setListPage] = React.useState(1);
+  const [listTotalPages, setListTotalPages] = React.useState(1);
   const isDesktop = useMediaQuery('(min-width: 768px)');
 
   // Detail modal
@@ -209,11 +212,19 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
         // List view for Accepted/Rejected
         const params = new URLSearchParams({
           status: statusFilter,
-          limit: '100',
+          limit: '50',
+          page: String(listPage),
           sortBy: 'updatedAt',
           sortOrder: 'desc',
           ...(positionFilter !== 'all' && { position: positionFilter }),
         });
+
+        // Default to last 1 year unless "show older" is toggled
+        if (!showOlderApplications) {
+          const oneYearAgo = new Date();
+          oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+          params.set('createdAfter', oneYearAgo.toISOString());
+        }
 
         const response = await fetch(`/api/applications?${params.toString()}`, {
           ...(force && { cache: 'no-store' }),
@@ -224,6 +235,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
         const data = await response.json();
         setListData(data.applications || []);
+        setListTotalPages(data.totalPages || 1);
         setStats(data.stats);
         setPipelineData(null);
       }
@@ -237,7 +249,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [statusFilter, positionFilter, toast]);
+  }, [statusFilter, positionFilter, listPage, showOlderApplications, toast]);
 
   // Fetch application detail
   const fetchApplicationDetail = React.useCallback(async (id: string, force?: boolean) => {
@@ -285,6 +297,12 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       setIsFullscreen(false);
     }
   }, [isActiveView]);
+
+  // Reset list page and "show older" when filters change
+  React.useEffect(() => {
+    setListPage(1);
+    setShowOlderApplications(false);
+  }, [statusFilter, positionFilter]);
 
   // Fetch detail when selection changes
   React.useEffect(() => {
@@ -642,6 +660,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     reason: string;
     notes?: string;
     sendEmail: boolean;
+    startDate?: string;
   }) => {
     if (!selectedApplicationId) return;
 
@@ -1056,14 +1075,63 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
             isLoading={isLoading}
           />
         ) : (
-          <ApplicationListView
-            applications={filteredListData}
-            status={statusFilter as Status}
-            onViewApplication={handleViewApplication}
-            onExportPdf={handleExportPdf}
-            exportingPdfId={exportingPdfId}
-            isLoading={isLoading}
-          />
+          <>
+            <ApplicationListView
+              applications={filteredListData}
+              status={statusFilter as Status}
+              onViewApplication={handleViewApplication}
+              onExportPdf={handleExportPdf}
+              exportingPdfId={exportingPdfId}
+              isLoading={isLoading}
+            />
+
+            {/* Pagination controls + "Show older" toggle */}
+            <div className="flex items-center justify-between pt-4">
+              <div className="flex items-center gap-2">
+                {!showOlderApplications && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowOlderApplications(true)}
+                  >
+                    Show older applications
+                  </Button>
+                )}
+                {showOlderApplications && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowOlderApplications(false)}
+                  >
+                    Hide older applications
+                  </Button>
+                )}
+              </div>
+              {listTotalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={listPage <= 1}
+                    onClick={() => setListPage(p => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {listPage} of {listTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={listPage >= listTotalPages}
+                    onClick={() => setListPage(p => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {/* Fullscreen Pipeline Overlay (desktop + active view only) */}

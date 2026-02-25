@@ -1,0 +1,18 @@
+Welcome to {{ORGANIZATION_SHORT_NAME}}!
+
+Hey {{PERSON_FIRST_NAME}},
+
+Your account has been created and you're ready to get started! Below you'll find your login credentials.
+
+Email: {{ALTERNA_EMAIL}}
+Temporary Password: {{TEMPORARY_PASSWORD}}
+
+IMPORTANT: Please change your password immediately after your first login for security purposes.
+
+Login Now: {{LOGIN_URL}}
+
+If you have any questions or need assistance, please contact us at {{SUPPORT_EMAIL}}.
+
+---
+
+Sent to {{PERSON_EMAIL}} on {{SENT_TIME}} (Coordinated Universal Time). Please do not reply to this email as this is an unmonitored inbox.

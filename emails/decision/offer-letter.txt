@@ -1,0 +1,27 @@
+Congratulations, {{PERSON_FIRST_NAME}}!
+
+We are thrilled to extend an official offer for you to join {{ORGANIZATION_SHORT_NAME}} as a {{POSITION}}.
+
+After reviewing your application, assessments, and interview, we are confident that you will be an excellent addition to our team.
+
+Role: {{POSITION}}
+Proposed Start Date: {{START_DATE}}
+
+{{ADDITIONAL_DETAILS}}
+
+Next Steps:
+1. Review the offer details carefully
+2. Sign the agreement using the link below
+3. Prepare for your start date
+
+Sign Agreement: {{AGREEMENT_LINK}}
+
+We are excited to welcome you to {{ORGANIZATION_SHORT_NAME}} and look forward to the contributions you will make to our team.
+
+If you have any questions about this offer, please contact us at {{SUPPORT_EMAIL}}.
+
+---
+
+Sent to {{PERSON_EMAIL}} on {{SENT_TIME}} (Coordinated Universal Time). Please do not reply to this email as this is an unmonitored inbox.
+
+{{ORGANIZATION_SHORT_NAME}} is an equal opportunity provider committed to inclusion and diversity. Our recruitment process is driven by a merit-first approach that does not discriminate candidates due to their ethnicity, religion, sexual orientation, identity, national origin, disability, or any other legally protected characteristic.

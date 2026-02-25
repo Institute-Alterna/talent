@@ -87,8 +87,14 @@ export async function POST(
       );
     }
 
-    // Default reason for acceptance
-    const finalReason = reason?.trim() || 'Application accepted';
+    // Reason is required for both accept and reject
+    const finalReason = reason?.trim();
+    if (!finalReason) {
+      return NextResponse.json(
+        { error: 'Reason is required' },
+        { status: 400 }
+      );
+    }
 
     // Optional notes
     const notes = typeof body.notes === 'string' ? sanitizeText(body.notes, 5000) : null;
@@ -179,7 +185,7 @@ export async function POST(
           application.person.firstName,
           application.position,
           startDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // Default: 2 weeks from now
-          notes || undefined
+          undefined // Never pass internal notes to candidate emails
         );
       } else {
         // Send rejection

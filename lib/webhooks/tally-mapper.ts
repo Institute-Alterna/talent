@@ -157,6 +157,21 @@ export function findFieldByKey(fields: TallyField[], keyPrefix: string): TallyFi
 }
 
 /**
+ * Find a field by its label (case-insensitive)
+ *
+ * Fallback lookup for forms where the key prefix is dynamic
+ * but the label is stable (e.g. "scId", "applicationId", "who").
+ *
+ * @param fields - Array of Tally fields
+ * @param label - The label to search for (case-insensitive)
+ * @returns The matching field or undefined
+ */
+export function findFieldByLabel(fields: TallyField[], label: string): TallyField | undefined {
+  const lower = label.toLowerCase();
+  return fields.find((f) => f.label.toLowerCase() === lower);
+}
+
+/**
  * Get string value from a field
  *
  * @param field - The Tally field
@@ -506,21 +521,30 @@ export function extractFileUrls(fields: TallyField[]): SubmissionUrl[] {
 export function extractSCAssessmentData(payload: TallyWebhookPayload): SCAssessmentResult {
   const { fields, submissionId } = payload.data;
 
-  const applicationIdField = findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.applicationId);
+  // Try key-based lookup first, then fall back to label-based lookup
+  const applicationIdField =
+    findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.applicationId) ||
+    findFieldByLabel(fields, 'applicationId');
   const applicationId = getStringValue(applicationIdField);
 
   // applicationId is optional — SC forms often omit the hidden field.
   // When undefined the route handler resolves it via payload.data.respondentId.
 
-  const personIdField = findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.personId);
+  const personIdField =
+    findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.personId) ||
+    findFieldByLabel(fields, 'who');
   const personId = getStringValue(personIdField);
 
   // Score is optional — admin reviews SC submissions manually
-  const scoreField = findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.score);
+  const scoreField =
+    findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.score) ||
+    findFieldByLabel(fields, 'score');
   const score = getNumberValue(scoreField);
 
   // Extract specialised competency definition ID (optional)
-  const scIdField = findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.specialisedCompetencyId);
+  const scIdField =
+    findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.specialisedCompetencyId) ||
+    findFieldByLabel(fields, 'scId');
   const specialisedCompetencyId = getStringValue(scIdField);
 
   // Extract all file URLs from the submission
@@ -577,7 +601,9 @@ export interface AgreementSigningResult {
 export function extractAgreementData(payload: TallyWebhookPayload): AgreementSigningResult {
   const { fields, submissionId } = payload.data;
 
-  const applicationIdField = findFieldByKey(fields, AGREEMENT_FIELD_KEYS.applicationId);
+  const applicationIdField =
+    findFieldByKey(fields, AGREEMENT_FIELD_KEYS.applicationId) ||
+    findFieldByLabel(fields, 'applicationId');
   const applicationId = getStringValue(applicationIdField);
 
   if (!applicationId) {

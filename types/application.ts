@@ -306,6 +306,7 @@ export interface ApplicationFilters {
   limit?: number;
   sortBy?: 'createdAt' | 'updatedAt' | 'position';
   sortOrder?: 'asc' | 'desc';
+  createdAfter?: Date;
 }
 
 /**

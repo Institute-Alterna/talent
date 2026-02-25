@@ -42,6 +42,7 @@ export async function getApplications(filters?: ApplicationFilters): Promise<App
     limit = 20,
     sortBy = 'createdAt',
     sortOrder = 'desc',
+    createdAfter,
   } = filters || {};
 
   const where: Prisma.ApplicationWhereInput = {};
@@ -60,6 +61,10 @@ export async function getApplications(filters?: ApplicationFilters): Promise<App
 
   if (status) {
     where.status = status;
+  }
+
+  if (createdAfter) {
+    where.createdAt = { gte: createdAfter };
   }
 
   if (search) {
@@ -233,8 +238,7 @@ export async function getApplicationsForPipeline(filters?: {
       ((app.currentStage === 'APPLICATION' || app.currentStage === 'GENERAL_COMPETENCIES') &&
         (!app.person.generalCompetenciesCompleted || gcFailed)) ||
       (app.currentStage === 'SPECIALIZED_COMPETENCIES' && (
-        app.assessments.length === 0 ||
-        app.assessments.some(a => a.passed === null)
+        app.assessments.some(a => a.completedAt !== null && a.passed === null)
       )) ||
       (app.currentStage === 'INTERVIEW' && app.interviews.length === 0)
     );
@@ -665,10 +669,10 @@ export async function getApplicationStats(filters?: {
     byStatus[item.status] = item._count;
   }
 
-  // Get counts by position
+  // Get counts by position — scoped to current status filter
   const positionCounts = await db.application.groupBy({
     by: ['position'],
-    where: baseWhere,
+    where: filters?.status ? { ...baseWhere, status: filters.status } : baseWhere,
     _count: true,
   });
 
@@ -738,12 +742,8 @@ export async function getAttentionBreakdown(filters?: {
       where: {
         ...base,
         currentStage: 'SPECIALIZED_COMPETENCIES',
-        OR: [
-          // No SC assessments submitted at all
-          { assessments: { none: { assessmentType: 'SPECIALIZED_COMPETENCIES' } } },
-          // At least one SC assessment awaiting admin review (passed is null)
-          { assessments: { some: { assessmentType: 'SPECIALIZED_COMPETENCIES', passed: null } } },
-        ],
+        // At least one SC assessment submitted but awaiting admin review
+        assessments: { some: { assessmentType: 'SPECIALIZED_COMPETENCIES', completedAt: { not: null }, passed: null } },
       },
     }),
     // No completed interview yet — matches needsAttention card logic
