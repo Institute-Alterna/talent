@@ -21,6 +21,7 @@ import {
   sendSCInvitations,
   sendInterviewInvitation,
   sendRejection,
+  sendOfferLetter,
   EMAIL_TEMPLATES,
   type EmailTemplateName,
 } from '@/lib/email';
@@ -37,6 +38,7 @@ const ALLOWED_TEMPLATES: EmailTemplateName[] = [
   EMAIL_TEMPLATES.SC_INVITATION,
   EMAIL_TEMPLATES.INTERVIEW_INVITATION,
   EMAIL_TEMPLATES.REJECTION,
+  EMAIL_TEMPLATES.OFFER_LETTER,
 ];
 
 /**
@@ -95,6 +97,16 @@ export async function POST(
         { error: 'Cannot send a rejection email to an accepted application' },
         { status: 400 }
       );
+    }
+
+    // Offer letter can only be resent at AGREEMENT stage with ACCEPTED status
+    if (templateName === EMAIL_TEMPLATES.OFFER_LETTER) {
+      if (application.currentStage !== 'AGREEMENT' || application.status !== 'ACCEPTED') {
+        return NextResponse.json(
+          { error: 'Offer letter can only be resent for accepted applications at the Agreement stage' },
+          { status: 400 }
+        );
+      }
     }
 
     const person = application.person;
@@ -281,6 +293,22 @@ export async function POST(
           firstName,
           position,
           reason ? escapeHtml(reason.substring(0, 500)) : undefined
+        );
+        break;
+      }
+
+      case EMAIL_TEMPLATES.OFFER_LETTER: {
+        // Resend offer letter with agreement link
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() + 14); // Default: 2 weeks from now
+
+        result = await sendOfferLetter(
+          personId,
+          applicationId,
+          recipientEmail,
+          firstName,
+          position,
+          startDate
         );
         break;
       }

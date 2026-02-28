@@ -461,7 +461,6 @@ export function getStatusColor(status: string): string {
 export function getStageColor(stage: string): string {
   switch (stage) {
     case 'APPLICATION':
-      return pdfColors.textMuted;
     case 'GENERAL_COMPETENCIES':
     case 'SPECIALIZED_COMPETENCIES':
       return pdfColors.primary;

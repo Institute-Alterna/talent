@@ -151,8 +151,7 @@ describe('Dashboard API Routes', () => {
       // Mock applications by stage
       (mockDb.application.groupBy as jest.Mock)
         .mockResolvedValueOnce([
-          { currentStage: Stage.APPLICATION, _count: 5 },
-          { currentStage: Stage.GENERAL_COMPETENCIES, _count: 3 },
+          { currentStage: Stage.GENERAL_COMPETENCIES, _count: 8 },
           { currentStage: Stage.INTERVIEW, _count: 2 },
         ])
         .mockResolvedValueOnce([
@@ -239,7 +238,7 @@ describe('Dashboard API Routes', () => {
       expect(response.status).toBe(200);
       expect(data.metrics.totalActiveApplications).toBe(0);
       expect(data.metrics.totalPersons).toBe(0);
-      expect(data.byStage.APPLICATION).toBe(0);
+      expect(data.byStage.GENERAL_COMPETENCIES).toBe(0);
       expect(data.byStage.SIGNED).toBe(0);
       expect(data.byStatus.ACTIVE).toBe(0);
       expect(data.recentActivity).toEqual([]);
@@ -266,8 +265,8 @@ describe('Dashboard API Routes', () => {
       const data = await response.json();
 
       expect(response.status).toBe(200);
-      // All stages should be present even if 0
-      expect(data.byStage).toHaveProperty('APPLICATION');
+      // All active stages should be present even if 0 (APPLICATION is removed)
+      expect(data.byStage).not.toHaveProperty('APPLICATION');
       expect(data.byStage).toHaveProperty('GENERAL_COMPETENCIES');
       expect(data.byStage).toHaveProperty('SPECIALIZED_COMPETENCIES');
       expect(data.byStage).toHaveProperty('INTERVIEW');

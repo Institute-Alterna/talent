@@ -375,6 +375,6 @@ describe('Email Template Files', () => {
     expect(template).toContain('Your Interviewer');
     expect(template).toContain('{{INTERVIEWER_NAME}}');
     expect(template).toContain('Duration & Format');
-    expect(template).toContain('25 minute video call');
+    expect(template).toContain('25-minute video call');
   });
 });

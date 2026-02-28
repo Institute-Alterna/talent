@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Timeline, TimelineItem, mapActionTypeToTimelineType } from '@/components/ui/timeline';
 import { strings } from '@/config';
+import { humaniseAuditAction } from '@/lib/audit-display';
 import { Stage } from '@/lib/generated/prisma/client';
 import {
   RefreshCw,
@@ -114,7 +115,7 @@ export function DashboardPageClient() {
   // Convert activity to timeline items
   const activityItems: TimelineItem[] = (data?.recentActivity || []).map(item => ({
     id: item.id,
-    title: item.action,
+    title: humaniseAuditAction(item),
     description: item.person
       ? `${item.person.firstName} ${item.person.lastName}${item.application ? ` - ${item.application.position}` : ''}`
       : undefined,
@@ -211,7 +212,7 @@ export function DashboardPageClient() {
                 <div className="h-[180px] w-[180px] animate-pulse rounded-full bg-muted" />
               </div>
             }>
-              <PipelineChart data={data?.byStage as Record<Stage, number>} />
+              <PipelineChart data={data?.byStage as Partial<Record<Stage, number>>} />
             </React.Suspense>
           )}
         </div>

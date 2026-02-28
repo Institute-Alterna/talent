@@ -27,8 +27,7 @@ import {
 import {
   getApplicationById,
   getApplicationByAgreementTallySubmissionId,
-  updateApplicationAgreement,
-  advanceApplicationStage,
+  updateApplicationAgreementAndAdvance,
 } from '@/lib/services/applications';
 import {
   logWebhookReceived,
@@ -48,20 +47,6 @@ export async function POST(request: NextRequest) {
   const { payload, ip, rateLimitHeaders } = parsed;
 
   const { submissionId, formId, formName } = payload.data;
-
-  // Log webhook receipt
-  await logWebhookReceived(
-    'agreement',
-    undefined,
-    undefined,
-    {
-      submissionId,
-      formId,
-      formName,
-      eventId: payload.eventId,
-    },
-    ip
-  );
 
   // Idempotency check - don't process duplicate submissions
   const existingAgreement = await getApplicationByAgreementTallySubmissionId(submissionId);
@@ -96,6 +81,25 @@ export async function POST(request: NextRequest) {
     return webhookErrorResponse('Application not found', 404, rateLimitHeaders);
   }
 
+  // Derive person name from the agreement data (avoids extra DB query)
+  const personName = `${agreementResult.agreementData.legalFirstName} ${agreementResult.agreementData.legalLastName}`;
+
+  // Log webhook receipt (after extraction so we have applicationId and personId)
+  await logWebhookReceived(
+    'agreement',
+    application.personId,
+    applicationId,
+    {
+      submissionId,
+      formId,
+      formName,
+      eventId: payload.eventId,
+      personName,
+      position: application.position,
+    },
+    ip
+  );
+
   // Gracefully handle withdrawn offers — return 200 to prevent Tally retries
   if (application.status === 'REJECTED') {
     console.log(`[Webhook Agreement] Application ${sanitizeForLog(applicationId)} offer was withdrawn — signing ignored`);
@@ -127,15 +131,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Store agreement data
-  await updateApplicationAgreement(application.id, {
+  // Store agreement data and advance to SIGNED atomically
+  await updateApplicationAgreementAndAdvance(application.id, {
     agreementSignedAt: new Date(),
     agreementTallySubmissionId: tallySubmissionId,
     agreementData,
   });
-
-  // Advance to SIGNED stage
-  await advanceApplicationStage(application.id, 'SIGNED');
 
   await logStageChange(
     application.id,
@@ -143,7 +144,7 @@ export async function POST(request: NextRequest) {
     'AGREEMENT',
     'SIGNED',
     undefined,
-    'Auto-advanced: Agreement signed via Tally webhook'
+    `Auto-advanced: Agreement signed via Tally webhook by ${personName}`
   );
 
   console.log(

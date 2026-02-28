@@ -49,10 +49,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks';
-import { Plus, Pencil, Trash2, ExternalLink, RotateCcw, RefreshCw } from 'lucide-react';
+import { Plus, Pencil, Trash2, Power, ExternalLink, RotateCcw, RefreshCw } from 'lucide-react';
 import type { SpecialisedCompetency } from '@/types';
 
 type StatusFilter = 'active' | 'inactive';
+
+type ConfirmAction = 'deactivate' | 'reactivate' | 'hardDelete';
 
 interface CompetenciesPageClientProps {
   isAdmin: boolean;
@@ -63,14 +65,12 @@ function CompetencyMobileCard({
   sc,
   isAdmin,
   onEdit,
-  onDeactivate,
-  onReactivate,
+  onAction,
 }: {
   sc: SpecialisedCompetency;
   isAdmin: boolean;
   onEdit: (sc: SpecialisedCompetency) => void;
-  onDeactivate: (sc: SpecialisedCompetency) => void;
-  onReactivate: (sc: SpecialisedCompetency) => void;
+  onAction: (sc: SpecialisedCompetency, action: ConfirmAction) => void;
 }) {
   return (
     <div className={`rounded-lg border bg-card p-3 ${!sc.isActive ? 'opacity-60' : ''}`}>
@@ -119,20 +119,33 @@ function CompetencyMobileCard({
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7 text-destructive hover:text-destructive"
-                  onClick={() => onDeactivate(sc)}
+                  title="Deactivate (Shift+click to permanently delete)"
+                  onClick={(e) => e.shiftKey ? onAction(sc, 'hardDelete') : onAction(sc, 'deactivate')}
+                >
+                  <Power className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-primary hover:text-primary"
+                  title="Reactivate"
+                  onClick={() => onAction(sc, 'reactivate')}
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:text-destructive"
+                  title="Permanently delete"
+                  onClick={() => onAction(sc, 'hardDelete')}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </>
-            ) : (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-primary hover:text-primary"
-                onClick={() => onReactivate(sc)}
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-              </Button>
             )}
           </div>
         )}
@@ -149,12 +162,8 @@ export function CompetenciesPageClient({ isAdmin }: CompetenciesPageClientProps)
   const [editDialogOpen, setEditDialogOpen] = React.useState(false);
   const [editingCompetency, setEditingCompetency] =
     React.useState<SpecialisedCompetency | null>(null);
-  const [deactivateDialogOpen, setDeactivateDialogOpen] = React.useState(false);
-  const [deactivatingCompetency, setDeactivatingCompetency] =
-    React.useState<SpecialisedCompetency | null>(null);
-  const [reactivateDialogOpen, setReactivateDialogOpen] = React.useState(false);
-  const [reactivatingCompetency, setReactivatingCompetency] =
-    React.useState<SpecialisedCompetency | null>(null);
+  const [confirmAction, setConfirmAction] = React.useState<ConfirmAction | null>(null);
+  const [confirmTarget, setConfirmTarget] = React.useState<SpecialisedCompetency | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { toast } = useToast();
 
@@ -186,8 +195,10 @@ export function CompetenciesPageClient({ isAdmin }: CompetenciesPageClientProps)
   }, [competencies, statusFilter, selectedCategory]);
 
   // Counts for filter pills
-  const activeCount = competencies.filter((c) => c.isActive).length;
-  const inactiveCount = competencies.filter((c) => !c.isActive).length;
+  const { activeCount, inactiveCount } = React.useMemo(() => ({
+    activeCount: competencies.filter((c) => c.isActive).length,
+    inactiveCount: competencies.filter((c) => !c.isActive).length,
+  }), [competencies]);
 
   // Fetch competencies from API
   const fetchCompetencies = React.useCallback(async () => {
@@ -230,16 +241,78 @@ export function CompetenciesPageClient({ isAdmin }: CompetenciesPageClientProps)
     setEditDialogOpen(true);
   };
 
-  // Open deactivate dialog
-  const openDeactivateDialog = (sc: SpecialisedCompetency) => {
-    setDeactivatingCompetency(sc);
-    setDeactivateDialogOpen(true);
+  // Confirmation dialog configuration — maps action type to API call and UI strings
+  const confirmConfig: Record<ConfirmAction, {
+    title: string;
+    description: string;
+    confirmLabel: string;
+    pendingLabel: string;
+    destructive: boolean;
+    fetch: (sc: SpecialisedCompetency) => Promise<Response>;
+    successMessage: string;
+  }> = {
+    deactivate: {
+      title: strings.competencies.deleteConfirmTitle,
+      description: strings.competencies.deleteConfirmDescription,
+      confirmLabel: 'Deactivate',
+      pendingLabel: 'Deactivating...',
+      destructive: true,
+      fetch: (sc) => fetch(`/api/competencies/${sc.id}`, { method: 'DELETE' }),
+      successMessage: 'Competency deactivated',
+    },
+    reactivate: {
+      title: strings.competencies.reactivateConfirmTitle,
+      description: strings.competencies.reactivateConfirmDescription,
+      confirmLabel: 'Reactivate',
+      pendingLabel: 'Reactivating...',
+      destructive: false,
+      fetch: (sc) => fetch(`/api/competencies/${sc.id}`, { method: 'PATCH' }),
+      successMessage: strings.competencies.reactivateCompetency,
+    },
+    hardDelete: {
+      title: strings.competencies.hardDeleteConfirmTitle,
+      description: strings.competencies.hardDeleteConfirmDescription,
+      confirmLabel: 'Permanently Delete',
+      pendingLabel: 'Deleting...',
+      destructive: true,
+      fetch: (sc) => fetch(`/api/competencies/${sc.id}?force=true`, { method: 'DELETE' }),
+      successMessage: strings.competencies.hardDeleteCompetency,
+    },
   };
 
-  // Open reactivate dialog
-  const openReactivateDialog = (sc: SpecialisedCompetency) => {
-    setReactivatingCompetency(sc);
-    setReactivateDialogOpen(true);
+  const openConfirmDialog = (sc: SpecialisedCompetency, action: ConfirmAction) => {
+    setConfirmTarget(sc);
+    setConfirmAction(action);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmTarget || !confirmAction) return;
+    const config = confirmConfig[confirmAction];
+    setIsSubmitting(true);
+    try {
+      const res = await config.fetch(confirmTarget);
+      if (!res.ok) {
+        const data = await res.json();
+        toast({
+          title: 'Error',
+          description: data.error || `Failed to ${confirmAction}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      toast({ title: config.successMessage });
+      setConfirmAction(null);
+      setConfirmTarget(null);
+      await fetchCompetencies();
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Save (create or update)
@@ -279,74 +352,6 @@ export function CompetenciesPageClient({ isAdmin }: CompetenciesPageClientProps)
         title: editingCompetency ? 'Competency updated' : 'Competency created',
       });
       setEditDialogOpen(false);
-      await fetchCompetencies();
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Deactivate
-  const handleDeactivate = async () => {
-    if (!deactivatingCompetency) return;
-    setIsSubmitting(true);
-    try {
-      const res = await fetch(`/api/competencies/${deactivatingCompetency.id}`, {
-        method: 'DELETE',
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        toast({
-          title: 'Error',
-          description: data.error || 'Failed to deactivate',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({ title: 'Competency deactivated' });
-      setDeactivateDialogOpen(false);
-      setDeactivatingCompetency(null);
-      await fetchCompetencies();
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Reactivate
-  const handleReactivate = async () => {
-    if (!reactivatingCompetency) return;
-    setIsSubmitting(true);
-    try {
-      const res = await fetch(`/api/competencies/${reactivatingCompetency.id}`, {
-        method: 'PATCH',
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        toast({
-          title: 'Error',
-          description: data.error || 'Failed to reactivate',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      toast({ title: strings.competencies.reactivateCompetency });
-      setReactivateDialogOpen(false);
-      setReactivatingCompetency(null);
       await fetchCompetencies();
     } catch {
       toast({
@@ -501,20 +506,33 @@ export function CompetenciesPageClient({ isAdmin }: CompetenciesPageClientProps)
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={() => openDeactivateDialog(sc)}
+                              title="Deactivate (Shift+click to permanently delete)"
+                              onClick={(e) => e.shiftKey ? openConfirmDialog(sc, 'hardDelete') : openConfirmDialog(sc, 'deactivate')}
+                            >
+                              <Power className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-primary hover:text-primary"
+                              title="Reactivate"
+                              onClick={() => openConfirmDialog(sc, 'reactivate')}
+                            >
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              title="Permanently delete"
+                              onClick={() => openConfirmDialog(sc, 'hardDelete')}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-primary hover:text-primary"
-                            onClick={() => openReactivateDialog(sc)}
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" />
-                          </Button>
                         )}
                       </TableCell>
                     )}
@@ -532,8 +550,7 @@ export function CompetenciesPageClient({ isAdmin }: CompetenciesPageClientProps)
                 sc={sc}
                 isAdmin={isAdmin}
                 onEdit={openEditDialog}
-                onDeactivate={openDeactivateDialog}
-                onReactivate={openReactivateDialog}
+                onAction={openConfirmDialog}
               />
             ))}
           </div>
@@ -618,49 +635,30 @@ export function CompetenciesPageClient({ isAdmin }: CompetenciesPageClientProps)
         </DialogContent>
       </Dialog>
 
-      {/* Deactivate Confirmation */}
-      <AlertDialog open={deactivateDialogOpen} onOpenChange={setDeactivateDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {strings.competencies.deleteConfirmTitle}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {strings.competencies.deleteConfirmDescription}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeactivate}
-              disabled={isSubmitting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isSubmitting ? 'Deactivating...' : 'Deactivate'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Reactivate Confirmation */}
-      <AlertDialog open={reactivateDialogOpen} onOpenChange={setReactivateDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {strings.competencies.reactivateConfirmTitle}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {strings.competencies.reactivateConfirmDescription}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReactivate} disabled={isSubmitting}>
-              {isSubmitting ? 'Reactivating...' : 'Reactivate'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Data-driven confirmation dialog */}
+      {confirmAction && (() => {
+        const c = confirmConfig[confirmAction];
+        return (
+          <AlertDialog open={true} onOpenChange={(open) => { if (!open) { setConfirmAction(null); setConfirmTarget(null); } }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{c.title}</AlertDialogTitle>
+                <AlertDialogDescription>{c.description}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleConfirmAction}
+                  disabled={isSubmitting}
+                  className={c.destructive ? 'bg-destructive text-white hover:bg-destructive/85' : undefined}
+                >
+                  {isSubmitting ? c.pendingLabel : c.confirmLabel}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        );
+      })()}
     </div>
   );
 }

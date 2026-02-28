@@ -281,19 +281,19 @@ export function createSCAssessmentPayload(overrides?: {
   const fields: TallyWebhookPayload['data']['fields'] = [
     {
       key: `${SC_ASSESSMENT_FIELD_KEYS.applicationId}_hidden`,
-      label: 'Application ID',
+      label: 'applicationId',
       type: 'HIDDEN_FIELDS',
       value: applicationId,
     },
     {
       key: `${SC_ASSESSMENT_FIELD_KEYS.personId}_hidden`,
-      label: 'Person ID',
+      label: 'who',
       type: 'HIDDEN_FIELDS',
       value: personId,
     },
     {
       key: `${SC_ASSESSMENT_FIELD_KEYS.specialisedCompetencyId}_hidden`,
-      label: 'SC Definition ID',
+      label: 'scId',
       type: 'HIDDEN_FIELDS',
       value: scId,
     },
@@ -302,7 +302,7 @@ export function createSCAssessmentPayload(overrides?: {
   if (score !== undefined) {
     fields.push({
       key: `${SC_ASSESSMENT_FIELD_KEYS.score}_calc`,
-      label: 'Total Score',
+      label: 'score',
       type: 'CALCULATED',
       value: score,
     });
@@ -361,7 +361,7 @@ export function createAgreementPayload(overrides?: {
       fields: [
         {
           key: AGREEMENT_FIELD_KEYS.applicationId,
-          label: 'Internal ID',
+          label: 'applicationId',
           type: 'HIDDEN_FIELDS',
           value: applicationId,
         },

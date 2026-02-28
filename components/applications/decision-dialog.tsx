@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input';
 import { strings } from '@/config';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { InlineError } from '@/components/shared/inline-error';
-import { useDialogSubmit } from '@/hooks/use-dialog-submit';
+import { useDialogSubmit } from '@/hooks';
 
 export interface DecisionDialogProps {
   isOpen: boolean;
@@ -62,6 +62,8 @@ export function DecisionDialog({
   const [notes, setNotes] = React.useState('');
   const [sendEmail, setSendEmail] = React.useState(true);
   const [startDate, setStartDate] = React.useState('');
+  const [countdown, setCountdown] = React.useState(5);
+  const [countdownStarted, setCountdownStarted] = React.useState(false);
 
   const isReject = decision === 'REJECT';
   // ACCEPT always sends the offer letter (contains agreement link)
@@ -85,15 +87,36 @@ export function DecisionDialog({
           : null,
     });
 
-  // Reset form when dialog opens
+  // Reset form and countdown when dialog opens
   React.useEffect(() => {
     if (isOpen) {
       setReason('');
       setNotes('');
       setSendEmail(true);
       setStartDate('');
+      setCountdown(5);
+      setCountdownStarted(false);
     }
   }, [isOpen]);
+
+  // Start countdown when reason becomes non-empty for the first time
+  React.useEffect(() => {
+    if (!countdownStarted && reason.trim().length > 0) {
+      setCountdownStarted(true);
+      setCountdown(5);
+    }
+  }, [reason, countdownStarted]);
+
+  // Countdown timer — only runs after started
+  React.useEffect(() => {
+    if (!isOpen || !countdownStarted || countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isOpen, countdownStarted, countdown]);
+
+  const isCountdownActive = !countdownStarted || countdown > 0;
 
   return (
     <AlertDialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -204,7 +227,7 @@ export function DecisionDialog({
           <Button
             variant={isReject ? 'destructive' : 'default'}
             onClick={handleConfirm}
-            disabled={isDisabled}
+            disabled={isDisabled || isCountdownActive}
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -213,7 +236,10 @@ export function DecisionDialog({
             ) : (
               <CheckCircle className="h-4 w-4 mr-2" />
             )}
-            {isReject ? strings.decision.confirmReject : strings.decision.confirmAccept}
+            {(() => {
+              const label = isReject ? strings.decision.confirmReject : strings.decision.confirmAccept;
+              return isCountdownActive ? `${label} (${countdown})` : label;
+            })()}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

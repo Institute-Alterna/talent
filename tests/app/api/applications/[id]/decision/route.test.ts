@@ -212,7 +212,7 @@ describe('POST /api/applications/[id]/decision', () => {
       (requireApplicationAccess as jest.Mock).mockResolvedValue({
         ok: true,
         session: { user: { dbUserId: 'user-123' } },
-        application: { ...mockApplication, currentStage: 'APPLICATION' },
+        application: { ...mockApplication, currentStage: 'GENERAL_COMPETENCIES' },
       });
 
       (parseJsonBody as jest.Mock).mockResolvedValue({

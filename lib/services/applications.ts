@@ -227,6 +227,9 @@ export async function getApplicationsForPipeline(filters?: {
   };
 
   for (const app of applications) {
+    // Collapse legacy APPLICATION stage into GENERAL_COMPETENCIES for display
+    const displayStage = app.currentStage === 'APPLICATION' ? 'GENERAL_COMPETENCIES' : app.currentStage;
+
     // Determine if this application needs attention
     // AGREEMENT stage never needs attention — the offer letter (with agreement link)
     // is always sent on acceptance, so the ball is in the candidate's court.
@@ -247,7 +250,7 @@ export async function getApplicationsForPipeline(filters?: {
       id: app.id,
       personId: app.personId,
       position: app.position,
-      currentStage: app.currentStage,
+      currentStage: displayStage,
       status: app.status,
       createdAt: app.createdAt,
       person: {
@@ -263,7 +266,7 @@ export async function getApplicationsForPipeline(filters?: {
       needsAttention,
     };
 
-    applicationsByStage[app.currentStage].push(card);
+    applicationsByStage[displayStage].push(card);
   }
 
   // Get stats
@@ -448,6 +451,7 @@ export async function createApplication(data: CreateApplicationData): Promise<Ap
     data: {
       personId: data.personId,
       position: data.position,
+      currentStage: 'GENERAL_COMPETENCIES',
       resumeUrl: data.resumeUrl,
       academicBackground: data.academicBackground,
       previousExperience: data.previousExperience,
@@ -543,13 +547,16 @@ export async function getApplicationByAgreementTallySubmissionId(
 }
 
 /**
- * Update application with agreement signing data
+ * Store agreement data and advance to SIGNED stage atomically
+ *
+ * Combines both operations in a single DB update to prevent partial writes
+ * (e.g. agreement stored but stage not advanced, or vice versa).
  *
  * @param id - Application ID
  * @param data - Agreement data
  * @returns Updated application
  */
-export async function updateApplicationAgreement(
+export async function updateApplicationAgreementAndAdvance(
   id: string,
   data: {
     agreementSignedAt: Date;
@@ -563,6 +570,7 @@ export async function updateApplicationAgreement(
       agreementSignedAt: data.agreementSignedAt,
       agreementTallySubmissionId: data.agreementTallySubmissionId,
       agreementData: data.agreementData as unknown as Prisma.InputJsonValue,
+      currentStage: 'SIGNED',
       updatedAt: new Date(),
     },
   });
@@ -632,7 +640,7 @@ export async function getApplicationStats(filters?: {
     db.application.count({ where: { ...baseWhere, status: 'ACTIVE' } }),
   ]);
 
-  // Get counts by stage
+  // Get counts by stage (fold legacy APPLICATION into GENERAL_COMPETENCIES)
   const byStage: Record<Stage, number> = {
     APPLICATION: 0,
     GENERAL_COMPETENCIES: 0,
@@ -649,7 +657,11 @@ export async function getApplicationStats(filters?: {
   });
 
   for (const item of stageCounts) {
-    byStage[item.currentStage] = item._count;
+    if (item.currentStage === 'APPLICATION') {
+      byStage.GENERAL_COMPETENCIES += item._count;
+    } else {
+      byStage[item.currentStage] = item._count;
+    }
   }
 
   // Get counts by status
@@ -889,7 +901,9 @@ export function getAvailablePositions(): readonly string[] {
  */
 export function canAdvanceToStage(application: Application, targetStage: Stage): boolean {
   const stages = recruitment.stages;
-  const currentOrder = stages.find((s) => s.id === application.currentStage)?.order ?? 0;
+  // Map legacy APPLICATION to GENERAL_COMPETENCIES
+  const effectiveStage = application.currentStage === 'APPLICATION' ? 'GENERAL_COMPETENCIES' : application.currentStage;
+  const currentOrder = stages.find((s) => s.id === effectiveStage)?.order ?? 0;
   const targetOrder = stages.find((s) => s.id === targetStage)?.order ?? 0;
 
   // Can only advance forward
@@ -904,7 +918,9 @@ export function canAdvanceToStage(application: Application, targetStage: Stage):
  */
 export function getNextStage(currentStage: Stage): Stage | null {
   const stages = recruitment.stages;
-  const currentOrder = stages.find((s) => s.id === currentStage)?.order ?? 0;
+  // Map legacy APPLICATION to GENERAL_COMPETENCIES
+  const effectiveStage = currentStage === 'APPLICATION' ? 'GENERAL_COMPETENCIES' : currentStage;
+  const currentOrder = stages.find((s) => s.id === effectiveStage)?.order ?? 0;
   const nextStage = stages.find((s) => s.order === currentOrder + 1);
   return (nextStage?.id as Stage) ?? null;
 }

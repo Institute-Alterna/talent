@@ -15,5 +15,6 @@ export { DecisionDialog, type DecisionDialogProps, type DecisionData } from './d
 export { InterviewDialog, type InterviewDialogProps, type InterviewDialogData, type Interviewer } from './interview-dialog';
 export { CompleteInterviewDialog, type CompleteInterviewDialogProps, type CompleteInterviewData } from './complete-interview-dialog';
 export { WithdrawOfferDialog, type WithdrawOfferDialogProps } from './withdraw-offer-dialog';
+export { ResendAgreementDialog, type ResendAgreementDialogProps } from './resend-agreement-dialog';
 export { GCQResponsesDialog } from './gcq-responses-dialog';
 export { SCExplorerDialog } from './sc-explorer-dialog';

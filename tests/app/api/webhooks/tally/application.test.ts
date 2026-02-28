@@ -119,7 +119,7 @@ describe('POST /api/webhooks/tally/application', () => {
         id: 'app-123',
         personId: 'person-123',
         position: 'Software Developer',
-        currentStage: 'APPLICATION',
+        currentStage: 'GENERAL_COMPETENCIES',
         status: 'ACTIVE',
         hasResume: true,
         hasAcademicBg: true,
@@ -150,8 +150,8 @@ describe('POST /api/webhooks/tally/application', () => {
       expect(data.data.applicationId).toBe('app-123');
       expect(data.data.personCreated).toBe(true);
       expect(data.data.nextStep).toBe('awaiting_gc');
-      // Should auto-advance to GENERAL_COMPETENCIES
-      expect(advanceApplicationStage).toHaveBeenCalledWith('app-123', 'GENERAL_COMPETENCIES');
+      // Application starts at GENERAL_COMPETENCIES — no advance needed
+      expect(advanceApplicationStage).not.toHaveBeenCalled();
     });
 
     it('links application to existing person', async () => {
@@ -167,7 +167,7 @@ describe('POST /api/webhooks/tally/application', () => {
         id: 'app-456',
         personId: 'existing-person',
         position: 'Software Developer',
-        currentStage: 'APPLICATION',
+        currentStage: 'GENERAL_COMPETENCIES',
         status: 'ACTIVE',
         hasResume: false,
         hasAcademicBg: false,
@@ -209,7 +209,7 @@ describe('POST /api/webhooks/tally/application', () => {
         id: 'app-789',
         personId: 'gc-passed-person',
         position: 'Software Developer',
-        currentStage: 'APPLICATION',
+        currentStage: 'GENERAL_COMPETENCIES',
         status: 'ACTIVE',
         hasResume: false,
         hasAcademicBg: false,
@@ -253,7 +253,7 @@ describe('POST /api/webhooks/tally/application', () => {
         id: 'app-gc-failed',
         personId: 'gc-failed-person',
         position: 'Software Developer',
-        currentStage: 'APPLICATION',
+        currentStage: 'GENERAL_COMPETENCIES',
         status: 'ACTIVE',
         hasResume: false,
         hasAcademicBg: false,
@@ -281,8 +281,8 @@ describe('POST /api/webhooks/tally/application', () => {
 
       expect(response.status).toBe(200);
       expect(data.data.nextStep).toBe('awaiting_gc_decision');
-      // Should advance to GC stage, not reject
-      expect(advanceApplicationStage).toHaveBeenCalledWith('app-gc-failed', 'GENERAL_COMPETENCIES');
+      // Application starts at GENERAL_COMPETENCIES — no advance needed
+      expect(advanceApplicationStage).not.toHaveBeenCalled();
     });
 
     it('does not send GC invitation email automatically', async () => {
@@ -299,7 +299,7 @@ describe('POST /api/webhooks/tally/application', () => {
         id: 'app-no-gc-email',
         personId: 'person-no-gc-email',
         position: 'Software Developer',
-        currentStage: 'APPLICATION',
+        currentStage: 'GENERAL_COMPETENCIES',
         status: 'ACTIVE',
         hasResume: false, hasAcademicBg: false, hasVideoIntro: false,
         hasPreviousExp: false, hasOtherFile: false,
@@ -317,8 +317,8 @@ describe('POST /api/webhooks/tally/application', () => {
 
       expect(response.status).toBe(200);
       expect(data.data.nextStep).toBe('awaiting_gc');
-      // Stage should be advanced but no GC email sent
-      expect(advanceApplicationStage).toHaveBeenCalledWith('app-no-gc-email', 'GENERAL_COMPETENCIES');
+      // Application starts at GENERAL_COMPETENCIES — no advance needed, no GC email sent
+      expect(advanceApplicationStage).not.toHaveBeenCalled();
     });
   });
 
@@ -332,7 +332,7 @@ describe('POST /api/webhooks/tally/application', () => {
         id: 'app-email-auto',
         personId: 'person-email-auto',
         position: 'Software Developer',
-        currentStage: 'APPLICATION',
+        currentStage: 'GENERAL_COMPETENCIES',
         status: 'ACTIVE',
         createdAt: new Date(),
         hasResume: false, hasAcademicBg: false, hasVideoIntro: false,
@@ -367,7 +367,7 @@ describe('POST /api/webhooks/tally/application', () => {
         id: 'app-nonfatal',
         personId: 'person-nonfatal',
         position: 'Software Developer',
-        currentStage: 'APPLICATION',
+        currentStage: 'GENERAL_COMPETENCIES',
         status: 'ACTIVE',
         createdAt: new Date(),
         hasResume: false, hasAcademicBg: false, hasVideoIntro: false,
@@ -570,7 +570,7 @@ describe('POST /api/webhooks/tally/application', () => {
         hasPreviousExp: false,
         hasOtherFile: false,
         resumeUrl: null, // But no URL
-        currentStage: 'APPLICATION',
+        currentStage: 'GENERAL_COMPETENCIES',
         status: 'ACTIVE',
         position: 'Software Developer',
         academicBackground: null,

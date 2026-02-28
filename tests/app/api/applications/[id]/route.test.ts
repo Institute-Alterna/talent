@@ -308,16 +308,16 @@ describe('PATCH /api/applications/[id]', () => {
 
   it('allows admin to change stage forward', async () => {
     (auth as jest.Mock).mockResolvedValue(mockAuthAdmin);
-    // Start at APPLICATION stage so we can advance forward
-    (getApplicationDetail as jest.Mock).mockResolvedValue({ ...mockApplication, currentStage: 'APPLICATION' });
-    (updateApplication as jest.Mock).mockResolvedValue({ ...mockApplication, currentStage: 'GENERAL_COMPETENCIES' });
+    // Start at GENERAL_COMPETENCIES stage so we can advance forward
+    (getApplicationDetail as jest.Mock).mockResolvedValue({ ...mockApplication, currentStage: 'GENERAL_COMPETENCIES' });
+    (updateApplication as jest.Mock).mockResolvedValue({ ...mockApplication, currentStage: 'SPECIALIZED_COMPETENCIES' });
 
-    const request = createRequest(mockAppId, { currentStage: 'GENERAL_COMPETENCIES' });
+    const request = createRequest(mockAppId, { currentStage: 'SPECIALIZED_COMPETENCIES' });
     const response = await PATCH(request, { params: createParams(mockAppId) });
     await response.json();
 
     expect(response.status).toBe(200);
-    expect(updateApplication).toHaveBeenCalledWith(mockAppId, { currentStage: 'GENERAL_COMPETENCIES' });
+    expect(updateApplication).toHaveBeenCalledWith(mockAppId, { currentStage: 'SPECIALIZED_COMPETENCIES' });
     expect(logStageChange).toHaveBeenCalled();
   });
 
@@ -335,7 +335,7 @@ describe('PATCH /api/applications/[id]', () => {
   it('blocks backward stage movement', async () => {
     (auth as jest.Mock).mockResolvedValue(mockAuthAdmin);
 
-    const request = createRequest(mockAppId, { currentStage: 'APPLICATION' });
+    const request = createRequest(mockAppId, { currentStage: 'GENERAL_COMPETENCIES' });
     const response = await PATCH(request, { params: createParams(mockAppId) });
     const data = await response.json();
 

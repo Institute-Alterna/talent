@@ -34,7 +34,6 @@ export const strings = {
 
   // Candidate stages
   stages: {
-    application: 'Application',
     generalCompetencies: 'General Competencies',
     specializedCompetencies: 'Specialised Competencies',
     interview: 'Interview',
@@ -59,6 +58,9 @@ export const strings = {
     deleteCompetency: 'Deactivate Competency',
     deleteConfirmTitle: 'Deactivate Competency',
     deleteConfirmDescription: 'This will deactivate the competency. Existing assessment data will be preserved. This action can be reversed.',
+    hardDeleteCompetency: 'Permanently Delete Competency',
+    hardDeleteConfirmTitle: 'Permanently Delete Competency',
+    hardDeleteConfirmDescription: 'This will permanently remove the competency from the database. This cannot be undone. Only competencies with no linked assessment data can be deleted.',
     reactivateCompetency: 'Reactivate Competency',
     reactivateConfirmTitle: 'Reactivate Competency',
     reactivateConfirmDescription: 'This will reactivate the competency, making it available for new assessments again.',
@@ -292,6 +294,14 @@ export const strings = {
     deleteWarning: 'This action cannot be undone.',
     deleteAction: 'Delete Permanently',
     menuItem: 'Delete',
+  },
+
+  // Resend Agreement (AGREEMENT stage)
+  resendAgreement: {
+    title: 'Resend Agreement',
+    description: 'The original offer letter email will be resent to {name}.',
+    warning: 'Only resend the agreement if the candidate has specifically requested it. Do not resend unsolicited.',
+    confirmAction: 'Resend',
   },
 
   // Withdraw Offer (AGREEMENT stage)

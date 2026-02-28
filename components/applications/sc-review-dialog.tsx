@@ -127,7 +127,7 @@ export function SCReviewDialog({
             <Button
               size="sm"
               variant={decision === false ? 'destructive' : 'outline'}
-              className={`text-xs h-8 flex-1 ${decision !== false ? 'border-red-200 text-red-600 hover:bg-red-50' : ''}`}
+              className={`text-xs h-8 flex-1 ${decision !== false ? 'border-destructive/40 text-destructive hover:bg-destructive/10' : ''}`}
               onClick={() => setDecision(false)}
               disabled={isDisabled}
             >

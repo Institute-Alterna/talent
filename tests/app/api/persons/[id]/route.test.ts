@@ -112,7 +112,7 @@ const mockPerson = {
     {
       id: 'app-2',
       position: 'Data Analyst',
-      currentStage: 'APPLICATION',
+      currentStage: 'GENERAL_COMPETENCIES',
       status: 'ACTIVE',
       createdAt: new Date('2024-01-15'),
     },

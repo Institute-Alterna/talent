@@ -29,7 +29,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { strings } from '@/config';
 import { ShieldAlert, Loader2 } from 'lucide-react';
 import { InlineError } from '@/components/shared/inline-error';
-import { useDialogSubmit } from '@/hooks/use-dialog-submit';
+import { useDialogSubmit } from '@/hooks';
 
 export interface WithdrawOfferDialogProps {
   isOpen: boolean;
@@ -49,6 +49,7 @@ export function WithdrawOfferDialog({
   const [reason, setReason] = React.useState('');
   const [sendEmail, setSendEmail] = React.useState(true);
   const [countdown, setCountdown] = React.useState(5);
+  const [countdownStarted, setCountdownStarted] = React.useState(false);
 
   const { isSubmitting, isDisabled, error, handleOpenChange, handleConfirm } =
     useDialogSubmit({
@@ -64,8 +65,6 @@ export function WithdrawOfferDialog({
           ? strings.withdrawOffer.reasonRequired
           : null,
     });
-
-  const [countdownStarted, setCountdownStarted] = React.useState(false);
 
   // Reset form and countdown when dialog opens/closes
   React.useEffect(() => {

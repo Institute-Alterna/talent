@@ -4,9 +4,9 @@ Hey {{PERSON_FIRST_NAME}},
 
 Congratulations on advancing to the next stage for the {{POSITION}} role at {{ORGANIZATION_SHORT_NAME}}!
 
-We're pleased to invite you to complete the Specialised Competencies Assessment. This assessment is designed to evaluate skills specific to the challenges you may encounter as a {{POSITION}}. Assessments vary by position, but it is generally a 30-45 minute evaluation that you can complete at your own pace. It is strongly recommended that you complete this assessment in a laptop or desktop device.
+We're pleased to invite you to complete the Specialised Competencies Assessment. This assessment is designed to evaluate skills specific to the challenges you may encounter as a {{POSITION}}. Assessments vary by position, but are generally 30–45 minutes and can be completed at your own pace. It is strongly recommended that you complete this assessment in a laptop or desktop computer.
 
-You may contact us at https://alterna.dev/contact/ if you need any accommodations or wish to have your assessment minutes count towards community service hours.
+Please complete the assessment within the next 7 days to ensure your application remains active. You may contact us at https://alterna.dev/contact/ if you need any accommodations or wish to have your assessment minutes count towards community service hours.
 
 {{SC_ASSESSMENT_LIST}}
 
@@ -14,4 +14,4 @@ You may contact us at https://alterna.dev/contact/ if you need any accommodation
 
 Sent to {{PERSON_EMAIL}} on {{SENT_TIME}} (Coordinated Universal Time). Please do not reply to this email as this is an unmonitored inbox.
 
-{{ORGANIZATION_SHORT_NAME}} is an equal opportunity provider committed to inclusion and diversity. Our recruitment process is driven by a merit-first approach that does not discriminate candidates due to their ethnicity, religion, sexual orientation, identity, national origin, disability, or any other legally protected characteristic.
+{{ORGANIZATION_SHORT_NAME}} is an equal opportunity provider committed to inclusion and diversity. Our recruitment process is driven by a merit-first approach that does not discriminate against candidates on the basis of their ethnicity, religion, sexual orientation, identity, national origin, disability, or any other legally protected characteristic.

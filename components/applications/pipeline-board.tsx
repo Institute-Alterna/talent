@@ -15,7 +15,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { recruitment } from '@/config';
 
 export interface PipelineBoardData {
-  APPLICATION: ApplicationCardData[];
+  APPLICATION?: ApplicationCardData[];
   GENERAL_COMPETENCIES: ApplicationCardData[];
   SPECIALIZED_COMPETENCIES: ApplicationCardData[];
   INTERVIEW: ApplicationCardData[];
@@ -38,7 +38,6 @@ interface PipelineBoardProps {
 }
 
 const STAGE_ORDER: Stage[] = [
-  'APPLICATION',
   'GENERAL_COMPETENCIES',
   'SPECIALIZED_COMPETENCIES',
   'INTERVIEW',

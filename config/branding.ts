@@ -15,7 +15,7 @@ export const branding = {
   authProviderShortName: 'UA',
 
   // Primary brand color (used for headers, buttons, links)
-  primaryColor: '#2E5090',
+  primaryColor: '#0066ff',
 
   // Secondary brand color (used for accents, hover states)
   secondaryColor: '#4472C4',

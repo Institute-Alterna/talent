@@ -129,21 +129,28 @@ export async function POST(request: NextRequest) {
     console.log(`[Webhook SC] Resolved applicationId: ${sanitizeForLog(applicationId)} via respondentId`);
   }
 
-  // Log webhook receipt
-  await logWebhookReceived(
-    'specialized-competencies',
-    undefined,
-    applicationId,
-    { submissionId, formId, formName, specialisedCompetencyId },
-    ip
-  );
-
   // Verify application exists
   const application = await getApplicationById(applicationId);
   if (!application) {
     console.error(`[Webhook SC] Application not found: ${sanitizeForLog(applicationId)}`);
     return webhookErrorResponse('Application not found', 404, rateLimitHeaders);
   }
+
+  // Log webhook receipt (after application lookup for person context)
+  await logWebhookReceived(
+    'specialized-competencies',
+    application.personId,
+    applicationId,
+    {
+      submissionId,
+      formId,
+      formName,
+      eventId: payload.eventId,
+      specialisedCompetencyId,
+      position: application.position,
+    },
+    ip
+  );
 
   // Verify application is active
   if (application.status !== 'ACTIVE') {

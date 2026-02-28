@@ -300,9 +300,12 @@ describe('POST /api/webhooks/tally/specialized-competencies', () => {
 
     expect(logWebhookReceived).toHaveBeenCalledWith(
       'specialized-competencies',
-      undefined,
+      mockApplication.personId,
       APP_ID,
-      expect.any(Object),
+      expect.objectContaining({
+        eventId: expect.any(String),
+        position: mockApplication.position,
+      }),
       expect.any(String)
     );
   });

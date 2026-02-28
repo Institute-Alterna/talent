@@ -37,6 +37,7 @@ import { Timeline, TimelineItem, mapActionTypeToTimelineType } from '@/component
 import { Stage, Status } from '@/lib/generated/prisma/client';
 import { formatDateShort, formatDateTime, getCountryName } from '@/lib/utils';
 import { recruitment, formatScoreDisplay, strings } from '@/config';
+import { humaniseAuditAction } from '@/lib/audit-display';
 import { useMediaQuery } from '@/hooks';
 import {
   Tooltip,
@@ -65,6 +66,7 @@ import {
 import { GCQResponsesDialog } from './gcq-responses-dialog';
 import { SCExplorerDialog } from './sc-explorer-dialog';
 import { SCReviewDialog } from './sc-review-dialog';
+import { ResendAgreementDialog } from './resend-agreement-dialog';
 import { GC_SUBSCORE_ENTRIES, extractGCSubscores, hasGCFields } from '@/lib/gc-utils';
 
 /**
@@ -184,6 +186,7 @@ interface ApplicationDetailProps {
     action: string;
     actionType: string;
     createdAt: string;
+    details?: Record<string, unknown> | null;
     user?: { displayName: string } | null;
   }>;
   isOpen: boolean;
@@ -444,7 +447,7 @@ function GCQViewResponsesButton({
 function buildTimelineItems(auditLogs?: ApplicationDetailProps['auditLogs']): TimelineItem[] {
   return (auditLogs || []).map(log => ({
     id: log.id,
-    title: log.action,
+    title: humaniseAuditAction(log),
     timestamp: log.createdAt,
     type: mapActionTypeToTimelineType(log.actionType),
     user: log.user ? { name: log.user.displayName } : undefined,
@@ -683,6 +686,12 @@ function RightPanel({
 
   // SC review dialog state (local to RightPanel)
   const [scReviewAssessment, setScReviewAssessment] = React.useState<typeof scAssessments[number] | null>(null);
+
+  // Resend agreement dialog state (local to RightPanel)
+  const [isResendAgreementOpen, setIsResendAgreementOpen] = React.useState(false);
+
+  // Display name for dialog descriptions
+  const applicationName = [application.person.firstName, application.person.lastName].filter(Boolean).join(' ');
 
   return (
     <div className="space-y-4">
@@ -1223,7 +1232,7 @@ function RightPanel({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-xs h-7 border-red-200 text-red-600 hover:bg-red-50"
+                      className="text-xs h-7 border-destructive/40 text-destructive hover:bg-destructive/10"
                       onClick={() => onMakeDecision('REJECT')}
                       disabled={isAnyOperationInProgress}
                     >
@@ -1242,7 +1251,7 @@ function RightPanel({
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-xs h-7 border-red-200 text-red-600 hover:bg-red-50"
+                      className="text-xs h-7 border-destructive/40 text-destructive hover:bg-destructive/10"
                       onClick={() => onMakeDecision('REJECT')}
                       disabled={isAnyOperationInProgress}
                     >
@@ -1381,21 +1390,52 @@ function RightPanel({
               <p className="text-xs text-muted-foreground">
                 Awaiting agreement signature from candidate
               </p>
-              {onWithdrawOffer && isAdmin && application.status === 'ACCEPTED' && application.currentStage === 'AGREEMENT' && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="text-xs py-2"
-                  onClick={onWithdrawOffer}
-                  disabled={isAnyOperationInProgress}
-                >
-                  {isWithdrawingOffer ? (
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                  ) : (
-                    <ShieldAlert className="h-3 w-3 mr-1" />
+              {isAdmin && application.status === 'ACCEPTED' && application.currentStage === 'AGREEMENT' && (
+                <div className="flex flex-col items-center gap-2">
+                  {onSendEmail && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs py-2"
+                      onClick={() => setIsResendAgreementOpen(true)}
+                      disabled={isAnyOperationInProgress}
+                    >
+                      {sendingEmailTemplate === 'decision/offer-letter' ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <Mail className="h-3 w-3 mr-1" />
+                      )}
+                      Resend Agreement
+                    </Button>
                   )}
-                  {strings.withdrawOffer.menuItem}
-                </Button>
+
+                  {/* Resend Agreement Confirmation Dialog */}
+                  {onSendEmail && (
+                    <ResendAgreementDialog
+                      isOpen={isResendAgreementOpen}
+                      onClose={() => setIsResendAgreementOpen(false)}
+                      onConfirm={() => onSendEmail('decision/offer-letter')}
+                      applicationName={applicationName}
+                      isProcessing={sendingEmailTemplate === 'decision/offer-letter'}
+                    />
+                  )}
+                  {onWithdrawOffer && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="text-xs py-2"
+                      onClick={onWithdrawOffer}
+                      disabled={isAnyOperationInProgress}
+                    >
+                      {isWithdrawingOffer ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <ShieldAlert className="h-3 w-3 mr-1" />
+                      )}
+                      {strings.withdrawOffer.menuItem}
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           )}

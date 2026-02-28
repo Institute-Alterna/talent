@@ -16,8 +16,7 @@ import { recruitment } from '@/config';
  * Stage colors matching stage-badge.tsx
  * These are the solid hex values used for the pie chart
  */
-const STAGE_COLORS: Record<Stage, string> = {
-  APPLICATION: '#64748b', // slate-500
+const STAGE_COLORS: Partial<Record<Stage, string>> = {
   GENERAL_COMPETENCIES: '#7c3aed', // purple-600
   SPECIALIZED_COMPETENCIES: '#4f46e5', // indigo-600
   INTERVIEW: '#d97706', // amber-600
@@ -26,7 +25,6 @@ const STAGE_COLORS: Record<Stage, string> = {
 };
 
 const STAGE_ORDER: Stage[] = [
-  'APPLICATION',
   'GENERAL_COMPETENCIES',
   'SPECIALIZED_COMPETENCIES',
   'INTERVIEW',
@@ -35,7 +33,7 @@ const STAGE_ORDER: Stage[] = [
 ];
 
 interface PipelineChartProps {
-  data: Record<Stage, number>;
+  data: Partial<Record<Stage, number>>;
   className?: string;
 }
 
@@ -50,6 +48,7 @@ interface ChartDataItem {
  * Get the display name for a stage
  */
 function getStageName(stage: Stage): string {
+  if (stage === 'APPLICATION') return 'Application';
   const stageInfo = recruitment.stages.find((s) => s.id === stage);
   return stageInfo?.name || stage.replace(/_/g, ' ');
 }
@@ -84,7 +83,7 @@ export function PipelineChart({ data, className }: PipelineChartProps) {
     stage,
     name: getStageName(stage),
     value: data[stage] || 0,
-    color: STAGE_COLORS[stage],
+    color: STAGE_COLORS[stage] || '#64748b',
   })).filter((item) => item.value > 0);
 
   const total = chartData.reduce((sum, item) => sum + item.value, 0);

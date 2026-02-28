@@ -86,7 +86,14 @@ export async function POST(request: NextRequest) {
 
   const { personId, score, rawData, tallySubmissionId } = assessmentData;
 
-  // Log webhook receipt
+  // Verify person exists
+  const person = await getPersonById(personId);
+  if (!person) {
+    console.error(`[Webhook GC] Person not found: ${sanitizeForLog(personId)}`);
+    return webhookErrorResponse('Person not found', 404, rateLimitHeaders);
+  }
+
+  // Log webhook receipt (after person lookup for name context)
   await logWebhookReceived(
     'general-competencies',
     personId,
@@ -95,17 +102,12 @@ export async function POST(request: NextRequest) {
       submissionId,
       formId,
       formName,
+      eventId: payload.eventId,
+      personName: `${person.firstName} ${person.lastName}`,
       score,
     },
     ip
   );
-
-  // Verify person exists
-  const person = await getPersonById(personId);
-  if (!person) {
-    console.error(`[Webhook GC] Person not found: ${sanitizeForLog(personId)}`);
-    return webhookErrorResponse('Person not found', 404, rateLimitHeaders);
-  }
 
   // Check if person already completed GC
   if (person.generalCompetenciesCompleted) {

@@ -30,14 +30,20 @@ export {
   type SCAssessmentResult,
   type SubmissionUrl,
   type AgreementSigningResult,
-  // Field key mappings
+  // Field key mappings (fallback)
   APPLICATION_FIELD_KEYS,
   PACKAGE_CHECKBOX_IDS,
   GC_ASSESSMENT_FIELD_KEYS,
   SC_ASSESSMENT_FIELD_KEYS,
   AGREEMENT_FIELD_KEYS,
+  // Field label mappings (primary — stable across Tally form versions)
+  APPLICATION_FIELD_LABELS,
+  GC_ASSESSMENT_FIELD_LABELS,
+  SC_ASSESSMENT_FIELD_LABELS,
+  AGREEMENT_FIELD_LABELS,
   // Extraction functions
   findFieldByKey,
+  findField,
   getStringValue,
   getNumberValue,
   getFileUrl,

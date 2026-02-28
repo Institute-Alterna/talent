@@ -3,6 +3,28 @@
  *
  * Maps fields from Tally webhook payloads to our database schema.
  * Handles the extraction and transformation of form data.
+ *
+ * ## Field Resolution Strategy
+ *
+ * Tally field keys are volatile — they can change across form versions when
+ * fields are re-created or forms are duplicated.  Labels, by contrast, are
+ * stable identifiers set by the form creator (camelCase for hidden/calculated
+ * fields, human-readable for visible fields).
+ *
+ * All extractors use **label-first lookup** via `findField()`:
+ *   1. Try `findFieldByLabel` (case-insensitive exact match)
+ *   2. Fall back to `findFieldByKey` (prefix match)
+ *   3. Log a warning when only the key fallback matches — signals the label
+ *      may have changed in Tally and the label map should be updated.
+ *
+ * ## Adding a New Field
+ *
+ * 1. Add the Tally field key to the relevant `*_FIELD_KEYS` map.
+ * 2. Add the Tally field label to the matching `*_FIELD_LABELS` map.
+ *    - Hidden/calculated fields use camelCase labels (e.g. `applicationId`).
+ *    - Visible fields use the human-readable label from the Tally form.
+ * 3. In the extractor function, use `find('fieldName')` (the local closure).
+ * 4. Update the test fixtures in `tests/fixtures/tally-webhooks.ts`.
  */
 
 import type { CreatePersonData } from '@/types/person';
@@ -30,7 +52,7 @@ export interface TallyWebhookPayload {
  */
 export interface TallyField {
   key: string;
-  label: string;
+  label: string | null;
   type: string;
   value: TallyFieldValue;
   options?: TallyFieldOption[];
@@ -74,14 +96,11 @@ export interface TallyFieldOption {
   text: string;
 }
 
-/**
- * Field key mappings for application form
- *
- * These match the Tally form field keys from the webhook payload.
- * Update these if the form is modified in Tally.
- */
+// ---------------------------------------------------------------------------
+// Field key mappings (fallback — keys can shift across Tally form versions)
+// ---------------------------------------------------------------------------
+
 export const APPLICATION_FIELD_KEYS = {
-  // Person fields
   email: 'question_eaYYNE',
   firstName: 'question_qRkkYd',
   lastName: 'question_Q7OOxA',
@@ -89,17 +108,30 @@ export const APPLICATION_FIELD_KEYS = {
   country: 'question_o2vAjV',
   portfolioLink: 'question_W8jjeP',
   educationLevel: 'question_a2aajE',
-
-  // Application fields
-  position: 'question_KVavqX', // Hidden field with position
+  position: 'question_KVavqX',
   resumeFile: 'question_7NppJ9',
   academicBackground: 'question_bW6622',
   previousExperience: 'question_kNkk0J',
   videoLink: 'question_Bx22LA',
   otherFile: 'question_97Md1Y',
-
-  // Package contents checkboxes (what applicant claims to submit)
   packageContents: 'question_6Zpp1O',
+} as const;
+
+export const APPLICATION_FIELD_LABELS = {
+  email: 'Email',
+  firstName: 'First Name',
+  lastName: 'Last Name',
+  phoneNumber: 'Phone',
+  country: 'Country',
+  portfolioLink: 'Portfolio',
+  educationLevel: 'Education',
+  position: 'Position',
+  resumeFile: 'Resume',
+  academicBackground: 'Academic Background',
+  previousExperience: 'Previous Experience',
+  videoLink: 'Video Introduction',
+  otherFile: 'Other File',
+  packageContents: 'Package Contents',
 } as const;
 
 /**
@@ -115,42 +147,80 @@ export const PACKAGE_CHECKBOX_IDS = {
   otherFile: '2163f28f-e7c4-47c4-a6df-535153718b44',
 } as const;
 
-/**
- * Field key mappings for general competencies assessment
- *
- * These match the real Tally GCQ form field key prefixes.
- * Tally may append UUIDs as suffixes to hidden/calculated keys.
- */
 export const GC_ASSESSMENT_FIELD_KEYS = {
-  personId: 'question_PzkEpx', // Hidden field with person ID (who)
-  name: 'question_Z2DVAV', // Hidden field for verification
-  score: 'question_Q7k02g', // Calculated composite score
-
-  // Section scores (calculated fields)
+  personId: 'question_PzkEpx',
+  name: 'question_Z2DVAV',
+  score: 'question_Q7k02g',
   cultureScore: 'question_LdPQ1J',
   situationalScore: 'question_pLDlxP',
   digitalScore: 'question_J2ON0d',
 } as const;
 
-/**
- * Field key mappings for specialized competencies assessment
- */
-export const SC_ASSESSMENT_FIELD_KEYS = {
-  applicationId: 'question_AppId', // Hidden field with application ID
-  personId: 'question_PzkEpx', // Hidden field with person ID (fallback)
-  score: 'question_Score', // Calculated total score (optional)
-  specialisedCompetencyId: 'question_ScId', // Hidden field with SC definition ID
+export const GC_ASSESSMENT_FIELD_LABELS = {
+  personId: 'who',
+  score: 'score',
+  cultureScore: 'cultureScore',
+  situationalScore: 'situationalScore',
+  digitalScore: 'digitalScore',
 } as const;
+
+export const SC_ASSESSMENT_FIELD_KEYS = {
+  applicationId: 'question_AppId',
+  personId: 'question_PzkEpx',
+  score: 'question_Score',
+  specialisedCompetencyId: 'question_ScId',
+} as const;
+
+export const SC_ASSESSMENT_FIELD_LABELS = {
+  applicationId: 'applicationId',
+  personId: 'who',
+  score: 'score',
+  specialisedCompetencyId: 'scId',
+} as const;
+
+export const AGREEMENT_FIELD_KEYS = {
+  applicationId: 'question_BGLBxe',
+  legalFirstName: 'question_9Zx9jK',
+  legalMiddleName: 'question_eryQWJ',
+  legalLastName: 'question_WRQEVL',
+  preferredFirstName: 'question_a4k5qW',
+  preferredLastName: 'question_6K4jEo',
+  profilePicture: 'question_7KjLr6',
+  biography: 'question_8L2alk',
+  dateOfBirth: 'question_DpbkGX',
+  country: 'question_Xo9Jbe',
+  privacyPolicy: 'question_QRjell',
+  signature: 'question_P941qP',
+  entityRepresented: 'question_po5y2y',
+  serviceHours: 'question_LKV72z',
+} as const;
+
+export const AGREEMENT_FIELD_LABELS = {
+  applicationId: 'applicationId',
+  legalFirstName: 'First Legal Name',
+  legalMiddleName: 'Middle Legal Name',
+  legalLastName: 'Last Legal Name',
+  preferredFirstName: 'First Preferred Name',
+  preferredLastName: 'Last Preferred Name',
+  profilePicture: 'Profile Picture',
+  biography: 'Would you like to provide a short biography?',
+  dateOfBirth: 'Date of Birth',
+  country: 'Country',
+  privacyPolicy: 'Privacy Policy Acceptance',
+  signature: 'Internship Contract & Agreement Acceptance',
+  entityRepresented: 'Entity Represented',
+  serviceHours: 'Service Hours?',
+} as const;
+
+// ---------------------------------------------------------------------------
+// Field lookup helpers
+// ---------------------------------------------------------------------------
 
 /**
  * Find a field by its key prefix
  *
  * Tally may append suffixes to keys for hidden fields.
  * This function finds fields that start with the given key.
- *
- * @param fields - Array of Tally fields
- * @param keyPrefix - The field key prefix to search for
- * @returns The matching field or undefined
  */
 export function findFieldByKey(fields: TallyField[], keyPrefix: string): TallyField | undefined {
   return fields.find((f) => f.key.startsWith(keyPrefix));
@@ -159,24 +229,54 @@ export function findFieldByKey(fields: TallyField[], keyPrefix: string): TallyFi
 /**
  * Find a field by its label (case-insensitive)
  *
- * Fallback lookup for forms where the key prefix is dynamic
- * but the label is stable (e.g. "scId", "applicationId", "who").
- *
- * @param fields - Array of Tally fields
- * @param label - The label to search for (case-insensitive)
- * @returns The matching field or undefined
+ * Primary lookup method — labels are more stable than keys across
+ * Tally form versions.
  */
 export function findFieldByLabel(fields: TallyField[], label: string): TallyField | undefined {
   const lower = label.toLowerCase();
-  return fields.find((f) => f.label.toLowerCase() === lower);
+  return fields.find((f) => f.label != null && f.label.toLowerCase() === lower);
 }
 
 /**
- * Get string value from a field
+ * Label-first field resolution with key fallback and drift warnings
  *
- * @param field - The Tally field
- * @returns String value or undefined
+ * Tries `findFieldByLabel` first, then falls back to `findFieldByKey`.
+ * When a field is only found by key (not label), logs a warning so
+ * developers know the Tally form label may have changed.
+ *
+ * @param fields - Array of Tally fields from the webhook payload
+ * @param label - Expected label (from a *_FIELD_LABELS map)
+ * @param keyPrefix - Fallback key prefix (from a *_FIELD_KEYS map)
+ * @param formContext - Form name for log messages (e.g. 'Application', 'GC')
+ * @returns The matching field or undefined
  */
+export function findField(
+  fields: TallyField[],
+  label: string,
+  keyPrefix: string,
+  formContext: string,
+): TallyField | undefined {
+  const byLabel = findFieldByLabel(fields, label);
+  if (byLabel) return byLabel;
+
+  const byKey = findFieldByKey(fields, keyPrefix);
+  if (byKey) {
+    console.warn(
+      `[Tally Mapper] ${formContext}: Field "${label}" not found by label — ` +
+      `fell back to key prefix "${keyPrefix}" (found key: "${byKey.key}", ` +
+      `label: ${JSON.stringify(byKey.label)}). ` +
+      `Update the label map if the Tally form label has changed.`
+    );
+    return byKey;
+  }
+
+  return undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Value extractors
+// ---------------------------------------------------------------------------
+
 export function getStringValue(field: TallyField | undefined): string | undefined {
   if (!field || field.value === null || field.value === undefined) {
     return undefined;
@@ -193,12 +293,6 @@ export function getStringValue(field: TallyField | undefined): string | undefine
   return undefined;
 }
 
-/**
- * Get number value from a field
- *
- * @param field - The Tally field
- * @returns Number value or undefined
- */
 export function getNumberValue(field: TallyField | undefined): number | undefined {
   if (!field || field.value === null || field.value === undefined) {
     return undefined;
@@ -216,18 +310,11 @@ export function getNumberValue(field: TallyField | undefined): number | undefine
   return undefined;
 }
 
-/**
- * Get file URL from a file upload field
- *
- * @param field - The Tally field
- * @returns File URL or undefined
- */
 export function getFileUrl(field: TallyField | undefined): string | undefined {
   if (!field || !Array.isArray(field.value) || field.value.length === 0) {
     return undefined;
   }
 
-  // Check if it's a file upload array
   const firstItem = field.value[0] as TallyFileUpload | TallyCheckboxValue;
   if ('url' in firstItem) {
     return firstItem.url;
@@ -236,19 +323,11 @@ export function getFileUrl(field: TallyField | undefined): string | undefined {
   return undefined;
 }
 
-/**
- * Check if a specific checkbox option is selected
- *
- * @param field - The Tally checkbox field
- * @param optionId - The option ID to check
- * @returns Boolean indicating if option is selected
- */
 export function isCheckboxSelected(field: TallyField | undefined, optionId: string): boolean {
   if (!field || !Array.isArray(field.value)) {
     return false;
   }
 
-  // Checkbox values are an array of selected options
   return (field.value as TallyCheckboxValue[]).some(
     (v) => typeof v === 'object' && v !== null && v.id === optionId
   );
@@ -259,22 +338,17 @@ export function isCheckboxSelected(field: TallyField | undefined, optionId: stri
  *
  * Dropdown fields in Tally return an array of option IDs in the value field.
  * We need to look up the text from the options array.
- *
- * @param field - The Tally dropdown field
- * @returns The selected option text or undefined
  */
 export function getDropdownValue(field: TallyField | undefined): string | undefined {
   if (!field || !Array.isArray(field.value) || field.value.length === 0) {
     return undefined;
   }
 
-  // Check if value is already TallyCheckboxValue[] (has text directly)
   const firstValue = field.value[0];
   if (firstValue && typeof firstValue === 'object' && 'text' in firstValue) {
     return (firstValue as TallyCheckboxValue).text;
   }
 
-  // Otherwise, value is array of option IDs - look up text from options
   if (field.options && field.options.length > 0) {
     const selectedIds = field.value as unknown as string[];
     const selectedOption = field.options.find((opt) => selectedIds.includes(opt.id));
@@ -286,87 +360,68 @@ export function getDropdownValue(field: TallyField | undefined): string | undefi
   return undefined;
 }
 
-/**
- * Extract person data from application webhook payload
- *
- * @param payload - The Tally webhook payload
- * @returns Person data for creation
- */
+// ---------------------------------------------------------------------------
+// Application form extractors
+// ---------------------------------------------------------------------------
+
 export function extractPersonData(payload: TallyWebhookPayload): CreatePersonData {
   const { fields, respondentId } = payload.data;
+  const find = (name: keyof typeof APPLICATION_FIELD_LABELS) =>
+    findField(fields, APPLICATION_FIELD_LABELS[name], APPLICATION_FIELD_KEYS[name], 'Application');
 
-  const emailField = findFieldByKey(fields, APPLICATION_FIELD_KEYS.email);
-  const email = getStringValue(emailField);
-
+  const email = getStringValue(find('email'));
   if (!email) {
     throw new Error('Email is required but missing from webhook payload');
   }
 
-  const firstNameField = findFieldByKey(fields, APPLICATION_FIELD_KEYS.firstName);
-  const firstName = getStringValue(firstNameField);
-
+  const firstName = getStringValue(find('firstName'));
   if (!firstName) {
     throw new Error('First name is required but missing from webhook payload');
   }
 
-  const lastNameField = findFieldByKey(fields, APPLICATION_FIELD_KEYS.lastName);
-  const lastName = getStringValue(lastNameField);
-
+  const lastName = getStringValue(find('lastName'));
   if (!lastName) {
     throw new Error('Last name is required but missing from webhook payload');
   }
 
-  // Education level is a dropdown, so we need to extract the text from options
-  const educationLevelField = findFieldByKey(fields, APPLICATION_FIELD_KEYS.educationLevel);
+  const educationLevelField = find('educationLevel');
   const educationLevel = getDropdownValue(educationLevelField) || getStringValue(educationLevelField);
 
   return {
     email,
     firstName,
     lastName,
-    phoneNumber: getStringValue(findFieldByKey(fields, APPLICATION_FIELD_KEYS.phoneNumber)),
-    country: getStringValue(findFieldByKey(fields, APPLICATION_FIELD_KEYS.country)),
-    portfolioLink: getStringValue(findFieldByKey(fields, APPLICATION_FIELD_KEYS.portfolioLink)),
+    phoneNumber: getStringValue(find('phoneNumber')),
+    country: getStringValue(find('country')),
+    portfolioLink: getStringValue(find('portfolioLink')),
     educationLevel,
     tallyRespondentId: respondentId,
   };
 }
 
-/**
- * Extract application data from application webhook payload
- *
- * @param payload - The Tally webhook payload
- * @param personId - The ID of the associated person
- * @returns Application data for creation
- */
 export function extractApplicationData(
   payload: TallyWebhookPayload,
   personId: string
 ): CreateApplicationData {
   const { fields, submissionId, responseId, formId } = payload.data;
+  const find = (name: keyof typeof APPLICATION_FIELD_LABELS) =>
+    findField(fields, APPLICATION_FIELD_LABELS[name], APPLICATION_FIELD_KEYS[name], 'Application');
 
-  const positionField = findFieldByKey(fields, APPLICATION_FIELD_KEYS.position);
-  const position = getStringValue(positionField);
-
+  const position = getStringValue(find('position'));
   if (!position) {
     throw new Error('Position is required but missing from webhook payload');
   }
 
-  // Extract package contents checkbox values
-  const packageField = findFieldByKey(fields, APPLICATION_FIELD_KEYS.packageContents);
+  const packageField = find('packageContents');
 
   return {
     personId,
     position,
-    resumeUrl: getFileUrl(findFieldByKey(fields, APPLICATION_FIELD_KEYS.resumeFile)),
-    academicBackground: getStringValue(
-      findFieldByKey(fields, APPLICATION_FIELD_KEYS.academicBackground)
-    ),
-    previousExperience: getStringValue(
-      findFieldByKey(fields, APPLICATION_FIELD_KEYS.previousExperience)
-    ),
-    videoLink: getStringValue(findFieldByKey(fields, APPLICATION_FIELD_KEYS.videoLink)),
-    otherFileUrl: getFileUrl(findFieldByKey(fields, APPLICATION_FIELD_KEYS.otherFile)),
+    resumeUrl: getFileUrl(find('resumeFile')),
+    academicBackground: getStringValue(find('academicBackground')),
+    previousExperience: getStringValue(find('previousExperience')),
+    videoLink: getStringValue(find('videoLink')),
+    otherFileUrl: getFileUrl(find('otherFile')),
     hasResume: isCheckboxSelected(packageField, PACKAGE_CHECKBOX_IDS.resume),
     hasAcademicBg: isCheckboxSelected(packageField, PACKAGE_CHECKBOX_IDS.academicBg),
     hasVideoIntro: isCheckboxSelected(packageField, PACKAGE_CHECKBOX_IDS.videoIntro),
@@ -378,32 +433,21 @@ export function extractApplicationData(
   };
 }
 
-/**
- * Sub-scores from the GC assessment
- *
- * Matches the three calculated section scores in the Tally GCQ form:
- * - cultureScore: culture-fit questions
- * - situationalScore: situational-judgement questions
- * - digitalScore: digital-literacy questions
- */
+// ---------------------------------------------------------------------------
+// GC assessment extractor
+// ---------------------------------------------------------------------------
+
 export interface GCSubscores {
   cultureScore?: number;
   situationalScore?: number;
   digitalScore?: number;
 }
 
-/**
- * GC assessment raw data — new format includes full Tally fields.
- * Consumers must handle both old (flat sub-scores) and new format.
- */
 export interface GCRawData {
   subscores: GCSubscores;
   fields: TallyField[];
 }
 
-/**
- * GC assessment result data
- */
 export interface GCAssessmentResult {
   personId: string;
   score: number;
@@ -411,40 +455,25 @@ export interface GCAssessmentResult {
   tallySubmissionId: string;
 }
 
-/**
- * Extract general competencies assessment data from webhook payload
- *
- * @param payload - The Tally webhook payload
- * @returns GC assessment data
- */
 export function extractGCAssessmentData(payload: TallyWebhookPayload): GCAssessmentResult {
   const { fields, submissionId } = payload.data;
+  const find = (name: keyof typeof GC_ASSESSMENT_FIELD_LABELS) =>
+    findField(fields, GC_ASSESSMENT_FIELD_LABELS[name], GC_ASSESSMENT_FIELD_KEYS[name], 'GC');
 
-  const personIdField = findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.personId);
-  const personId = getStringValue(personIdField);
-
+  const personId = getStringValue(find('personId'));
   if (!personId) {
     throw new Error('Person ID (who) is required but missing from GC assessment webhook');
   }
 
-  const scoreField = findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.score);
-  const score = getNumberValue(scoreField);
-
+  const score = getNumberValue(find('score'));
   if (score === undefined) {
     throw new Error('Score is required but missing from GC assessment webhook');
   }
 
-  // Extract section scores for detailed tracking
   const subscores: GCSubscores = {
-    cultureScore: getNumberValue(
-      findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.cultureScore)
-    ),
-    situationalScore: getNumberValue(
-      findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.situationalScore)
-    ),
-    digitalScore: getNumberValue(
-      findFieldByKey(fields, GC_ASSESSMENT_FIELD_KEYS.digitalScore)
-    ),
+    cultureScore: getNumberValue(find('cultureScore')),
+    situationalScore: getNumberValue(find('situationalScore')),
+    digitalScore: getNumberValue(find('digitalScore')),
   };
 
   return {
@@ -458,21 +487,16 @@ export function extractGCAssessmentData(payload: TallyWebhookPayload): GCAssessm
   };
 }
 
-/**
- * Submission URL extracted from a Tally file field
- */
+// ---------------------------------------------------------------------------
+// SC assessment extractor
+// ---------------------------------------------------------------------------
+
 export interface SubmissionUrl {
   label: string;
   url: string;
   type: string;
 }
 
-/**
- * SC assessment result data
- *
- * `applicationId` is optional — SC forms may not embed a hidden application-ID
- * field.  When absent the route handler resolves it via `respondentId`.
- */
 export interface SCAssessmentResult {
   applicationId: string | undefined;
   personId?: string;
@@ -485,9 +509,6 @@ export interface SCAssessmentResult {
 
 /**
  * Extract file URLs from all file upload fields in the payload
- *
- * @param fields - Array of Tally fields
- * @returns Array of submission URL objects
  */
 export function extractFileUrls(fields: TallyField[]): SubmissionUrl[] {
   const urls: SubmissionUrl[] = [];
@@ -499,7 +520,7 @@ export function extractFileUrls(fields: TallyField[]): SubmissionUrl[] {
       if (typeof item === 'object' && item !== null && 'url' in item) {
         const fileUpload = item as TallyFileUpload;
         urls.push({
-          label: field.label,
+          label: field.label ?? field.key,
           url: fileUpload.url,
           type: fileUpload.mimeType,
         });
@@ -510,44 +531,18 @@ export function extractFileUrls(fields: TallyField[]): SubmissionUrl[] {
   return urls;
 }
 
-/**
- * Extract specialized competencies assessment data from webhook payload
- *
- * Score extraction is optional — SC assessments are reviewed by admins.
- *
- * @param payload - The Tally webhook payload
- * @returns SC assessment data
- */
 export function extractSCAssessmentData(payload: TallyWebhookPayload): SCAssessmentResult {
   const { fields, submissionId } = payload.data;
+  const find = (name: keyof typeof SC_ASSESSMENT_FIELD_LABELS) =>
+    findField(fields, SC_ASSESSMENT_FIELD_LABELS[name], SC_ASSESSMENT_FIELD_KEYS[name], 'SC');
 
-  // Try key-based lookup first, then fall back to label-based lookup
-  const applicationIdField =
-    findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.applicationId) ||
-    findFieldByLabel(fields, 'applicationId');
-  const applicationId = getStringValue(applicationIdField);
-
+  const applicationId = getStringValue(find('applicationId'));
   // applicationId is optional — SC forms often omit the hidden field.
   // When undefined the route handler resolves it via payload.data.respondentId.
 
-  const personIdField =
-    findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.personId) ||
-    findFieldByLabel(fields, 'who');
-  const personId = getStringValue(personIdField);
-
-  // Score is optional — admin reviews SC submissions manually
-  const scoreField =
-    findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.score) ||
-    findFieldByLabel(fields, 'score');
-  const score = getNumberValue(scoreField);
-
-  // Extract specialised competency definition ID (optional)
-  const scIdField =
-    findFieldByKey(fields, SC_ASSESSMENT_FIELD_KEYS.specialisedCompetencyId) ||
-    findFieldByLabel(fields, 'scId');
-  const specialisedCompetencyId = getStringValue(scIdField);
-
-  // Extract all file URLs from the submission
+  const personId = getStringValue(find('personId'));
+  const score = getNumberValue(find('score'));
+  const specialisedCompetencyId = getStringValue(find('specialisedCompetencyId'));
   const submissionUrls = extractFileUrls(fields);
 
   return {
@@ -563,69 +558,38 @@ export function extractSCAssessmentData(payload: TallyWebhookPayload): SCAssessm
   };
 }
 
-/**
- * Field key mappings for agreement signing form
- */
-export const AGREEMENT_FIELD_KEYS = {
-  applicationId: 'question_14Oda4',
-  legalFirstName: 'question_9Zx9jK',
-  legalMiddleName: 'question_eryQWJ',
-  legalLastName: 'question_WRQEVL',
-  preferredFirstName: 'question_a4k5qW',
-  preferredLastName: 'question_6K4jEo',
-  profilePicture: 'question_7KjLr6',
-  biography: 'question_8L2alk',
-  dateOfBirth: 'question_DpbkGX',
-  country: 'question_Xo9Jbe',
-  privacyPolicy: 'question_QRjell',
-  signature: 'question_P941qP',
-  entityRepresented: 'question_po5y2y',
-  serviceHours: 'question_LKV72z',
-} as const;
+// ---------------------------------------------------------------------------
+// Agreement extractor
+// ---------------------------------------------------------------------------
 
-/**
- * Agreement signing result data
- */
 export interface AgreementSigningResult {
   applicationId: string;
   agreementData: AgreementData;
   tallySubmissionId: string;
 }
 
-/**
- * Extract agreement signing data from webhook payload
- *
- * @param payload - The Tally webhook payload
- * @returns Agreement signing data
- */
 export function extractAgreementData(payload: TallyWebhookPayload): AgreementSigningResult {
   const { fields, submissionId } = payload.data;
+  const find = (name: keyof typeof AGREEMENT_FIELD_LABELS) =>
+    findField(fields, AGREEMENT_FIELD_LABELS[name], AGREEMENT_FIELD_KEYS[name], 'Agreement');
 
-  const applicationIdField =
-    findFieldByKey(fields, AGREEMENT_FIELD_KEYS.applicationId) ||
-    findFieldByLabel(fields, 'applicationId');
-  const applicationId = getStringValue(applicationIdField);
-
+  const applicationId = getStringValue(find('applicationId'));
   if (!applicationId) {
-    throw new Error('Application ID (Internal ID) is required but missing from agreement webhook');
+    throw new Error('Application ID is required but missing from agreement webhook');
   }
 
-  const legalFirstNameField = findFieldByKey(fields, AGREEMENT_FIELD_KEYS.legalFirstName);
-  const legalFirstName = getStringValue(legalFirstNameField);
-
+  const legalFirstName = getStringValue(find('legalFirstName'));
   if (!legalFirstName) {
     throw new Error('Legal first name is required but missing from agreement webhook');
   }
 
-  const legalLastNameField = findFieldByKey(fields, AGREEMENT_FIELD_KEYS.legalLastName);
-  const legalLastName = getStringValue(legalLastNameField);
-
+  const legalLastName = getStringValue(find('legalLastName'));
   if (!legalLastName) {
     throw new Error('Legal last name is required but missing from agreement webhook');
   }
 
   // Extract checkbox/boolean value for privacy policy
-  const privacyPolicyField = findFieldByKey(fields, AGREEMENT_FIELD_KEYS.privacyPolicy);
+  const privacyPolicyField = find('privacyPolicy');
   let privacyPolicyAccepted: boolean | undefined;
   if (privacyPolicyField) {
     if (typeof privacyPolicyField.value === 'boolean') {
@@ -636,23 +600,23 @@ export function extractAgreementData(payload: TallyWebhookPayload): AgreementSig
   }
 
   // Extract dropdown/select value for service hours
-  const serviceHoursField = findFieldByKey(fields, AGREEMENT_FIELD_KEYS.serviceHours);
+  const serviceHoursField = find('serviceHours');
   const serviceHours = getDropdownValue(serviceHoursField) || getStringValue(serviceHoursField);
 
   const agreementData: AgreementData = {
     applicationId,
     legalFirstName,
-    legalMiddleName: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.legalMiddleName)),
+    legalMiddleName: getStringValue(find('legalMiddleName')),
     legalLastName,
-    preferredFirstName: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.preferredFirstName)),
-    preferredLastName: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.preferredLastName)),
-    profilePictureUrl: getFileUrl(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.profilePicture)),
-    biography: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.biography)),
-    dateOfBirth: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.dateOfBirth)),
-    country: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.country)),
+    preferredFirstName: getStringValue(find('preferredFirstName')),
+    preferredLastName: getStringValue(find('preferredLastName')),
+    profilePictureUrl: getFileUrl(find('profilePicture')),
+    biography: getStringValue(find('biography')),
+    dateOfBirth: getStringValue(find('dateOfBirth')),
+    country: getStringValue(find('country')),
     privacyPolicyAccepted,
-    signatureUrl: getFileUrl(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.signature)),
-    entityRepresented: getStringValue(findFieldByKey(fields, AGREEMENT_FIELD_KEYS.entityRepresented)),
+    signatureUrl: getFileUrl(find('signature')),
+    entityRepresented: getStringValue(find('entityRepresented')),
     serviceHours,
   };
 
@@ -663,12 +627,12 @@ export function extractAgreementData(payload: TallyWebhookPayload): AgreementSig
   };
 }
 
+// ---------------------------------------------------------------------------
+// Validation helper
+// ---------------------------------------------------------------------------
+
 /**
  * Validate that required fields are present in the payload
- *
- * @param payload - The Tally webhook payload
- * @param requiredKeys - Array of field key prefixes that are required
- * @returns Array of missing field keys
  */
 export function validateRequiredFields(
   payload: TallyWebhookPayload,

@@ -6,14 +6,12 @@ Thank you for your interest in the {{POSITION}} position at {{ORGANIZATION_SHORT
 
 After careful consideration, we have decided not to move forward with your application at this time. This occasionally happens when we have a large number of highly qualified candidates, and we can only select a limited number to advance to the next stage. Please know that this does not reflect on your qualifications or potential.
 
-We genuinely appreciate the effort you put into your application, and while you may have not secured a placement this time, we encourage you to sign up for our Talent Network at http://alterna.dev/volunteer#talent-network to be notified of future opportunities.
+While you may not have secured a placement this time, we encourage you to sign up for our Talent Network at https://alterna.dev/volunteer#talent-network to be notified of future opportunities.
 
 We wish you the very best in your career journey and future endeavours.
-
-If you have any questions, please contact us at {{SUPPORT_EMAIL}}.
 
 ---
 
 Sent to {{PERSON_EMAIL}} on {{SENT_TIME}} (Coordinated Universal Time). Please do not reply to this email as this is an unmonitored inbox.
 
-{{ORGANIZATION_SHORT_NAME}} is an equal opportunity provider committed to inclusion and diversity. Our recruitment process is driven by a merit-first approach that does not discriminate candidates due to their ethnicity, religion, sexual orientation, identity, national origin, disability, or any other legally protected characteristic.
+{{ORGANIZATION_SHORT_NAME}} is an equal opportunity provider committed to inclusion and diversity. Our recruitment process is driven by a merit-first approach that does not discriminate against candidates on the basis of their ethnicity, religion, sexual orientation, identity, national origin, disability, or any other legally protected characteristic.

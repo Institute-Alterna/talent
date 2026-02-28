@@ -49,7 +49,7 @@ const STAGE_CONFIG: Record<Stage, { color: string; bgColor: string }> = {
 export function StageBadge({ stage, className, size = 'default', showNumber = false }: StageBadgeProps) {
   const config = STAGE_CONFIG[stage];
   const stageInfo = recruitment.stages.find(s => s.id === stage);
-  const label = stageInfo?.name || stage.replace(/_/g, ' ');
+  const label = stage === 'APPLICATION' ? 'Application' : (stageInfo?.name || stage.replace(/_/g, ' '));
 
   return (
     <Badge
@@ -74,6 +74,7 @@ export function StageBadge({ stage, className, size = 'default', showNumber = fa
  * Get stage display name
  */
 export function getStageName(stage: Stage): string {
+  if (stage === 'APPLICATION') return 'Application';
   const stageInfo = recruitment.stages.find(s => s.id === stage);
   return stageInfo?.name || stage.replace(/_/g, ' ');
 }

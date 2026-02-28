@@ -30,8 +30,7 @@ jest.mock('@/lib/db', () => ({
 jest.mock('@/lib/services/applications', () => ({
   getApplicationById: jest.fn(),
   getApplicationByAgreementTallySubmissionId: jest.fn(),
-  updateApplicationAgreement: jest.fn(),
-  advanceApplicationStage: jest.fn(),
+  updateApplicationAgreementAndAdvance: jest.fn(),
 }));
 
 jest.mock('@/lib/audit', () => ({
@@ -42,10 +41,9 @@ jest.mock('@/lib/audit', () => ({
 import {
   getApplicationById,
   getApplicationByAgreementTallySubmissionId,
-  updateApplicationAgreement,
-  advanceApplicationStage,
+  updateApplicationAgreementAndAdvance,
 } from '@/lib/services/applications';
-import { logStageChange } from '@/lib/audit';
+import { logStageChange, logWebhookReceived } from '@/lib/audit';
 
 // Helper to set NODE_ENV without TypeScript errors
 const setNodeEnv = (env: string) => {
@@ -106,8 +104,7 @@ describe('POST /api/webhooks/tally/agreement', () => {
 
       (getApplicationByAgreementTallySubmissionId as jest.Mock).mockResolvedValue(null);
       (getApplicationById as jest.Mock).mockResolvedValue(mockApplication);
-      (updateApplicationAgreement as jest.Mock).mockResolvedValue(mockApplication);
-      (advanceApplicationStage as jest.Mock).mockResolvedValue(mockApplication);
+      (updateApplicationAgreementAndAdvance as jest.Mock).mockResolvedValue(mockApplication);
 
       const request = createRequest(payload, signature);
       const response = await POST(request);
@@ -118,8 +115,8 @@ describe('POST /api/webhooks/tally/agreement', () => {
       expect(data.data.applicationId).toBe('app-123');
       expect(data.data.currentStage).toBe('SIGNED');
 
-      // Should store agreement data
-      expect(updateApplicationAgreement).toHaveBeenCalledWith('app-123', expect.objectContaining({
+      // Should store agreement data and advance atomically
+      expect(updateApplicationAgreementAndAdvance).toHaveBeenCalledWith('app-123', expect.objectContaining({
         agreementTallySubmissionId: expect.any(String),
         agreementSignedAt: expect.any(Date),
         agreementData: expect.objectContaining({
@@ -129,17 +126,27 @@ describe('POST /api/webhooks/tally/agreement', () => {
         }),
       }));
 
-      // Should advance to SIGNED
-      expect(advanceApplicationStage).toHaveBeenCalledWith('app-123', 'SIGNED');
+      // Should log webhook receipt with person context
+      expect(logWebhookReceived).toHaveBeenCalledWith(
+        'agreement',
+        'person-123',
+        'app-123',
+        expect.objectContaining({
+          personName: 'John Doe',
+          position: 'Software Developer',
+          eventId: expect.any(String),
+        }),
+        expect.any(String)
+      );
 
-      // Should log stage change
+      // Should log stage change with person name
       expect(logStageChange).toHaveBeenCalledWith(
         'app-123',
         'person-123',
         'AGREEMENT',
         'SIGNED',
         undefined,
-        expect.stringContaining('Agreement signed')
+        expect.stringContaining('John Doe')
       );
     });
   });
@@ -161,8 +168,7 @@ describe('POST /api/webhooks/tally/agreement', () => {
       expect(response.status).toBe(200);
       expect(data.message).toContain('Duplicate');
       expect(data.applicationId).toBe('app-123');
-      expect(updateApplicationAgreement).not.toHaveBeenCalled();
-      expect(advanceApplicationStage).not.toHaveBeenCalled();
+      expect(updateApplicationAgreementAndAdvance).not.toHaveBeenCalled();
     });
   });
 
@@ -201,8 +207,7 @@ describe('POST /api/webhooks/tally/agreement', () => {
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.message).toContain('withdrawn');
-      expect(updateApplicationAgreement).not.toHaveBeenCalled();
-      expect(advanceApplicationStage).not.toHaveBeenCalled();
+      expect(updateApplicationAgreementAndAdvance).not.toHaveBeenCalled();
     });
 
     it('returns 400 when application is not ACCEPTED', async () => {
@@ -249,7 +254,7 @@ describe('POST /api/webhooks/tally/agreement', () => {
       // Payload without applicationId field
       const payload = createAgreementPayload();
       payload.data.fields = payload.data.fields.filter(
-        (f) => f.key !== 'question_14Oda4'
+        (f) => f.label !== 'applicationId'
       );
       const signature = generateWebhookSignature(payload, webhookSecret);
 
@@ -291,7 +296,7 @@ describe('POST /api/webhooks/tally/agreement', () => {
           createAgreementPayload({ submissionId: `sub-${i}` }),
           generateWebhookSignature(createAgreementPayload({ submissionId: `sub-${i}` }), webhookSecret)
         );
-        (getApplicationByAgreementTallySubmissionId as jest.Mock).mockResolvedValue({ id: `app-${i}` });
+      (getApplicationByAgreementTallySubmissionId as jest.Mock).mockResolvedValue({ id: `app-${i}` });
         await POST(req);
       }
 

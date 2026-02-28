@@ -37,6 +37,7 @@ import {
   logApplicationCreated,
   logStageChange,
 } from '@/lib/audit';
+
 import { sendApplicationReceived } from '@/lib/email';
 import { sanitizeForLog } from '@/lib/security';
 
@@ -52,20 +53,6 @@ export async function POST(request: NextRequest) {
   const { payload, ip, rateLimitHeaders } = parsed;
 
   const { submissionId, formId, formName } = payload.data;
-
-  // Log webhook receipt
-  await logWebhookReceived(
-    'application',
-    undefined,
-    undefined,
-    {
-      submissionId,
-      formId,
-      formName,
-      eventId: payload.eventId,
-    },
-    ip
-  );
 
   // Idempotency check - don't process duplicate submissions
   const existingApplication = await getApplicationByTallySubmissionId(submissionId);
@@ -120,6 +107,23 @@ export async function POST(request: NextRequest) {
   // Create application
   const application = await createApplication(applicationData);
 
+  // Log webhook receipt (after person and application are known for full context)
+  await logWebhookReceived(
+    'application',
+    person.id,
+    application.id,
+    {
+      submissionId,
+      formId,
+      formName,
+      eventId: payload.eventId,
+      personName: `${person.firstName} ${person.lastName}`,
+      personCreated,
+      position: application.position,
+    },
+    ip
+  );
+
   await logApplicationCreated(
     application.id,
     person.id,
@@ -149,31 +153,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Determine next steps based on GC status
+  // Determine next steps based on GC status.
+  // Applications now start at GENERAL_COMPETENCIES (no APPLICATION stage),
+  // so we only need to advance if the person already passed GC.
   let nextStep: 'awaiting_gc' | 'advance_to_specialized' | 'awaiting_gc_decision';
   let statusMessage: string;
 
   if (!person.generalCompetenciesCompleted) {
-    // Person hasn't taken GC yet — advance to GENERAL_COMPETENCIES stage.
+    // Person hasn't taken GC yet — stays at GENERAL_COMPETENCIES (default).
     // The GC invitation email is sent manually by the admin.
     nextStep = 'awaiting_gc';
     statusMessage = 'Application received. General competencies assessment pending.';
-
-    await advanceApplicationStage(application.id, 'GENERAL_COMPETENCIES');
-    await logStageChange(
-      application.id,
-      person.id,
-      'APPLICATION',
-      'GENERAL_COMPETENCIES',
-      undefined,
-      'Auto-advanced: awaiting general competencies assessment'
-    );
   } else {
     // Person has already completed GC
     const passedGC = await hasPassedGeneralCompetencies(person.id);
 
     if (passedGC) {
-      // GC passed — advance to next stage
+      // GC passed — advance to specialised competencies
       nextStep = 'advance_to_specialized';
       statusMessage = 'Application received. Advancing to specialised competencies stage.';
 
@@ -181,25 +177,15 @@ export async function POST(request: NextRequest) {
       await logStageChange(
         application.id,
         person.id,
-        'APPLICATION',
+        'GENERAL_COMPETENCIES',
         'SPECIALIZED_COMPETENCIES',
         undefined,
         'Auto-advanced: Person already passed general competencies'
       );
     } else {
-      // GC failed — keep application active at GC stage for admin to reject manually
+      // GC failed — stays at GENERAL_COMPETENCIES for admin to reject manually
       nextStep = 'awaiting_gc_decision';
       statusMessage = 'Application received. General competencies not passed — awaiting admin decision.';
-
-      await advanceApplicationStage(application.id, 'GENERAL_COMPETENCIES');
-      await logStageChange(
-        application.id,
-        person.id,
-        'APPLICATION',
-        'GENERAL_COMPETENCIES',
-        undefined,
-        'Auto-advanced: Person previously failed general competencies — awaiting admin decision'
-      );
     }
   }
 

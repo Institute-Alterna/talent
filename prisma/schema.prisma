@@ -165,7 +165,7 @@ model Application {
   position String
 
   /// Current stage in the recruitment pipeline
-  currentStage Stage @default(APPLICATION)
+  currentStage Stage @default(GENERAL_COMPETENCIES)
 
   /// Current status (active, accepted, rejected)
   status Status @default(ACTIVE)

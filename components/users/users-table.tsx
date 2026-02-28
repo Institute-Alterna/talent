@@ -346,7 +346,7 @@ export function UsersTable({ users: initialUsers, currentUserId, onViewUser }: U
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleConfirm}
-                  className={c.destructive ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : undefined}
+                  className={c.destructive ? 'bg-destructive text-white hover:bg-destructive/85' : undefined}
                 >
                   {isPending ? c.pendingLabel : c.confirmLabel}
                 </AlertDialogAction>

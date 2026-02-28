@@ -7,13 +7,14 @@
 
 export const recruitment = {
   // Pipeline stages in order
+  // Note: APPLICATION is kept in the Prisma Stage enum for backward compatibility
+  // with existing database records, but is no longer part of the active pipeline.
   stages: [
-    { id: 'APPLICATION', name: 'Application', order: 1 },
-    { id: 'GENERAL_COMPETENCIES', name: 'General Competencies', order: 2 },
-    { id: 'SPECIALIZED_COMPETENCIES', name: 'Specialised Competencies', order: 3 },
-    { id: 'INTERVIEW', name: 'Interview', order: 4 },
-    { id: 'AGREEMENT', name: 'Agreement', order: 5 },
-    { id: 'SIGNED', name: 'Signed', order: 6 },
+    { id: 'GENERAL_COMPETENCIES', name: 'General Competencies', order: 1 },
+    { id: 'SPECIALIZED_COMPETENCIES', name: 'Specialised Competencies', order: 2 },
+    { id: 'INTERVIEW', name: 'Interview', order: 3 },
+    { id: 'AGREEMENT', name: 'Agreement', order: 4 },
+    { id: 'SIGNED', name: 'Signed', order: 5 },
   ],
 
   // Minimum passing scores for assessments (with scale)

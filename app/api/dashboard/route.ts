@@ -90,9 +90,8 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // Format applications by stage
+    // Format applications by stage (fold legacy APPLICATION into GENERAL_COMPETENCIES)
     const stageOrder = [
-      'APPLICATION',
       'GENERAL_COMPETENCIES',
       'SPECIALIZED_COMPETENCIES',
       'INTERVIEW',
@@ -105,7 +104,11 @@ export async function GET(request: NextRequest) {
       byStage[stage] = 0;
     }
     for (const item of applicationsByStage) {
-      byStage[item.currentStage] = item._count;
+      if (item.currentStage === 'APPLICATION') {
+        byStage['GENERAL_COMPETENCIES'] = (byStage['GENERAL_COMPETENCIES'] || 0) + item._count;
+      } else {
+        byStage[item.currentStage] = item._count;
+      }
     }
 
     // Format applications by status

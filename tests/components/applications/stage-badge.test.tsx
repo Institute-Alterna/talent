@@ -49,12 +49,13 @@ describe('StageBadge', () => {
 
   describe('getStageOrder', () => {
     it('should return correct order for all stages', () => {
-      expect(getStageOrder(Stage.APPLICATION)).toBe(1);
-      expect(getStageOrder(Stage.GENERAL_COMPETENCIES)).toBe(2);
-      expect(getStageOrder(Stage.SPECIALIZED_COMPETENCIES)).toBe(3);
-      expect(getStageOrder(Stage.INTERVIEW)).toBe(4);
-      expect(getStageOrder(Stage.AGREEMENT)).toBe(5);
-      expect(getStageOrder(Stage.SIGNED)).toBe(6);
+      // APPLICATION is no longer in the active pipeline — returns 0
+      expect(getStageOrder(Stage.APPLICATION)).toBe(0);
+      expect(getStageOrder(Stage.GENERAL_COMPETENCIES)).toBe(1);
+      expect(getStageOrder(Stage.SPECIALIZED_COMPETENCIES)).toBe(2);
+      expect(getStageOrder(Stage.INTERVIEW)).toBe(3);
+      expect(getStageOrder(Stage.AGREEMENT)).toBe(4);
+      expect(getStageOrder(Stage.SIGNED)).toBe(5);
     });
   });
 
@@ -100,8 +101,8 @@ describe('StageBadge', () => {
 
     it('should show stage number when showNumber is true', () => {
       render(<StageBadge stage={Stage.INTERVIEW} showNumber />);
-      // Stage 4 (Interview) should have "4." before the label
-      expect(screen.getByText('4.')).toBeInTheDocument();
+      // Stage 3 (Interview) should have "3." before the label
+      expect(screen.getByText('3.')).toBeInTheDocument();
       expect(screen.getByText('Interview')).toBeInTheDocument();
     });
 

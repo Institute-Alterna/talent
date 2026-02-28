@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Timeline, TimelineItem, mapActionTypeToTimelineType } from '@/components/ui/timeline';
 import { useToast } from '@/hooks/use-toast';
+import { humaniseAuditAction } from '@/lib/audit-display';
 import { RefreshCw, Search, Loader2 } from 'lucide-react';
 
 const ACTION_TYPE_LABELS: Record<string, string> = {
@@ -36,6 +37,7 @@ interface AuditLogEntry {
   action: string;
   actionType: string;
   createdAt: string;
+  details?: Record<string, unknown> | null;
   ipAddress: string | null;
   person: {
     id: string;
@@ -163,7 +165,7 @@ export function AuditLogPageClient() {
   // Convert logs to timeline items
   const timelineItems: TimelineItem[] = logs.map((log) => ({
     id: log.id,
-    title: log.action,
+    title: humaniseAuditAction(log),
     description: log.person
       ? `${log.person.firstName} ${log.person.lastName}${log.application ? ` - ${log.application.position}` : ''}`
       : log.application

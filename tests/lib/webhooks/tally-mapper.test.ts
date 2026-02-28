@@ -419,7 +419,7 @@ describe('Tally Field Mapper', () => {
         formName: 'Team Agreement',
         createdAt: '2024-01-01T00:00:00Z',
         fields: [
-          { key: AGREEMENT_FIELD_KEYS.applicationId, label: 'Internal ID', type: 'HIDDEN_FIELDS', value: 'app-123' },
+          { key: 'question_BGLBxe_uuid-suffix', label: 'applicationId', type: 'HIDDEN_FIELDS', value: 'app-123' },
           { key: AGREEMENT_FIELD_KEYS.legalFirstName, label: 'First Legal Name', type: 'INPUT_TEXT', value: 'John' },
           { key: AGREEMENT_FIELD_KEYS.legalMiddleName, label: 'Middle Legal Name', type: 'INPUT_TEXT', value: 'Michael' },
           { key: AGREEMENT_FIELD_KEYS.legalLastName, label: 'Last Legal Name', type: 'INPUT_TEXT', value: 'Doe' },
@@ -480,7 +480,7 @@ describe('Tally Field Mapper', () => {
         ...validPayload,
         data: {
           ...validPayload.data,
-          fields: validPayload.data.fields.filter((f) => f.key !== AGREEMENT_FIELD_KEYS.applicationId),
+          fields: validPayload.data.fields.filter((f) => f.label !== 'applicationId'),
         },
       };
 
@@ -517,7 +517,7 @@ describe('Tally Field Mapper', () => {
         data: {
           ...validPayload.data,
           fields: [
-            { key: AGREEMENT_FIELD_KEYS.applicationId, label: 'Internal ID', type: 'HIDDEN_FIELDS', value: 'app-456' },
+            { key: 'question_BGLBxe_uuid-suffix', label: 'applicationId', type: 'HIDDEN_FIELDS', value: 'app-456' },
             { key: AGREEMENT_FIELD_KEYS.legalFirstName, label: 'First', type: 'INPUT_TEXT', value: 'Jane' },
             { key: AGREEMENT_FIELD_KEYS.legalLastName, label: 'Last', type: 'INPUT_TEXT', value: 'Smith' },
           ],

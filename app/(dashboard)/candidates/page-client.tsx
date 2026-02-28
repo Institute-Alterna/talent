@@ -78,6 +78,7 @@ interface AuditLogResponse {
     action: string;
     actionType: string;
     createdAt: string;
+    details?: Record<string, unknown> | null;
     user?: { displayName: string } | null;
   }>;
 }
@@ -752,7 +753,8 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     // Find the application to get its name — check pipeline data first, then list data
     if (pipelineData) {
       for (const stage of Object.keys(pipelineData) as (keyof PipelineBoardData)[]) {
-        const app = pipelineData[stage].find(a => a.id === applicationId);
+        const apps = pipelineData[stage];
+        const app = apps?.find(a => a.id === applicationId);
         if (app) {
           setWithdrawApplicationId(applicationId);
           setWithdrawApplicationName(`${app.person.firstName} ${app.person.lastName}`);
@@ -810,7 +812,8 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     // Find the application to get its name — check pipeline data first, then list data
     if (pipelineData) {
       for (const stage of Object.keys(pipelineData) as (keyof PipelineBoardData)[]) {
-        const app = pipelineData[stage].find(a => a.id === applicationId);
+        const apps = pipelineData[stage];
+        const app = apps?.find(a => a.id === applicationId);
         if (app) {
           setWithdrawOfferApplicationId(applicationId);
           setWithdrawOfferApplicationName(`${app.person.firstName} ${app.person.lastName}`);
@@ -904,7 +907,6 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     };
 
     return {
-      APPLICATION: pipelineData.APPLICATION.filter(filterFn),
       GENERAL_COMPETENCIES: pipelineData.GENERAL_COMPETENCIES.filter(filterFn),
       SPECIALIZED_COMPETENCIES: pipelineData.SPECIALIZED_COMPETENCIES.filter(filterFn),
       INTERVIEW: pipelineData.INTERVIEW.filter(filterFn),
@@ -1057,7 +1059,6 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
         ) : isActiveView ? (
           <PipelineBoard
             data={filteredPipelineData || {
-              APPLICATION: [],
               GENERAL_COMPETENCIES: [],
               SPECIALIZED_COMPETENCIES: [],
               INTERVIEW: [],

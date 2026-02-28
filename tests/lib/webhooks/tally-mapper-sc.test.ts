@@ -8,6 +8,7 @@
 import {
   extractSCAssessmentData,
   extractFileUrls,
+  findFieldByLabel,
   SC_ASSESSMENT_FIELD_KEYS,
   type TallyWebhookPayload,
   type TallyField,
@@ -34,17 +35,43 @@ const makePayload = (fields: TallyField[], submissionId = 'sub-sc-001'): TallyWe
 const baseFields: TallyField[] = [
   {
     key: `${SC_ASSESSMENT_FIELD_KEYS.applicationId}_hidden`,
-    label: 'Application ID',
+    label: 'applicationId',
     type: 'HIDDEN_FIELDS',
     value: 'app-1111-2222-3333-444444444444',
   },
   {
     key: `${SC_ASSESSMENT_FIELD_KEYS.personId}_hidden`,
-    label: 'Person ID',
+    label: 'who',
     type: 'HIDDEN_FIELDS',
     value: 'person-aaaa-bbbb-cccc-dddddddddddd',
   },
 ];
+
+// ---------------------------------------------------------------------------
+// findFieldByLabel — null label handling
+// ---------------------------------------------------------------------------
+
+describe('findFieldByLabel', () => {
+  it('skips fields with null labels without crashing', () => {
+    const fields: TallyField[] = [
+      { key: 'question_ZdRkOv', label: null, type: 'CHECKBOXES', value: [] },
+      { key: 'question_abc', label: 'applicationId', type: 'HIDDEN_FIELDS', value: 'app-123' },
+    ];
+
+    const result = findFieldByLabel(fields, 'applicationId');
+    expect(result).toBeDefined();
+    expect(result!.value).toBe('app-123');
+  });
+
+  it('returns undefined when all labels are null', () => {
+    const fields: TallyField[] = [
+      { key: 'question_a', label: null, type: 'CHECKBOXES', value: [] },
+      { key: 'question_b', label: null, type: 'FILE_UPLOAD', value: [] },
+    ];
+
+    expect(findFieldByLabel(fields, 'anything')).toBeUndefined();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // extractFileUrls
@@ -144,6 +171,29 @@ describe('extractFileUrls', () => {
   it('returns empty array for empty fields list', () => {
     expect(extractFileUrls([])).toEqual([]);
   });
+
+  it('uses field key as label fallback when label is null', () => {
+    const fields: TallyField[] = [
+      {
+        key: 'question_xdNbD9',
+        label: null,
+        type: 'FILE_UPLOAD',
+        value: [
+          {
+            id: 'file-1',
+            name: 'photo.jpg',
+            url: 'https://tally.so/files/photo.jpg',
+            mimeType: 'image/jpeg',
+            size: 5000,
+          },
+        ],
+      },
+    ];
+
+    const result = extractFileUrls(fields);
+    expect(result).toHaveLength(1);
+    expect(result[0].label).toBe('question_xdNbD9');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -233,6 +283,39 @@ describe('extractSCAssessmentData', () => {
   it('returns empty submissionUrls when no files uploaded', () => {
     const result = extractSCAssessmentData(makePayload(baseFields));
     expect(result.submissionUrls).toEqual([]);
+  });
+
+  it('handles fields with null labels (real-world Tally checkbox payloads)', () => {
+    // Tally sends null labels for some CHECKBOXES fields — this previously
+    // crashed findFieldByLabel with "Cannot read properties of null"
+    const fields: TallyField[] = [
+      ...baseFields,
+      {
+        key: 'question_xdNbD9',
+        label: '',
+        type: 'FILE_UPLOAD',
+        value: [
+          {
+            id: 'L642al',
+            name: 'illustration.jpg',
+            url: 'https://storage.tally.so/private/illustration.jpg',
+            mimeType: 'image/jpeg',
+            size: 1116677,
+          },
+        ],
+      },
+      {
+        key: 'question_ZdRkOv',
+        label: null,
+        type: 'CHECKBOXES',
+        value: [{ id: 'c4ba8c71', text: 'I used AI tools for this task' }],
+      },
+    ];
+
+    // Should not throw
+    const result = extractSCAssessmentData(makePayload(fields));
+    expect(result.applicationId).toBe('app-1111-2222-3333-444444444444');
+    expect(result.submissionUrls).toHaveLength(1);
   });
 
   it('includes tallySubmissionId', () => {

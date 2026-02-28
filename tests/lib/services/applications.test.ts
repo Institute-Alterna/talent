@@ -46,7 +46,7 @@ const mockApplication = {
   id: 'app-123',
   personId: 'person-123',
   position: 'Software Developer',
-  currentStage: 'APPLICATION' as const,
+  currentStage: 'GENERAL_COMPETENCIES' as const,
   status: 'ACTIVE' as const,
   resumeUrl: 'https://example.com/resume.pdf',
   academicBackground: 'Computer Science from UC Berkeley',
@@ -371,11 +371,24 @@ describe('Application Service', () => {
     it('returns true for valid advancement', () => {
       const application = {
         ...mockApplication,
+        currentStage: 'GENERAL_COMPETENCIES' as const,
+        status: 'ACTIVE' as const,
+      } as Application;
+
+      const result = canAdvanceToStage(application, 'SPECIALIZED_COMPETENCIES');
+
+      expect(result).toBe(true);
+    });
+
+    it('maps legacy APPLICATION to GENERAL_COMPETENCIES for advancement', () => {
+      const application = {
+        ...mockApplication,
         currentStage: 'APPLICATION' as const,
         status: 'ACTIVE' as const,
       } as Application;
 
-      const result = canAdvanceToStage(application, 'GENERAL_COMPETENCIES');
+      // APPLICATION maps to GC internally, so advancing to SC should work
+      const result = canAdvanceToStage(application, 'SPECIALIZED_COMPETENCIES');
 
       expect(result).toBe(true);
     });
@@ -387,7 +400,7 @@ describe('Application Service', () => {
         status: 'ACTIVE' as const,
       } as Application;
 
-      const result = canAdvanceToStage(application, 'APPLICATION');
+      const result = canAdvanceToStage(application, 'GENERAL_COMPETENCIES');
 
       expect(result).toBe(false);
     });
@@ -395,7 +408,7 @@ describe('Application Service', () => {
     it('returns false for rejected applications', () => {
       const application = {
         ...mockApplication,
-        currentStage: 'APPLICATION' as const,
+        currentStage: 'GENERAL_COMPETENCIES' as const,
         status: 'REJECTED' as const,
       } as Application;
 
@@ -406,9 +419,15 @@ describe('Application Service', () => {
   });
 
   describe('getNextStage', () => {
-    it('returns next stage for APPLICATION', () => {
+    it('maps legacy APPLICATION to GENERAL_COMPETENCIES and returns next stage', () => {
       const next = getNextStage('APPLICATION');
-      expect(next).toBe('GENERAL_COMPETENCIES');
+      // APPLICATION maps to GC (order 1), so next is SC (order 2)
+      expect(next).toBe('SPECIALIZED_COMPETENCIES');
+    });
+
+    it('returns next stage for GENERAL_COMPETENCIES', () => {
+      const next = getNextStage('GENERAL_COMPETENCIES');
+      expect(next).toBe('SPECIALIZED_COMPETENCIES');
     });
 
     it('returns next stage for INTERVIEW', () => {
