@@ -81,7 +81,7 @@
     "tsx": "^4.21.0"
   },
   "overrides": {
-    "minimatch": "^10.2.1",
+    "minimatch": ">=10.2.3",
     "glob": "^13.0.5",
     "hono": "^4.11.10",
     "@mrleebo/prisma-ast": "^0.14.0"
