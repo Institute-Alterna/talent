@@ -13,7 +13,7 @@
  * (for resolving conflicting Tailwind classes).
  */
 
-import { cn, isValidUUID, isValidURL, formatDate, formatDateTime, formatDateShort } from '@/lib/utils';
+import { cn, ensureAbsoluteUrl, isValidUUID, isValidURL, formatDate, formatDateTime, formatDateShort } from '@/lib/utils';
 
 describe('cn (className utility)', () => {
   /**
@@ -304,5 +304,36 @@ describe('formatDateTime', () => {
    */
   it('returns empty string for invalid date string', () => {
     expect(formatDateTime('not-a-date')).toBe('');
+  });
+});
+
+describe('ensureAbsoluteUrl', () => {
+  it('passes through https:// URLs unchanged', () => {
+    expect(ensureAbsoluteUrl('https://example.com')).toBe('https://example.com');
+    expect(ensureAbsoluteUrl('https://example.com/path?q=1')).toBe('https://example.com/path?q=1');
+  });
+
+  it('passes through http:// URLs unchanged', () => {
+    expect(ensureAbsoluteUrl('http://example.com')).toBe('http://example.com');
+    expect(ensureAbsoluteUrl('http://example.com/path')).toBe('http://example.com/path');
+  });
+
+  it('is case-insensitive for protocol detection', () => {
+    expect(ensureAbsoluteUrl('HTTPS://EXAMPLE.COM')).toBe('HTTPS://EXAMPLE.COM');
+    expect(ensureAbsoluteUrl('Http://example.com')).toBe('Http://example.com');
+  });
+
+  it('prepends https:// to bare domains', () => {
+    expect(ensureAbsoluteUrl('example.com')).toBe('https://example.com');
+    expect(ensureAbsoluteUrl('example.com/portfolio')).toBe('https://example.com/portfolio');
+  });
+
+  it('prepends https:// to www domains', () => {
+    expect(ensureAbsoluteUrl('www.example.com')).toBe('https://www.example.com');
+  });
+
+  it('trims whitespace before processing', () => {
+    expect(ensureAbsoluteUrl('  example.com  ')).toBe('https://example.com');
+    expect(ensureAbsoluteUrl('  https://example.com  ')).toBe('https://example.com');
   });
 });

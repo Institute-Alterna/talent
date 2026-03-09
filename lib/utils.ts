@@ -153,3 +153,40 @@ export function calcMissingFields(app: {
   if (app.hasOtherFile && !app.otherFileUrl) missing.push('Other File');
   return missing;
 }
+
+/**
+ * Ensure a URL has an absolute protocol prefix.
+ *
+ * Bare domains (e.g. "example.com") are treated as relative URLs by browsers.
+ * This prepends "https://" when no http(s) protocol is present.
+ *
+ * @param url - URL string that may lack a protocol
+ * @returns URL with https:// prefix if no protocol was present
+ */
+export type PortfolioLinkPlatform = 'linkedin' | 'github' | 'onedrive' | 'google-drive' | 'generic';
+
+/**
+ * Determine the platform from a portfolio link URL.
+ *
+ * @param url - Portfolio URL string
+ * @returns Platform identifier for icon/label selection
+ */
+export function getPortfolioLinkPlatform(url: string): PortfolioLinkPlatform {
+  try {
+    const hostname = new URL(ensureAbsoluteUrl(url)).hostname.toLowerCase();
+    if (hostname.endsWith('linkedin.com')) return 'linkedin';
+    if (hostname.endsWith('github.com')) return 'github';
+    if (hostname.endsWith('onedrive.live.com') || hostname.endsWith('1drv.ms')) return 'onedrive';
+    if (hostname.endsWith('drive.google.com') || hostname.endsWith('docs.google.com'))
+      return 'google-drive';
+    return 'generic';
+  } catch {
+    return 'generic';
+  }
+}
+
+export function ensureAbsoluteUrl(url: string): string {
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}

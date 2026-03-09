@@ -35,7 +35,14 @@ import { StatusBadge } from './status-badge';
 import { StageBadge } from './stage-badge';
 import { Timeline, TimelineItem, mapActionTypeToTimelineType } from '@/components/ui/timeline';
 import { Stage, Status } from '@/lib/generated/prisma/client';
-import { formatDateShort, formatDateTime, getCountryName } from '@/lib/utils';
+import {
+  ensureAbsoluteUrl,
+  formatDateShort,
+  formatDateTime,
+  getCountryName,
+  getPortfolioLinkPlatform,
+} from '@/lib/utils';
+import { getPortfolioIcon, getPortfolioLinkLabel } from '@/components/shared/platform-icons';
 import { recruitment, formatScoreDisplay, strings } from '@/config';
 import { humaniseAuditAction } from '@/lib/audit-display';
 import { useMediaQuery } from '@/hooks';
@@ -49,7 +56,6 @@ import {
   Mail,
   Phone,
   MapPin,
-  Link as LinkIcon,
   GraduationCap,
   FileText,
   Video,
@@ -504,18 +510,23 @@ function ProfileContent({
               ].filter(Boolean).join(', ')}
             </InfoItem>
           )}
-          {person.portfolioLink && (
-            <InfoItem icon={LinkIcon} label="Portfolio">
-              <a
-                href={person.portfolioLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline flex items-center gap-1"
-              >
-                View Portfolio <ExternalLink className="h-3 w-3" />
-              </a>
-            </InfoItem>
-          )}
+          {person.portfolioLink &&
+            (() => {
+              const platform = getPortfolioLinkPlatform(person.portfolioLink);
+              const PlatformIcon = getPortfolioIcon(platform);
+              return (
+                <InfoItem icon={PlatformIcon} label="Portfolio">
+                  <a
+                    href={ensureAbsoluteUrl(person.portfolioLink)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline flex items-center gap-1"
+                  >
+                    {getPortfolioLinkLabel(platform)} <ExternalLink className="h-3 w-3" />
+                  </a>
+                </InfoItem>
+              );
+            })()}
           {person.educationLevel && (
             <InfoItem icon={GraduationCap} label="Education">
               {person.educationLevel}

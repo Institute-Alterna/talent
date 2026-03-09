@@ -29,6 +29,7 @@
 
 import type { CreatePersonData } from '@/types/person';
 import type { CreateApplicationData, AgreementData } from '@/types/application';
+import { ensureAbsoluteUrl } from '@/lib/utils';
 
 /**
  * Tally webhook payload structure
@@ -387,13 +388,15 @@ export function extractPersonData(payload: TallyWebhookPayload): CreatePersonDat
   const educationLevelField = find('educationLevel');
   const educationLevel = getDropdownValue(educationLevelField) || getStringValue(educationLevelField);
 
+  const rawPortfolioLink = getStringValue(find('portfolioLink'));
+
   return {
     email,
     firstName,
     lastName,
     phoneNumber: getStringValue(find('phoneNumber')),
     country: getStringValue(find('country')),
-    portfolioLink: getStringValue(find('portfolioLink')),
+    portfolioLink: rawPortfolioLink ? ensureAbsoluteUrl(rawPortfolioLink) : undefined,
     educationLevel,
     tallyRespondentId: respondentId,
   };

@@ -32,7 +32,7 @@ import {
 import { pdfLabels } from './config';
 import { getApplicationDetail } from '@/lib/services/applications';
 import { getAuditLogsForApplication, getAuditLogsForPerson } from '@/lib/audit';
-import { getCountryName } from '@/lib/utils';
+import { ensureAbsoluteUrl, getCountryName } from '@/lib/utils';
 import type { ApplicationDetail } from '@/types/application';
 
 /**
@@ -118,7 +118,7 @@ export function sanitizeApplicationData(application: ApplicationDetail): Sanitiz
     secondaryEmail: sanitizeEmail(person.secondaryEmail),
     phoneNumber: sanitizeMediumText(person.phoneNumber),
     location: sanitizeMediumText(buildLocation(person.city, person.state, person.country)),
-    portfolioLink: sanitizeUrl(person.portfolioLink),
+    portfolioLink: sanitizeUrl(ensureAbsoluteUrl(person.portfolioLink || '')),
     educationLevel: sanitizeShortText(person.educationLevel),
     generalCompetenciesScore: person.generalCompetenciesScore
       ? sanitizeNumber(person.generalCompetenciesScore.toString(), 2)
