@@ -2,8 +2,6 @@
  * Review SC Assessment API Route Tests
  *
  * Unit tests for POST /api/applications/[id]/review-sc
- *
- * @jest-environment node
  */
 
 import { NextRequest } from 'next/server';

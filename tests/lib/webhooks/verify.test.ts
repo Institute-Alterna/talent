@@ -173,10 +173,16 @@ describe('Webhook Verification', () => {
   describe('verifyWebhook', () => {
     const secret = 'test-webhook-secret';
     const payload = JSON.stringify({ test: 'data' });
+    let consoleWarnSpy: jest.SpyInstance;
 
     beforeEach(() => {
       process.env.WEBHOOK_SECRET = secret;
       setNodeEnv('development');
+      consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleWarnSpy.mockRestore();
     });
 
     it('returns valid for correct secret in x-webhook-secret header', () => {
@@ -238,6 +244,7 @@ describe('Webhook Verification', () => {
 
       expect(result.valid).toBe(false);
       expect(result.error).toBe('WEBHOOK_SECRET not configured');
+      expect(consoleWarnSpy).toHaveBeenCalledWith('[Webhook] No WEBHOOK_SECRET configured');
     });
 
     it('rejects requests in production without secret configured', () => {
@@ -254,6 +261,7 @@ describe('Webhook Verification', () => {
 
       expect(result.valid).toBe(false);
       expect(result.error).toBe('WEBHOOK_SECRET not configured');
+      expect(consoleWarnSpy).toHaveBeenCalledWith('[Webhook] No WEBHOOK_SECRET configured');
     });
   });
 });

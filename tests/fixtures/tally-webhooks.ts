@@ -411,7 +411,7 @@ export function createAgreementPayload(overrides?: {
         },
         {
           key: AGREEMENT_FIELD_KEYS.biography,
-          label: 'Biography',
+          label: 'Would you like to provide a short biography?',
           type: 'TEXTAREA',
           value: 'A passionate software developer.',
         },
@@ -429,13 +429,13 @@ export function createAgreementPayload(overrides?: {
         },
         {
           key: AGREEMENT_FIELD_KEYS.privacyPolicy,
-          label: 'Privacy Policy',
+          label: 'Privacy Policy Acceptance',
           type: 'CHECKBOXES',
           value: [{ id: 'privacy-1', text: 'I accept the privacy policy' }],
         },
         {
           key: AGREEMENT_FIELD_KEYS.signature,
-          label: 'Signature',
+          label: 'Internship Contract & Agreement Acceptance',
           type: 'SIGNATURE',
           value: [
             {
@@ -455,7 +455,7 @@ export function createAgreementPayload(overrides?: {
         },
         {
           key: AGREEMENT_FIELD_KEYS.serviceHours,
-          label: 'Service Hours',
+          label: 'Service Hours?',
           type: 'DROPDOWN',
           value: '20 hours per week',
         },

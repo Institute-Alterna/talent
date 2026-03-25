@@ -2,8 +2,6 @@
  * Application Detail API Route Tests
  *
  * Tests for the /api/applications/[id] endpoint.
- *
- * @jest-environment node
  */
 
 import { NextRequest } from 'next/server';

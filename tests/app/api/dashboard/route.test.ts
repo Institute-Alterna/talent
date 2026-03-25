@@ -2,8 +2,6 @@
  * Dashboard API Route Tests
  *
  * Tests for the dashboard metrics endpoint.
- *
- * @jest-environment node
  */
 
 import { NextRequest } from 'next/server';
@@ -84,10 +82,17 @@ const mockGetAttentionBreakdown = getAttentionBreakdown as jest.MockedFunction<a
 const zeroBreakdown = { awaitingGC: 0, gcFailedPendingRejection: 0, awaitingSC: 0, pendingInterviews: 0, pendingAgreement: 0, total: 0 };
 
 describe('Dashboard API Routes', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     // Default: getAttentionBreakdown returns zeros (overridden per test as needed)
     mockGetAttentionBreakdown.mockResolvedValue(zeroBreakdown);
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   describe('GET /api/dashboard', () => {
@@ -217,6 +222,7 @@ describe('Dashboard API Routes', () => {
 
       expect(response.status).toBe(500);
       expect(data.error).toBe('Internal server error');
+      expect(consoleErrorSpy).toHaveBeenCalled();
     });
 
     it('should return zero counts when no data exists', async () => {

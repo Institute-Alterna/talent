@@ -2,6 +2,8 @@
  * StageBadge Component Tests
  *
  * Tests for the stage badge component that displays application pipeline stage.
+ *
+ * @jest-environment jsdom
  */
 
 import React from 'react';

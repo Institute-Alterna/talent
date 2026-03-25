@@ -2,8 +2,6 @@
  * Specialized Competencies Webhook Tests
  *
  * Tests for POST /api/webhooks/tally/specialized-competencies
- *
- * @jest-environment node
  */
 
 import { POST } from '@/app/api/webhooks/tally/specialized-competencies/route';
@@ -83,7 +81,7 @@ function makePayload(overrides?: {
   const fields: TallyField[] = [
     {
       key: `${SC_ASSESSMENT_FIELD_KEYS.applicationId}_hidden`,
-      label: 'Application ID',
+      label: 'applicationId',
       type: 'HIDDEN_FIELDS',
       value: applicationId,
     },
@@ -92,7 +90,7 @@ function makePayload(overrides?: {
   if (!omitScId) {
     fields.push({
       key: `${SC_ASSESSMENT_FIELD_KEYS.specialisedCompetencyId}_hidden`,
-      label: 'SC Definition ID',
+      label: 'scId',
       type: 'HIDDEN_FIELDS',
       value: scId,
     });

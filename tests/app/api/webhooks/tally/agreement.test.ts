@@ -2,8 +2,6 @@
  * Agreement Webhook Unit Tests
  *
  * Tests for POST /api/webhooks/tally/agreement
- *
- * @jest-environment node
  */
 
 import { POST, OPTIONS } from '@/app/api/webhooks/tally/agreement/route';

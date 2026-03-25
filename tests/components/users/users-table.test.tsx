@@ -2,6 +2,8 @@
  * Users Table Component Tests
  *
  * Tests for the users table display component.
+ *
+ * @jest-environment jsdom
  */
 
 import { render, screen } from '@testing-library/react';

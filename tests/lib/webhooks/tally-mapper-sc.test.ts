@@ -227,7 +227,7 @@ describe('extractSCAssessmentData', () => {
       ...baseFields,
       {
         key: `${SC_ASSESSMENT_FIELD_KEYS.score}_calc`,
-        label: 'Total Score',
+        label: 'score',
         type: 'CALCULATED',
         value: 75,
       },
@@ -242,7 +242,7 @@ describe('extractSCAssessmentData', () => {
       ...baseFields,
       {
         key: `${SC_ASSESSMENT_FIELD_KEYS.specialisedCompetencyId}_hidden`,
-        label: 'SC ID',
+        label: 'scId',
         type: 'HIDDEN_FIELDS',
         value: scUuid,
       },
@@ -335,13 +335,13 @@ describe('extractSCAssessmentData', () => {
       ...baseFields,
       {
         key: `${SC_ASSESSMENT_FIELD_KEYS.score}_calc`,
-        label: 'Total',
+        label: 'score',
         type: 'CALCULATED',
         value: 90,
       },
       {
         key: `${SC_ASSESSMENT_FIELD_KEYS.specialisedCompetencyId}_hidden`,
-        label: 'SC Definition',
+        label: 'scId',
         type: 'HIDDEN_FIELDS',
         value: scUuid,
       },

@@ -2,8 +2,6 @@
  * Complete Interview API Route Tests
  *
  * Integration tests for the complete interview endpoint.
- *
- * @jest-environment node
  */
 
 import { NextRequest } from 'next/server';
@@ -87,9 +85,19 @@ const mockInterview = {
 };
 
 describe('POST /api/applications/[id]/complete-interview', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+  let consoleLogSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     (auth as jest.Mock).mockResolvedValue(mockSession);
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+    consoleLogSpy.mockRestore();
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -190,6 +198,10 @@ describe('POST /api/applications/[id]/complete-interview', () => {
 
     expect(response.status).toBe(404);
     expect(data.error).toBe('No active interview found to complete');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[Complete Interview] No active interview found for application:',
+      expect.any(String)
+    );
   });
 
   it('successfully completes interview with valid notes', async () => {

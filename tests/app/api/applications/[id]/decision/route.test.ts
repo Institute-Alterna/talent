@@ -2,8 +2,6 @@
  * Decision Route Tests
  *
  * Tests for POST /api/applications/[id]/decision
- *
- * @jest-environment node
  */
 
 import { POST } from '@/app/api/applications/[id]/decision/route';

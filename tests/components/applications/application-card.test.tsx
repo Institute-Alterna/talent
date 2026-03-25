@@ -3,6 +3,8 @@
  *
  * Tests for the GC overdue indicator and inline rejection button
  * added to the pipeline card.
+ *
+ * @jest-environment jsdom
  */
 
 import React from 'react';

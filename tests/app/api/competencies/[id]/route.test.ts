@@ -2,8 +2,6 @@
  * /api/competencies/[id] Route Tests
  *
  * Unit tests for GET, PUT, DELETE /api/competencies/[id]
- *
- * @jest-environment node
  */
 
 import { NextRequest } from 'next/server';

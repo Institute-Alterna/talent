@@ -2,8 +2,6 @@
  * Users API Route Tests
  *
  * Tests for the /api/users endpoint.
- *
- * @jest-environment node
  */
 
 import { NextRequest } from 'next/server';

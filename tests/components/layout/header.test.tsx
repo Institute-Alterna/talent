@@ -2,6 +2,8 @@
  * Header Component Tests
  *
  * Tests for the header navigation component.
+ *
+ * @jest-environment jsdom
  */
 
 import { render, screen, fireEvent } from '@testing-library/react';

@@ -6,6 +6,8 @@
  * Note: Since the home page now uses server-side authentication (auth()),
  * we need to mock the auth module for testing. These tests verify the
  * UI renders correctly for unauthenticated users.
+ *
+ * @jest-environment jsdom
  */
 
 import { render, screen } from '@testing-library/react';

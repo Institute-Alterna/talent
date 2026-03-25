@@ -2,8 +2,6 @@
  * Persons API Route Tests
  *
  * Tests for the /api/persons endpoint.
- *
- * @jest-environment node
  */
 
 import { NextRequest } from 'next/server';
@@ -103,10 +101,17 @@ const mockStats = {
 };
 
 describe('GET /api/persons', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (getPersons as jest.Mock).mockResolvedValue(mockPersonsResult);
     (getPersonStats as jest.Mock).mockResolvedValue(mockStats);
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -262,5 +267,9 @@ describe('GET /api/persons', () => {
 
     expect(response.status).toBe(500);
     expect(data.error).toBe('Internal server error');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error fetching persons:',
+      expect.stringContaining('Database error')
+    );
   });
 });

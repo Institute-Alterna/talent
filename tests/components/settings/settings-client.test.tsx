@@ -2,6 +2,8 @@
  * Settings Client Component Tests
  *
  * Tests for the settings page client component.
+ *
+ * @jest-environment jsdom
  */
 
 import { render, screen, waitFor } from '@testing-library/react';

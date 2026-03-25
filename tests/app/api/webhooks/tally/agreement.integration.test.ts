@@ -3,8 +3,6 @@
  *
  * End-to-end tests for the agreement signing webhook flow.
  * Requires a database connection.
- *
- * @jest-environment node
  */
 
 import { POST } from '@/app/api/webhooks/tally/agreement/route';

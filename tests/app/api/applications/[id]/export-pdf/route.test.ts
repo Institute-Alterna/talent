@@ -3,8 +3,6 @@
  *
  * Tests for the /api/applications/[id]/export-pdf endpoint.
  * Covers authentication, authorization, validation, and error handling.
- *
- * @jest-environment node
  */
 
 import { NextRequest } from 'next/server';
@@ -144,13 +142,20 @@ describe('GET /api/applications/[id]/export-pdf', () => {
     return new NextRequest(url);
   }
 
+  let consoleErrorSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     mockAuth.mockResolvedValue(mockSession);
     mockGetApplicationDetail.mockResolvedValue(mockApplication);
     mockGenerateCandidateReportPdf.mockResolvedValue(mockPdfResult);
     mockGenerateAuditReportPdf.mockResolvedValue(mockPdfResult);
     mockCreateAuditLog.mockResolvedValue({});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   describe('Authentication', () => {
@@ -319,6 +324,7 @@ describe('GET /api/applications/[id]/export-pdf', () => {
       const response = await GET(request, { params: Promise.resolve({ id: validUuid }) });
 
       expect(response.status).toBe(status);
+      expect(consoleErrorSpy).toHaveBeenCalledWith('PDF generation error:', message, '');
     });
 
     it('should handle generic PdfGenerationError', async () => {
@@ -332,6 +338,11 @@ describe('GET /api/applications/[id]/export-pdf', () => {
       expect(response.status).toBe(500);
       const data = await response.json();
       expect(data.error).toContain('Failed to generate PDF');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'PDF generation error:',
+        'Rendering failed',
+        'Error: Canvas error'
+      );
     });
 
     it('should handle unexpected errors', async () => {
@@ -343,6 +354,10 @@ describe('GET /api/applications/[id]/export-pdf', () => {
       expect(response.status).toBe(500);
       const data = await response.json();
       expect(data.error).toBe('Internal server error');
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Error exporting PDF:',
+        expect.stringContaining('Unexpected error')
+      );
     });
   });
 

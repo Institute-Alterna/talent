@@ -22,14 +22,3 @@ import '@testing-library/jest-dom';
 // You can add global mocks here. For example:
 // jest.mock('next/router', () => require('next-router-mock'));
 
-// Suppress console errors during tests (optional - remove if you want to see them)
-// const originalError = console.error;
-// beforeAll(() => {
-//   console.error = (...args) => {
-//     if (/Warning.*not wrapped in act/.test(args[0])) return;
-//     originalError.call(console, ...args);
-//   };
-// });
-// afterAll(() => {
-//   console.error = originalError;
-// });

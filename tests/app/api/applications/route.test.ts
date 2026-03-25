@@ -2,8 +2,6 @@
  * Applications API Route Tests
  *
  * Tests for the /api/applications endpoint.
- *
- * @jest-environment node
  */
 
 import { NextRequest } from 'next/server';
@@ -130,11 +128,18 @@ const mockPipelineData = {
 };
 
 describe('GET /api/applications', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (getApplications as jest.Mock).mockResolvedValue(mockApplicationsResult);
     (getApplicationStats as jest.Mock).mockResolvedValue(mockStats);
     (getApplicationsForPipeline as jest.Mock).mockResolvedValue(mockPipelineData);
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   it('returns 401 when not authenticated', async () => {
@@ -340,5 +345,9 @@ describe('GET /api/applications', () => {
 
     expect(response.status).toBe(500);
     expect(data.error).toBe('Internal server error');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error fetching applications:',
+      expect.stringContaining('Database error')
+    );
   });
 });

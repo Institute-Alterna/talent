@@ -3,6 +3,8 @@
  *
  * Tests for the premium character counter that fades in as users
  * approach the character limit, cycling through colour states.
+ *
+ * @jest-environment jsdom
  */
 
 import React from 'react';

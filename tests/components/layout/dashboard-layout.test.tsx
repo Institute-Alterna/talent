@@ -2,6 +2,8 @@
  * Dashboard Layout Component Tests
  *
  * Tests for the main dashboard layout wrapper.
+ *
+ * @jest-environment jsdom
  */
 
 import { render, screen } from '@testing-library/react';

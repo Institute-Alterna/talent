@@ -248,6 +248,62 @@ npx tsc --noEmit         # Type check
 
 ---
 
+## Testing
+
+### Environment
+
+The default Jest environment is **`node`**. Component tests that use `@testing-library/react` must opt in to jsdom by adding a pragma to the file's leading docblock:
+
+```typescript
+/**
+ * My Component Tests
+ *
+ * @jest-environment jsdom
+ */
+```
+
+Do not add `@jest-environment node` to API route tests — it is redundant.
+
+### Zero Console Noise Policy
+
+A clean test run produces **zero unhandled console output**. Any `console.error`, `console.warn`, or `console.log` emitted by production code during a test must be:
+
+1. **Spied on** — so output is suppressed in the terminal
+2. **Asserted** — making the log call part of the test contract
+
+Use this pattern in test files that exercise error paths:
+
+```typescript
+let consoleErrorSpy: jest.SpyInstance;
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  consoleErrorSpy.mockRestore();
+});
+
+it('returns 500 on database failure', async () => {
+  (db.person.findMany as jest.Mock).mockRejectedValue(new Error('DB down'));
+  // ...
+  expect(consoleErrorSpy).toHaveBeenCalledWith(
+    'Error fetching persons:',
+    expect.stringContaining('DB down')
+  );
+});
+```
+
+**Canonical example:** `tests/app/api/applications/[id]/decision/route.test.ts`
+
+### Mock Cleanup
+
+- Call `jest.clearAllMocks()` in `beforeEach` to reset call history between tests.
+- Call `spy.mockRestore()` in `afterEach` (not `afterAll`) to restore the original implementation after each test.
+
+---
+
 ## Verification Requirements
 
 **After every significant code change, run:**

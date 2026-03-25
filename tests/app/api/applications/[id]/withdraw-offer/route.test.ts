@@ -2,8 +2,6 @@
  * Withdraw Offer Route Tests
  *
  * Tests for POST /api/applications/[id]/withdraw-offer
- *
- * @jest-environment node
  */
 
 import { POST } from '@/app/api/applications/[id]/withdraw-offer/route';

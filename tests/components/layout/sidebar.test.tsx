@@ -2,6 +2,8 @@
  * Sidebar Component Tests
  *
  * Tests for the sidebar navigation component.
+ *
+ * @jest-environment jsdom
  */
 
 import { render, screen } from '@testing-library/react';

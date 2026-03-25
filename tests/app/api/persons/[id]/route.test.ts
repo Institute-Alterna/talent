@@ -2,8 +2,6 @@
  * Person Detail API Route Tests
  *
  * Tests for the /api/persons/[id] endpoint.
- *
- * @jest-environment node
  */
 
 import { NextRequest } from 'next/server';
@@ -140,12 +138,19 @@ const mockEmailLogs = [
 ];
 
 describe('GET /api/persons/[id]', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     (getPersonWithApplications as jest.Mock).mockResolvedValue(mockPerson);
     (getAuditLogsForPerson as jest.Mock).mockResolvedValue(mockAuditLogs);
     (getEmailLogsForPerson as jest.Mock).mockResolvedValue(mockEmailLogs);
     (logRecordViewed as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
   });
 
   const createRequest = (id: string, query: string = '') => {
@@ -285,5 +290,9 @@ describe('GET /api/persons/[id]', () => {
 
     expect(response.status).toBe(500);
     expect(data.error).toBe('Internal server error');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Error fetching person:',
+      expect.stringContaining('Database error')
+    );
   });
 });

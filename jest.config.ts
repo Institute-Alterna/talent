@@ -4,7 +4,7 @@
  * This configures Jest for testing Next.js applications with TypeScript.
  *
  * Key concepts:
- * - testEnvironment: 'jsdom' simulates a browser environment for React components
+ * - testEnvironment: 'node' is the default; component tests add @jest-environment jsdom
  * - moduleNameMapper: Maps path aliases (@/) to actual paths
  * - setupFilesAfterEnv: Runs setup code after Jest is initialized
  * - transform: Tells Jest how to process TypeScript files
@@ -26,8 +26,8 @@ const createJestConfig = nextJest({
 });
 
 const config: Config = {
-  // Use jsdom environment to simulate browser for React components
-  testEnvironment: 'jsdom',
+  // Use node environment by default; component tests add /** @jest-environment jsdom */ pragma
+  testEnvironment: 'node',
 
   // Setup files to run after Jest is initialized but before tests run
   // This is where we import jest-dom matchers (like toBeInTheDocument)

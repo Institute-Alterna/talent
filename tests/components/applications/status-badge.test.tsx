@@ -2,6 +2,8 @@
  * StatusBadge Component Tests
  *
  * Tests for the status badge component that displays application status.
+ *
+ * @jest-environment jsdom
  */
 
 import React from 'react';

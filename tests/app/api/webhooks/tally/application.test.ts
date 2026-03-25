@@ -2,8 +2,6 @@
  * Application Webhook Integration Tests
  *
  * Tests for POST /api/webhooks/tally/application
- *
- * @jest-environment node
  */
 
 import { POST, OPTIONS } from '@/app/api/webhooks/tally/application/route';
