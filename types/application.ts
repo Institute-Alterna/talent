@@ -105,6 +105,8 @@ export interface ApplicationCard {
   missingFields: string[];
   /** Whether this application requires action */
   needsAttention: boolean;
+  /** Whether the GC assessment is overdue (invited > 7 days ago with no submission) */
+  isGcOverdue: boolean;
 }
 
 /**
@@ -183,6 +185,7 @@ export interface InterviewDetail {
   scheduledAt: Date | null;
   completedAt: Date | null;
   notes: string | null;
+  recordingUrl: string | null;
   outcome: InterviewOutcome;
   emailSentAt: Date | null;
   createdAt: Date;

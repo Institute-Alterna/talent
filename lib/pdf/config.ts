@@ -11,6 +11,50 @@
  */
 
 import { branding } from '@/config/branding';
+import { Font } from '@react-pdf/renderer';
+import path from 'node:path';
+
+let pdfFontsRegistered = false;
+
+/**
+ * Register DM Sans font family for react-pdf rendering.
+ * Falls back to built-ins if registration fails.
+ */
+export function ensurePdfFontsRegistered(): void {
+  if (pdfFontsRegistered) {
+    return;
+  }
+
+  try {
+    const fontBasePath = path.join(process.cwd(), 'node_modules', '@fontsource', 'dm-sans', 'files');
+
+    Font.register({
+      family: 'DMSans',
+      fonts: [
+        {
+          src: path.join(fontBasePath, 'dm-sans-latin-400-normal.woff'),
+          fontWeight: 400,
+        },
+        {
+          src: path.join(fontBasePath, 'dm-sans-latin-400-italic.woff'),
+          fontWeight: 400,
+          fontStyle: 'italic',
+        },
+        {
+          src: path.join(fontBasePath, 'dm-sans-latin-500-normal.woff'),
+          fontWeight: 500,
+        },
+        {
+          src: path.join(fontBasePath, 'dm-sans-latin-700-normal.woff'),
+          fontWeight: 700,
+        },
+      ],
+    });
+    pdfFontsRegistered = true;
+  } catch {
+    pdfFontsRegistered = false;
+  }
+}
 
 /**
  * Font configuration for PDF documents
@@ -19,12 +63,12 @@ export const pdfFonts = {
   /**
    * Primary font family for headings
    */
-  heading: 'Helvetica-Bold',
+  heading: 'DMSans',
 
   /**
    * Primary font family for body text
    */
-  body: 'Helvetica',
+  body: 'DMSans',
 
   /**
    * Monospace font for code/data
@@ -65,22 +109,22 @@ export const pdfColors = {
   /**
    * Primary text color
    */
-  text: '#1F2937',
+  text: '#121418',
 
   /**
    * Secondary text color (muted)
    */
-  textMuted: '#6B7280',
+  textMuted: '#6A707C',
 
   /**
    * Light gray for borders and backgrounds
    */
-  border: '#E5E7EB',
+  border: '#E2E4E9',
 
   /**
    * Background color for alternating rows
    */
-  backgroundAlt: '#F9FAFB',
+  backgroundAlt: '#F6F7F9',
 
   /**
    * White background
@@ -179,6 +223,13 @@ export const pdfPageConfig = {
 } as const;
 
 /**
+ * Static assets used by PDF templates
+ */
+export const pdfAssets = {
+  logoPath: path.join(process.cwd(), 'public', 'talentLogo.png'),
+} as const;
+
+/**
  * Labels and text strings for PDF content
  * Edit these to change displayed text or translate
  */
@@ -268,6 +319,7 @@ export const pdfLabels = {
     sectionTitle: 'Interviews',
     interviewer: 'Interviewer',
     schedulingLink: 'Scheduling Link',
+    recording: 'Interview recording',
     scheduledFor: 'Scheduled For',
     completedOn: 'Completed On',
     outcome: 'Outcome',

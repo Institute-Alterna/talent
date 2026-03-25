@@ -19,6 +19,7 @@ import {
   pdfLabels,
   pdfSections,
 } from './config';
+import { FixedPageHeader } from './fixed-page-header';
 import type { SanitizedApplicationData, SanitizedAuditLog } from './sanitize';
 import { branding } from '@/config/branding';
 
@@ -28,7 +29,7 @@ import { branding } from '@/config/branding';
 const styles = StyleSheet.create({
   // Page styles
   page: {
-    padding: pdfSpacing.pageMargin.top,
+    paddingTop: pdfSpacing.pageMargin.top + 62,
     paddingLeft: pdfSpacing.pageMargin.left,
     paddingRight: pdfSpacing.pageMargin.right,
     paddingBottom: pdfSpacing.pageMargin.bottom + 20, // Extra space for footer
@@ -39,27 +40,63 @@ const styles = StyleSheet.create({
   },
 
   // Header styles
+  pageHeader: {
+    position: 'absolute',
+    top: 16,
+    left: pdfSpacing.pageMargin.left,
+    right: pdfSpacing.pageMargin.right,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  logo: {
+    width: 41,
+    height: 14,
+  },
+  pageConfidentialBlock: {
+    maxWidth: 250,
+    alignItems: 'flex-start',
+  },
+  pageConfidentialTitle: {
+    fontFamily: pdfFonts.heading,
+    fontSize: 7,
+    textAlign: 'left',
+    color: pdfColors.text,
+    marginBottom: 1,
+  },
+  pageConfidentialCopy: {
+    fontSize: 6,
+    lineHeight: 1.3,
+    textAlign: 'left',
+    color: pdfColors.textMuted,
+  },
+  pageMetaBlock: {
+    marginTop: 8,
+  },
+  pageMetaName: {
+    fontFamily: pdfFonts.heading,
+    fontSize: 7,
+    textAlign: 'left',
+    color: pdfColors.text,
+    marginBottom: 1,
+  },
+  pageMetaPosition: {
+    fontSize: 6,
+    textAlign: 'left',
+    color: pdfColors.textMuted,
+  },
+
   header: {
     marginBottom: pdfSpacing.sectionGap,
     borderBottomWidth: 2,
     borderBottomColor: pdfColors.primary,
     paddingBottom: 10,
+    alignItems: 'flex-start',
   },
   headerTitle: {
     fontFamily: pdfFonts.heading,
     fontSize: pdfFontSizes.title,
     color: pdfColors.primary,
-    marginBottom: 5,
-  },
-  headerSubtitle: {
-    fontSize: pdfFontSizes.small,
-    color: pdfColors.textMuted,
-  },
-  headerOrg: {
-    fontFamily: pdfFonts.heading,
-    fontSize: pdfFontSizes.subsectionHeader,
-    color: pdfColors.secondary,
-    marginBottom: 3,
   },
 
   // Section styles
@@ -68,19 +105,23 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: pdfFonts.heading,
-    fontSize: pdfFontSizes.sectionHeader,
-    color: pdfColors.primary,
+    fontSize: 13,
+    color: pdfColors.text,
     marginBottom: 10,
     paddingBottom: 5,
     borderBottomWidth: 1,
     borderBottomColor: pdfColors.border,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
   subsectionTitle: {
     fontFamily: pdfFonts.heading,
-    fontSize: pdfFontSizes.subsectionHeader,
-    color: pdfColors.secondary,
+    fontSize: 10,
+    color: pdfColors.text,
     marginBottom: 5,
     marginTop: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
 
   // Row styles for key-value pairs
@@ -89,10 +130,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   label: {
-    width: 150,
+    width: 130,
     fontFamily: pdfFonts.heading,
-    fontSize: pdfFontSizes.body,
+    fontSize: 8,
     color: pdfColors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   value: {
     flex: 1,
@@ -178,10 +221,10 @@ const styles = StyleSheet.create({
   // Card styles
   card: {
     marginTop: 10,
-    padding: 10,
+    padding: 12,
     borderWidth: 1,
     borderColor: pdfColors.border,
-    borderRadius: 4,
+    borderRadius: 6,
     backgroundColor: pdfColors.white,
   },
   cardAlt: {
@@ -192,26 +235,28 @@ const styles = StyleSheet.create({
   timelineItem: {
     flexDirection: 'row',
     marginBottom: 10,
-    paddingLeft: 15,
+    paddingLeft: 14,
     borderLeftWidth: 2,
-    borderLeftColor: pdfColors.border,
+    borderLeftColor: '#CFD4DE',
   },
   timelineContent: {
     flex: 1,
     paddingLeft: 10,
   },
   timelineDate: {
-    fontSize: pdfFontSizes.small,
+    fontSize: 8,
     color: pdfColors.textMuted,
     marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   timelineAction: {
     fontSize: pdfFontSizes.body,
     color: pdfColors.text,
     marginBottom: 2,
   },
-  timelineDetails: {
-    fontSize: pdfFontSizes.small,
+  timelineActor: {
+    fontSize: 8,
     color: pdfColors.textMuted,
   },
 
@@ -280,16 +325,12 @@ export interface CandidateReportProps {
 /**
  * Header Component
  */
-function Header({ candidateName, position }: { candidateName: string; position: string }) {
+function Header() {
   if (!pdfSections.candidateReport.showHeader) return null;
 
   return (
     <View style={styles.header}>
-      <Text style={styles.headerOrg}>{branding.organisationName}</Text>
       <Text style={styles.headerTitle}>{pdfLabels.report.candidateReport}</Text>
-      <Text style={styles.headerSubtitle}>
-        {candidateName} - {position}
-      </Text>
     </View>
   );
 }
@@ -302,38 +343,36 @@ function PersonalInfoSection({ person }: { person: SanitizedApplicationData['per
 
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{pdfLabels.person.sectionTitle}</Text>
-
       <View style={styles.row}>
-        <Text style={styles.label}>{pdfLabels.person.name}:</Text>
+        <Text style={styles.label}>{pdfLabels.person.name}</Text>
         <Text style={styles.value}>{person.fullName || pdfLabels.common.notProvided}</Text>
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>{pdfLabels.person.email}:</Text>
+        <Text style={styles.label}>{pdfLabels.person.email}</Text>
         <Text style={styles.value}>{person.email || pdfLabels.common.notProvided}</Text>
       </View>
 
       {person.secondaryEmail && (
         <View style={styles.row}>
-          <Text style={styles.label}>{pdfLabels.person.secondaryEmail}:</Text>
+          <Text style={styles.label}>{pdfLabels.person.secondaryEmail}</Text>
           <Text style={styles.value}>{person.secondaryEmail}</Text>
         </View>
       )}
 
       <View style={styles.row}>
-        <Text style={styles.label}>{pdfLabels.person.phone}:</Text>
+        <Text style={styles.label}>{pdfLabels.person.phone}</Text>
         <Text style={styles.value}>{person.phoneNumber || pdfLabels.common.notProvided}</Text>
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>{pdfLabels.person.location}:</Text>
+        <Text style={styles.label}>{pdfLabels.person.location}</Text>
         <Text style={styles.value}>{person.location || pdfLabels.common.notProvided}</Text>
       </View>
 
       {person.portfolioLink && (
         <View style={styles.row}>
-          <Text style={styles.label}>{pdfLabels.person.portfolio}:</Text>
+          <Text style={styles.label}>{pdfLabels.person.portfolio}</Text>
           <Link src={person.portfolioLink} style={[styles.value, styles.valueLink]}>
             {person.portfolioLink}
           </Link>
@@ -341,7 +380,7 @@ function PersonalInfoSection({ person }: { person: SanitizedApplicationData['per
       )}
 
       <View style={styles.row}>
-        <Text style={styles.label}>{pdfLabels.person.education}:</Text>
+        <Text style={styles.label}>{pdfLabels.person.education}</Text>
         <Text style={styles.value}>{person.educationLevel || pdfLabels.common.notProvided}</Text>
       </View>
     </View>
@@ -367,61 +406,61 @@ function ApplicationDetailsSection({
       <Text style={styles.sectionTitle}>{pdfLabels.application.sectionTitle}</Text>
 
       <View style={styles.row}>
-        <Text style={styles.label}>{pdfLabels.application.applicationId}:</Text>
+        <Text style={styles.label}>{pdfLabels.application.applicationId}</Text>
         <Text style={styles.value}>{application.id}</Text>
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>{pdfLabels.application.position}:</Text>
+        <Text style={styles.label}>{pdfLabels.application.position}</Text>
         <Text style={styles.value}>{application.position}</Text>
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>{pdfLabels.application.stage}:</Text>
+        <Text style={styles.label}>{pdfLabels.application.stage}</Text>
         <View style={[styles.badge, styles.badgePrimary]}>
           <Text>{stageLabel}</Text>
         </View>
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>{pdfLabels.application.status}:</Text>
+        <Text style={styles.label}>{pdfLabels.application.status}</Text>
         <StatusBadge status={application.status} />
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>{pdfLabels.application.appliedOn}:</Text>
+        <Text style={styles.label}>{pdfLabels.application.appliedOn}</Text>
         <Text style={styles.value}>{application.createdAt}</Text>
       </View>
 
       <View style={styles.row}>
-        <Text style={styles.label}>{pdfLabels.application.lastUpdated}:</Text>
+        <Text style={styles.label}>{pdfLabels.application.lastUpdated}</Text>
         <Text style={styles.value}>{application.updatedAt}</Text>
       </View>
 
       {/* Links */}
       {application.resumeUrl && (
         <View style={styles.row}>
-          <Text style={styles.label}>{pdfLabels.application.resume}:</Text>
+          <Text style={styles.label}>{pdfLabels.application.resume}</Text>
           <Link src={application.resumeUrl} style={[styles.value, styles.valueLink]}>
-            {pdfLabels.application.viewLink}
+            {application.resumeUrl}
           </Link>
         </View>
       )}
 
       {application.videoLink && (
         <View style={styles.row}>
-          <Text style={styles.label}>{pdfLabels.application.video}:</Text>
+          <Text style={styles.label}>{pdfLabels.application.video}</Text>
           <Link src={application.videoLink} style={[styles.value, styles.valueLink]}>
-            {pdfLabels.application.viewLink}
+            {application.videoLink}
           </Link>
         </View>
       )}
 
       {application.otherFileUrl && (
         <View style={styles.row}>
-          <Text style={styles.label}>{pdfLabels.application.otherFiles}:</Text>
+          <Text style={styles.label}>{pdfLabels.application.otherFiles}</Text>
           <Link src={application.otherFileUrl} style={[styles.value, styles.valueLink]}>
-            {pdfLabels.application.viewLink}
+            {application.otherFileUrl}
           </Link>
         </View>
       )}
@@ -430,7 +469,7 @@ function ApplicationDetailsSection({
       {application.missingFields.length > 0 && (
         <View style={styles.warningBox}>
           <Text style={styles.warningText}>
-            {pdfLabels.application.missingFieldsWarning}: {application.missingFields.join(', ')}
+            {pdfLabels.application.missingFieldsWarning} {application.missingFields.join(', ')}
           </Text>
         </View>
       )}
@@ -524,11 +563,15 @@ function AssessmentsSection({
         {person.generalCompetenciesCompleted === 'Yes' ? (
           <>
             <View style={styles.row}>
-              <Text style={styles.label}>{pdfLabels.assessments.score}:</Text>
+              <Text style={styles.label}>{pdfLabels.assessments.score}</Text>
               <Text style={styles.value}>{person.generalCompetenciesScore}</Text>
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>{pdfLabels.assessments.completedOn}:</Text>
+              <Text style={styles.label}>Result</Text>
+              <Text style={styles.value}>{person.generalCompetenciesStatus}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>{pdfLabels.assessments.completedOn}</Text>
               <Text style={styles.value}>{person.generalCompetenciesPassedAt}</Text>
             </View>
           </>
@@ -543,37 +586,147 @@ function AssessmentsSection({
           <View key={index} style={[styles.card, index % 2 === 1 ? styles.cardAlt : {}]}>
             <Text style={styles.subsectionTitle}>{assessment.type}</Text>
             <View style={styles.row}>
-              <Text style={styles.label}>{pdfLabels.assessments.score}:</Text>
-              <Text style={styles.value}>{assessment.score}</Text>
+              <Text style={styles.label}>Competency</Text>
+              <Text style={styles.value}>{assessment.competencyName}</Text>
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>{pdfLabels.assessments.threshold}:</Text>
-              <Text style={styles.value}>{assessment.threshold}</Text>
+              <Text style={styles.label}>{pdfLabels.assessments.result}</Text>
+              {assessment.passed === 'Yes' ? (
+                <View style={[styles.badge, styles.badgeSuccess]}>
+                  <Text>{pdfLabels.assessments.passed}</Text>
+                </View>
+              ) : assessment.passed === 'No' ? (
+                <View style={[styles.badge, styles.badgeDanger]}>
+                  <Text>{pdfLabels.assessments.failed}</Text>
+                </View>
+              ) : (
+                <View style={[styles.badge, styles.badgeWarning]}>
+                  <Text>Pending</Text>
+                </View>
+              )}
             </View>
             <View style={styles.row}>
-              <Text style={styles.label}>{pdfLabels.assessments.result}:</Text>
-              <View
-                style={[
-                  styles.badge,
-                  assessment.passed === 'Yes' ? styles.badgeSuccess : styles.badgeDanger,
-                ]}
-              >
-                <Text>
-                  {assessment.passed === 'Yes'
-                    ? pdfLabels.assessments.passed
-                    : pdfLabels.assessments.failed}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>{pdfLabels.assessments.completedOn}:</Text>
+              <Text style={styles.label}>{pdfLabels.assessments.completedOn}</Text>
               <Text style={styles.value}>{assessment.completedAt}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>Reviewed by</Text>
+              <Text style={styles.value}>{assessment.reviewedBy || pdfLabels.common.notProvided}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>Reviewed on</Text>
+              <Text style={styles.value}>{assessment.reviewedAt || pdfLabels.common.notProvided}</Text>
             </View>
           </View>
         ))
       ) : (
         <Text style={styles.emptyMessage}>{pdfLabels.assessments.noAssessments}</Text>
       )}
+    </View>
+  );
+}
+
+/**
+ * Application Journey Section
+ */
+function JourneySection({
+  application,
+  interviews,
+  decisions,
+}: {
+  application: SanitizedApplicationData['application'];
+  interviews: SanitizedApplicationData['interviews'];
+  decisions: SanitizedApplicationData['decisions'];
+}) {
+  const completedInterview = interviews.find((interview) => Boolean(interview.completedAt));
+  const hasInterviewInvite = interviews.some((interview) => Boolean(interview.invitedOn));
+  const hasRecording = interviews.some((interview) => Boolean(interview.recordingUrl));
+  const acceptDecision = decisions.find((item) => item.decision === 'ACCEPT');
+  const withdrawalDecision = decisions.find((item) => item.isOfferWithdrawal);
+  const agreementSigned = application.agreementSignedAt !== 'N/A';
+
+  let interviewStatus = 'No interview invitation recorded';
+  if (completedInterview && hasRecording) {
+    interviewStatus = 'Interview completed with recording';
+  } else if (completedInterview && !hasRecording) {
+    interviewStatus = 'Interview completed without recording';
+  } else if (hasInterviewInvite) {
+    interviewStatus = 'Interview invited';
+  }
+
+  let offerStatus = 'Not made';
+  if (withdrawalDecision) {
+    offerStatus = 'Withdrawn';
+  } else if (acceptDecision) {
+    offerStatus = 'Made';
+  }
+
+  let agreementStatus = 'Not applicable';
+  if (withdrawalDecision) {
+    agreementStatus = 'Withdrawn before signature';
+  } else if (agreementSigned) {
+    agreementStatus = 'Signed';
+  } else if (acceptDecision || application.currentStage === 'AGREEMENT') {
+    agreementStatus = 'Pending signature';
+  }
+
+  return (
+    <View style={styles.section} break>
+      <Text style={styles.sectionTitle}>Application Journey</Text>
+
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <Text style={styles.label}>Application submitted</Text>
+          <Text style={styles.value}>{application.createdAt} UTC</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>Current stage</Text>
+          <Text style={styles.value}>{application.currentStage}</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>Interview stage</Text>
+          <Text style={styles.value}>{interviewStatus}</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>Offer status</Text>
+          <Text style={styles.value}>{offerStatus}</Text>
+        </View>
+
+        <View style={styles.row}>
+          <Text style={styles.label}>Agreement status</Text>
+          <Text style={styles.value}>{agreementStatus}</Text>
+        </View>
+
+        {acceptDecision && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Offer decision time</Text>
+            <Text style={styles.value}>{acceptDecision.decidedAt}</Text>
+          </View>
+        )}
+
+        {agreementSigned && (
+          <View style={styles.row}>
+            <Text style={styles.label}>Agreement signed on</Text>
+            <Text style={styles.value}>{application.agreementSignedAt}</Text>
+          </View>
+        )}
+
+        {withdrawalDecision && (
+          <>
+            <View style={styles.row}>
+              <Text style={styles.label}>Offer withdrawn on</Text>
+              <Text style={styles.value}>{withdrawalDecision.decidedAt}</Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>Withdrawal reason</Text>
+              <Text style={styles.value}>{withdrawalDecision.reason || pdfLabels.common.notProvided}</Text>
+            </View>
+          </>
+        )}
+      </View>
     </View>
   );
 }
@@ -589,48 +742,53 @@ function InterviewsSection({
   if (!pdfSections.candidateReport.showInterviews) return null;
 
   return (
-    <View style={styles.section}>
+    <View style={styles.section} break>
       <Text style={styles.sectionTitle}>{pdfLabels.interviews.sectionTitle}</Text>
 
       {interviews.length > 0 ? (
         interviews.map((interview, index) => (
           <View key={index} style={[styles.card, index % 2 === 1 ? styles.cardAlt : {}]}>
             <View style={styles.row}>
-              <Text style={styles.label}>{pdfLabels.interviews.interviewer}:</Text>
+              <Text style={styles.label}>{pdfLabels.interviews.interviewer}</Text>
               <Text style={styles.value}>{interview.interviewer}</Text>
             </View>
 
-            {interview.schedulingLink && (
+            {interview.recordingUrl ? (
               <View style={styles.row}>
-                <Text style={styles.label}>{pdfLabels.interviews.schedulingLink}:</Text>
-                <Link src={interview.schedulingLink} style={[styles.value, styles.valueLink]}>
-                  {interview.schedulingLink}
+                <Text style={styles.label}>{pdfLabels.interviews.recording}</Text>
+                <Link src={interview.recordingUrl} style={[styles.value, styles.valueLink]}>
+                  {interview.recordingUrl}
                 </Link>
+              </View>
+            ) : (
+              <View style={styles.row}>
+                <Text style={styles.label}>{pdfLabels.interviews.recording}</Text>
+                <Text style={styles.value}>Not recorded</Text>
               </View>
             )}
 
-            {interview.scheduledAt && (
+            {interview.invitedOn && (
               <View style={styles.row}>
-                <Text style={styles.label}>{pdfLabels.interviews.scheduledFor}:</Text>
-                <Text style={styles.value}>{interview.scheduledAt}</Text>
+                <Text style={styles.label}>Invited on</Text>
+                <Text style={styles.value}>{interview.invitedOn}</Text>
               </View>
             )}
 
             {interview.completedAt && (
               <View style={styles.row}>
-                <Text style={styles.label}>{pdfLabels.interviews.completedOn}:</Text>
+                <Text style={styles.label}>{pdfLabels.interviews.completedOn}</Text>
                 <Text style={styles.value}>{interview.completedAt}</Text>
               </View>
             )}
 
             <View style={styles.row}>
-              <Text style={styles.label}>{pdfLabels.interviews.outcome}:</Text>
-              <InterviewOutcomeBadge outcome={interview.outcome} />
+              <Text style={styles.label}>{pdfLabels.interviews.outcome}</Text>
+              <Text style={styles.value}>{interview.completedAt ? 'Conducted' : 'Not conducted'}</Text>
             </View>
 
             {interview.notes && (
               <>
-                <Text style={[styles.label, { marginTop: 10 }]}>{pdfLabels.interviews.notes}:</Text>
+                <Text style={[styles.label, { marginTop: 10 }]}>{pdfLabels.interviews.notes}</Text>
                 <View style={styles.textBlock}>
                   <Text>{interview.notes}</Text>
                 </View>
@@ -641,35 +799,6 @@ function InterviewsSection({
       ) : (
         <Text style={styles.emptyMessage}>{pdfLabels.interviews.noInterviews}</Text>
       )}
-    </View>
-  );
-}
-
-/**
- * Get badge style based on interview outcome
- */
-function getOutcomeBadgeStyle(outcome: string) {
-  if (outcome === 'ACCEPT') return styles.badgeSuccess;
-  if (outcome === 'REJECT') return styles.badgeDanger;
-  return styles.badgeWarning;
-}
-
-/**
- * Get label for interview outcome
- */
-function getOutcomeLabel(outcome: string): string {
-  if (outcome === 'ACCEPT') return pdfLabels.interviews.accept;
-  if (outcome === 'REJECT') return pdfLabels.interviews.reject;
-  return pdfLabels.interviews.pending;
-}
-
-/**
- * Interview Outcome Badge Component
- */
-function InterviewOutcomeBadge({ outcome }: { outcome: string }) {
-  return (
-    <View style={[styles.badge, getOutcomeBadgeStyle(outcome)]}>
-      <Text>{getOutcomeLabel(outcome)}</Text>
     </View>
   );
 }
@@ -688,7 +817,7 @@ function DecisionsSection({ decisions }: { decisions: SanitizedApplicationData['
         decisions.map((decision, index) => (
           <View key={index} style={[styles.card, index % 2 === 1 ? styles.cardAlt : {}]}>
             <View style={styles.row}>
-              <Text style={styles.label}>{pdfLabels.decisions.decision}:</Text>
+              <Text style={styles.label}>{pdfLabels.decisions.decision}</Text>
               <View
                 style={[
                   styles.badge,
@@ -704,23 +833,23 @@ function DecisionsSection({ decisions }: { decisions: SanitizedApplicationData['
             </View>
 
             <View style={styles.row}>
-              <Text style={styles.label}>{pdfLabels.decisions.decidedBy}:</Text>
+              <Text style={styles.label}>{pdfLabels.decisions.decidedBy}</Text>
               <Text style={styles.value}>{decision.decidedBy}</Text>
             </View>
 
             <View style={styles.row}>
-              <Text style={styles.label}>{pdfLabels.decisions.decidedOn}:</Text>
+              <Text style={styles.label}>{pdfLabels.decisions.decidedOn}</Text>
               <Text style={styles.value}>{decision.decidedAt}</Text>
             </View>
 
-            <Text style={[styles.label, { marginTop: 10 }]}>{pdfLabels.decisions.reason}:</Text>
+            <Text style={[styles.label, { marginTop: 10 }]}>{pdfLabels.decisions.reason}</Text>
             <View style={styles.textBlock}>
               <Text>{decision.reason || pdfLabels.common.notProvided}</Text>
             </View>
 
             {decision.notes && (
               <>
-                <Text style={[styles.label, { marginTop: 10 }]}>{pdfLabels.decisions.notes}:</Text>
+                <Text style={[styles.label, { marginTop: 10 }]}>{pdfLabels.decisions.notes}</Text>
                 <View style={styles.textBlock}>
                   <Text>{decision.notes}</Text>
                 </View>
@@ -751,16 +880,7 @@ function ActivityLogSection({ auditLogs }: { auditLogs: SanitizedAuditLog[] }) {
             <View style={styles.timelineContent}>
               <Text style={styles.timelineDate}>{log.createdAt}</Text>
               <Text style={styles.timelineAction}>{log.action}</Text>
-              {log.user && (
-                <Text style={styles.timelineDetails}>
-                  {pdfLabels.activity.user}: {log.user}
-                </Text>
-              )}
-              {log.details && (
-                <Text style={styles.timelineDetails}>
-                  {pdfLabels.activity.details}: {log.details}
-                </Text>
-              )}
+              <Text style={styles.timelineActor}>{log.user || pdfLabels.common.system}</Text>
             </View>
           </View>
         ))
@@ -774,20 +894,15 @@ function ActivityLogSection({ auditLogs }: { auditLogs: SanitizedAuditLog[] }) {
 /**
  * Footer Component
  */
-function Footer({ confidential, generatedAt }: { confidential: boolean; generatedAt: string }) {
+function Footer({ generatedAt }: { generatedAt: string }) {
   if (!pdfSections.candidateReport.showFooter) return null;
 
   return (
     <View style={styles.footer} fixed>
-      <Text style={styles.footerText}>
-        {pdfLabels.report.generatedOn}: {generatedAt}
-        {confidential && ` | ${pdfLabels.report.confidential} \n${pdfLabels.report.internalUseOnly}`}
-      </Text>
+      <Text style={styles.footerText}>{pdfLabels.report.generatedOn} {generatedAt}</Text>
       <Text
         style={styles.pageNumber}
-        render={({ pageNumber, totalPages }) =>
-          `${pdfLabels.report.page} ${pageNumber} ${pdfLabels.report.of} ${totalPages}`
-        }
+        render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
       />
     </View>
   );
@@ -813,18 +928,39 @@ export function CandidateReportDocument({
       producer="@react-pdf/renderer"
     >
       <Page size={pdfPageConfig.size} style={styles.page}>
-        <Header candidateName={data.person.fullName} position={data.application.position} />
+        <FixedPageHeader
+          confidential={confidential}
+          styles={{
+            container: styles.pageHeader,
+            logo: styles.logo,
+            confidentialBlock: styles.pageConfidentialBlock,
+            confidentialTitle: styles.pageConfidentialTitle,
+            confidentialCopy: styles.pageConfidentialCopy,
+            metaBlock: styles.pageMetaBlock,
+            metaPrimary: styles.pageMetaName,
+            metaSecondary: styles.pageMetaPosition,
+          }}
+          metaPrimary={data.person.fullName}
+          metaSecondary={data.application.position}
+          metaFromSecondPage
+        />
+        <Header />
 
         <PersonalInfoSection person={data.person} />
         <ApplicationDetailsSection application={data.application} />
         <AcademicBackgroundSection content={data.application.academicBackground} />
         <PreviousExperienceSection content={data.application.previousExperience} />
+        <JourneySection
+          application={data.application}
+          interviews={data.interviews}
+          decisions={data.decisions}
+        />
         <AssessmentsSection assessments={data.assessments} person={data.person} />
         <InterviewsSection interviews={data.interviews} />
         <DecisionsSection decisions={data.decisions} />
         <ActivityLogSection auditLogs={auditLogs} />
 
-        <Footer confidential={confidential} generatedAt={data.generatedAt} />
+        <Footer generatedAt={data.generatedAt} />
       </Page>
     </Document>
   );

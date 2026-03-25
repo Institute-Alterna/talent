@@ -192,6 +192,7 @@ export async function getApplicationsForPipeline(filters?: {
           email: true,
           generalCompetenciesCompleted: true,
           generalCompetenciesScore: true,
+          generalCompetenciesInvitedAt: true,
           _count: {
             select: { applications: true },
           },
@@ -226,6 +227,9 @@ export async function getApplicationsForPipeline(filters?: {
     SIGNED: [],
   };
 
+  const gcOverdueThresholdMs = recruitment.interview.gcOverdueThresholdDays * 24 * 60 * 60 * 1000;
+  const gcOverdueCutoff = new Date(Date.now() - gcOverdueThresholdMs);
+
   for (const app of applications) {
     // Collapse legacy APPLICATION stage into GENERAL_COMPETENCIES for display
     const displayStage = app.currentStage === 'APPLICATION' ? 'GENERAL_COMPETENCIES' : app.currentStage;
@@ -246,6 +250,13 @@ export async function getApplicationsForPipeline(filters?: {
       (app.currentStage === 'INTERVIEW' && app.interviews.length === 0)
     );
 
+    // GC overdue: active, in GC stage, invitation sent > 7 days ago, assessment still not submitted
+    const isGcOverdue = app.status === 'ACTIVE' &&
+      (app.currentStage === 'APPLICATION' || app.currentStage === 'GENERAL_COMPETENCIES') &&
+      !app.person.generalCompetenciesCompleted &&
+      app.person.generalCompetenciesInvitedAt !== null &&
+      new Date(app.person.generalCompetenciesInvitedAt) < gcOverdueCutoff;
+
     const card: ApplicationCard = {
       id: app.id,
       personId: app.personId,
@@ -264,6 +275,7 @@ export async function getApplicationsForPipeline(filters?: {
       personApplicationCount: app.person._count.applications,
       missingFields: calcMissingFields(app),
       needsAttention,
+      isGcOverdue,
     };
 
     applicationsByStage[displayStage].push(card);
@@ -340,6 +352,7 @@ export async function getApplicationDetail(id: string): Promise<ApplicationDetai
           generalCompetenciesCompleted: true,
           generalCompetenciesScore: true,
           generalCompetenciesPassedAt: true,
+          generalCompetenciesInvitedAt: true,
           assessments: {
             where: { assessmentType: 'GENERAL_COMPETENCIES' },
             select: { id: true, score: true, passed: true, threshold: true, completedAt: true, rawData: true },
@@ -386,6 +399,7 @@ export async function getApplicationDetail(id: string): Promise<ApplicationDetai
           scheduledAt: true,
           completedAt: true,
           notes: true,
+          recordingUrl: true,
           outcome: true,
           emailSentAt: true,
           createdAt: true,

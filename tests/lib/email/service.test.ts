@@ -20,6 +20,7 @@ import {
   sendSCInvitations,
   sendInterviewInvitation,
   sendRejection,
+  sendRejectionNoGc,
   sendOfferLetter,
   sendAccountCreated,
   getEmailServiceStatus,
@@ -63,6 +64,9 @@ jest.mock('@/lib/db', () => ({
       create: jest.fn().mockResolvedValue({
         id: 'audit-log-123',
       }),
+    },
+    person: {
+      update: jest.fn().mockResolvedValue({ id: 'person-123' }),
     },
   },
 }));
@@ -354,6 +358,33 @@ describe('Email Service', () => {
         'Jane',
         'jane.doe@alterna.dev',
         'TempPass123!'
+      );
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('sendRejectionNoGc', () => {
+    it('sends rejection email using the no-gc template', async () => {
+      const result = await sendRejectionNoGc(
+        'person-123',
+        'app-456',
+        'candidate@example.com',
+        'Jane',
+        'Data Analyst',
+      );
+
+      expect(result.success).toBe(true);
+    });
+
+    it('succeeds without a rejection reason (no reason arg)', async () => {
+      // sendRejectionNoGc has no reason parameter — the template is self-contained
+      const result = await sendRejectionNoGc(
+        'person-123',
+        'app-456',
+        'candidate@example.com',
+        'Bob',
+        'Programme Associate',
       );
 
       expect(result.success).toBe(true);

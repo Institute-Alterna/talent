@@ -64,6 +64,7 @@ export {
   sendSCInvitations,
   sendInterviewInvitation,
   sendRejection,
+  sendRejectionNoGc,
   sendOfferLetter,
   sendAccountCreated,
   getEmailServiceStatus,

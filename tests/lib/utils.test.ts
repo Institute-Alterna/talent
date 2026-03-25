@@ -13,7 +13,7 @@
  * (for resolving conflicting Tailwind classes).
  */
 
-import { cn, ensureAbsoluteUrl, isValidUUID, isValidURL, formatDate, formatDateTime, formatDateShort } from '@/lib/utils';
+import { cn, ensureAbsoluteUrl, isValidUUID, isValidURL, isValidHttpsURL, formatDate, formatDateTime, formatDateShort } from '@/lib/utils';
 
 describe('cn (className utility)', () => {
   /**
@@ -196,6 +196,25 @@ describe('isValidURL', () => {
     expect(isValidURL('file:///path/to/file')).toBe(false);
     expect(isValidURL('mailto:test@example.com')).toBe(false);
     expect(isValidURL('javascript:alert(1)')).toBe(false);
+  });
+});
+
+describe('isValidHttpsURL', () => {
+  it('returns true for valid HTTPS URLs', () => {
+    expect(isValidHttpsURL('https://www.loom.com/share/abc123')).toBe(true);
+    expect(isValidHttpsURL('https://loom.com/share/abc123?sid=123')).toBe(true);
+  });
+
+  it('returns false for invalid URLs', () => {
+    expect(isValidHttpsURL('')).toBe(false);
+    expect(isValidHttpsURL('not-a-url')).toBe(false);
+    expect(isValidHttpsURL('www.loom.com/share/abc123')).toBe(false);
+  });
+
+  it('returns false for non-HTTPS protocols', () => {
+    expect(isValidHttpsURL('http://www.loom.com/share/abc123')).toBe(false);
+    expect(isValidHttpsURL('ftp://www.loom.com/share/abc123')).toBe(false);
+    expect(isValidHttpsURL('javascript:alert(1)')).toBe(false);
   });
 });
 

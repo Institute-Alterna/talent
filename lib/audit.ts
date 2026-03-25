@@ -248,7 +248,8 @@ export async function logInterviewCompleted(
   applicationId: string,
   personId: string,
   interviewerId: string,
-  userId?: string
+  userId?: string,
+  details?: Record<string, unknown>
 ) {
   return createAuditLog({
     applicationId,
@@ -256,7 +257,7 @@ export async function logInterviewCompleted(
     userId,
     action: 'Interview marked as completed',
     actionType: 'UPDATE',
-    details: { interviewerId },
+    details: { interviewerId, ...details },
   });
 }
 

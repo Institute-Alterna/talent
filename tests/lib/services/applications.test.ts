@@ -15,7 +15,7 @@ import {
   advanceApplicationStage,
   updateApplicationStatus,
   deleteApplication,
-  
+  getApplicationsForPipeline,
   getApplicationsByPersonId,
   getApplicationsAwaitingGCResult,
   advanceMultipleApplications,
@@ -38,6 +38,9 @@ jest.mock('@/lib/db', () => ({
       delete: jest.fn(),
       count: jest.fn(),
       groupBy: jest.fn(),
+    },
+    person: {
+      findMany: jest.fn(),
     },
   },
 }));
@@ -438,6 +441,116 @@ describe('Application Service', () => {
     it('returns null for final stage', () => {
       const next = getNextStage('SIGNED');
       expect(next).toBeNull();
+    });
+  });
+
+  describe('getApplicationsForPipeline — isGcOverdue', () => {
+    const now = new Date();
+    const eightDaysAgo = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000);
+    const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+
+    function makePipelineApp(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'app-123',
+        personId: 'person-123',
+        position: 'Software Developer',
+        currentStage: 'GENERAL_COMPETENCIES',
+        status: 'ACTIVE',
+        createdAt: now,
+        agreementSignedAt: null,
+        hasResume: false,
+        hasAcademicBg: false,
+        hasVideoIntro: false,
+        hasPreviousExp: false,
+        hasOtherFile: false,
+        resumeUrl: null,
+        academicBackground: null,
+        videoLink: null,
+        previousExperience: null,
+        otherFileUrl: null,
+        person: {
+          id: 'person-123',
+          firstName: 'Test',
+          lastName: 'User',
+          email: 'test@example.com',
+          generalCompetenciesCompleted: false,
+          generalCompetenciesScore: null,
+          generalCompetenciesInvitedAt: null,
+          _count: { applications: 1 },
+        },
+        _count: { assessments: 0, interviews: 0 },
+        interviews: [],
+        assessments: [],
+        ...overrides,
+      };
+    }
+
+    beforeEach(() => {
+      (db.application.count as jest.Mock).mockResolvedValue(0);
+      (db.application.groupBy as jest.Mock).mockResolvedValue([]);
+    });
+
+    it('sets isGcOverdue true when GC stage, invitation > 7 days ago, GC not completed', async () => {
+      (db.application.findMany as jest.Mock).mockResolvedValue([
+        makePipelineApp({ person: { ...makePipelineApp().person, generalCompetenciesInvitedAt: eightDaysAgo } }),
+      ]);
+
+      const result = await getApplicationsForPipeline({ status: 'ACTIVE' });
+      const card = result.applicationsByStage['GENERAL_COMPETENCIES'][0];
+      expect(card.isGcOverdue).toBe(true);
+    });
+
+    it('sets isGcOverdue false when invitation is only 3 days ago', async () => {
+      (db.application.findMany as jest.Mock).mockResolvedValue([
+        makePipelineApp({ person: { ...makePipelineApp().person, generalCompetenciesInvitedAt: threeDaysAgo } }),
+      ]);
+
+      const result = await getApplicationsForPipeline({ status: 'ACTIVE' });
+      const card = result.applicationsByStage['GENERAL_COMPETENCIES'][0];
+      expect(card.isGcOverdue).toBe(false);
+    });
+
+    it('sets isGcOverdue false when no GC invitation has been sent', async () => {
+      (db.application.findMany as jest.Mock).mockResolvedValue([
+        makePipelineApp(),
+      ]);
+
+      const result = await getApplicationsForPipeline({ status: 'ACTIVE' });
+      const card = result.applicationsByStage['GENERAL_COMPETENCIES'][0];
+      expect(card.isGcOverdue).toBe(false);
+    });
+
+    it('sets isGcOverdue false when GC is already completed', async () => {
+      (db.application.findMany as jest.Mock).mockResolvedValue([
+        makePipelineApp({
+          person: {
+            ...makePipelineApp().person,
+            generalCompetenciesCompleted: true,
+            generalCompetenciesScore: '850',
+            generalCompetenciesInvitedAt: eightDaysAgo,
+          },
+        }),
+      ]);
+
+      const result = await getApplicationsForPipeline({ status: 'ACTIVE' });
+      const card = result.applicationsByStage['GENERAL_COMPETENCIES'][0];
+      expect(card.isGcOverdue).toBe(false);
+    });
+
+    it('sets isGcOverdue false for applications in a different stage', async () => {
+      (db.application.findMany as jest.Mock).mockResolvedValue([
+        makePipelineApp({
+          currentStage: 'INTERVIEW',
+          person: {
+            ...makePipelineApp().person,
+            generalCompetenciesInvitedAt: eightDaysAgo,
+          },
+        }),
+      ]);
+
+      const result = await getApplicationsForPipeline({ status: 'ACTIVE' });
+      const card = result.applicationsByStage['INTERVIEW'][0];
+      expect(card.isGcOverdue).toBe(false);
     });
   });
 });

@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Timeline, TimelineItem, mapActionTypeToTimelineType } from '@/components/ui/timeline';
+import { strings } from '@/config';
 import { useToast } from '@/hooks/use-toast';
 import { humaniseAuditAction } from '@/lib/audit-display';
 import { RefreshCw, Search, Loader2 } from 'lucide-react';
@@ -257,7 +258,7 @@ export function AuditLogPageClient() {
         </div>
       ) : timelineItems.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          {(searchTerm || selectedActor || selectedActionType) ? 'No logs match your filters' : 'No audit logs yet'}
+          {(searchTerm || selectedActor || selectedActionType) ? strings.auditLog.noMatches : strings.auditLog.noLogs}
         </div>
       ) : (
         <div className="rounded-lg border bg-card p-4">

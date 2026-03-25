@@ -80,6 +80,7 @@ export const EMAIL_TEMPLATES = {
   INTERVIEW_INVITATION: 'interview/interview-invitation',
   OFFER_LETTER: 'decision/offer-letter',
   REJECTION: 'decision/rejection',
+  REJECTION_NO_GC: 'decision/rejection-no-gc',
   ACCOUNT_CREATED: 'onboarding/account-created',
 } as const;
 
@@ -115,6 +116,10 @@ export const EMAIL_TEMPLATE_META: Record<
   [EMAIL_TEMPLATES.REJECTION]: {
     subject: 'Application Update at {{ORGANIZATION_SHORT_NAME}}',
     description: 'Final rejection notification',
+  },
+  [EMAIL_TEMPLATES.REJECTION_NO_GC]: {
+    subject: 'Update on your application at {{ORGANIZATION_SHORT_NAME}}',
+    description: 'Rejection due to incomplete general competencies assessment',
   },
   [EMAIL_TEMPLATES.ACCOUNT_CREATED]: {
     subject: 'Welcome to {{ORGANIZATION_SHORT_NAME}}',

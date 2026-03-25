@@ -56,6 +56,7 @@ export interface ApplicationCardData {
   missingFieldsCount?: number;
   hasCompletedInterview?: boolean;
   needsAttention?: boolean;
+  isGcOverdue?: boolean;
 }
 
 interface ApplicationCardProps {
@@ -66,6 +67,7 @@ interface ApplicationCardProps {
   onExportPdf?: (id: string) => void;
   onWithdraw?: (id: string) => void;
   onWithdrawOffer?: (id: string) => void;
+  onRejectGcOverdue?: (id: string) => void;
   isExportingPdf?: boolean;
   isAdmin?: boolean;
   className?: string;
@@ -88,6 +90,7 @@ export function ApplicationCard({
   onExportPdf,
   onWithdraw,
   onWithdrawOffer,
+  onRejectGcOverdue,
   isExportingPdf = false,
   isAdmin = false,
   className,
@@ -100,7 +103,9 @@ export function ApplicationCard({
       className={cn(
         'cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 border-border/50 py-3 min-h-[160px] flex flex-col',
         application.status === 'REJECTED' && 'opacity-60 grayscale',
-        application.needsAttention && 'border-l-[3px] border-l-amber-500 dark:border-l-amber-400',
+        application.isGcOverdue
+          ? 'border-l-[3px] border-l-red-500 dark:border-l-red-400'
+          : application.needsAttention && 'border-l-[3px] border-l-amber-500 dark:border-l-amber-400',
         className
       )}
       onClick={() => onView(application.id)}
@@ -151,6 +156,24 @@ export function ApplicationCard({
 
           {/* Quick actions */}
           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            {application.isGcOverdue && isAdmin && onRejectGcOverdue && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={() => onRejectGcOverdue(application.id)}
+                    aria-label={strings.gcRejection.cardButtonTooltip}
+                    title={strings.gcRejection.cardButtonTooltip}
+                  >
+                    <XCircle className="h-3.5 w-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{strings.gcRejection.cardButtonTooltip}</TooltipContent>
+              </Tooltip>
+            )}
+
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button

@@ -29,6 +29,9 @@ export const recruitment = {
   interview: {
     // Days to wait before sending reminder (0 = no reminder)
     reminderDays: 3,
+
+    // Days after GC invitation before an incomplete assessment is considered overdue
+    gcOverdueThresholdDays: 7,
   },
 
   // Email rate limiting (Dreamhost limits)
@@ -106,6 +109,18 @@ export const recruitment = {
 
     // Days to keep audit logs
     auditLogDays: 730,
+  },
+
+  // Character limits for multi-line text fields (@db.Text columns)
+  // These limits apply at both API and UI layers.
+  characterLimits: {
+    interviewNotes: 2_000,
+    recordingUrl: 512,
+    decisionReason: 2_000,
+    decisionNotes: 2_000,
+    academicBackground: 5_000,
+    previousExperience: 5_000,
+    competencyCriterion: 1_000,
   },
 } as const;
 

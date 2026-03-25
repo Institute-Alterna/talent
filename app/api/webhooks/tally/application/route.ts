@@ -82,16 +82,20 @@ export async function POST(request: NextRequest) {
   const { person, created: personCreated } = await findOrCreatePerson(personData);
 
   if (personCreated) {
-    await logPersonCreated(
-      person.id,
-      {
-        email: person.email,
-        firstName: person.firstName,
-        lastName: person.lastName,
-        source: 'tally_application',
-      },
-      ip
-    );
+    try {
+      await logPersonCreated(
+        person.id,
+        {
+          email: person.email,
+          firstName: person.firstName,
+          lastName: person.lastName,
+          source: 'tally_application',
+        },
+        ip
+      );
+    } catch (auditError) {
+      console.error('[Webhook] Failed to write person-created audit log:', auditError instanceof Error ? auditError.message : auditError);
+    }
   }
 
   // Extract application data
@@ -107,34 +111,42 @@ export async function POST(request: NextRequest) {
   // Create application
   const application = await createApplication(applicationData);
 
-  // Log webhook receipt (after person and application are known for full context)
-  await logWebhookReceived(
-    'application',
-    person.id,
-    application.id,
-    {
-      submissionId,
-      formId,
-      formName,
-      eventId: payload.eventId,
-      personName: `${person.firstName} ${person.lastName}`,
-      personCreated,
-      position: application.position,
-    },
-    ip
-  );
+  // Audit logging is non-fatal — a logging failure must not roll back the application
+  try {
+    await logWebhookReceived(
+      'application',
+      person.id,
+      application.id,
+      {
+        submissionId,
+        formId,
+        formName,
+        eventId: payload.eventId,
+        personName: `${person.firstName} ${person.lastName}`,
+        personCreated,
+        position: application.position,
+      },
+      ip
+    );
+  } catch (auditError) {
+    console.error('[Webhook] Failed to write webhook audit log:', auditError instanceof Error ? auditError.message : auditError);
+  }
 
-  await logApplicationCreated(
-    application.id,
-    person.id,
-    application.position,
-    {
-      tallySubmissionId: submissionId,
-      formId,
-      personCreated,
-    },
-    ip
-  );
+  try {
+    await logApplicationCreated(
+      application.id,
+      person.id,
+      application.position,
+      {
+        tallySubmissionId: submissionId,
+        formId,
+        personCreated,
+      },
+      ip
+    );
+  } catch (auditError) {
+    console.error('[Webhook] Failed to write application-created audit log:', auditError instanceof Error ? auditError.message : auditError);
+  }
 
   // Send application-received confirmation email (non-fatal)
   try {

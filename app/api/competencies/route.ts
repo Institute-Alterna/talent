@@ -10,7 +10,7 @@ import { requireAccess, requireAdmin, parseJsonBody } from '@/lib/api-helpers';
 import { listCompetencies, createCompetency } from '@/lib/services/competencies';
 import { isValidURL } from '@/lib/utils';
 import { recruitment } from '@/config/recruitment';
-import { sanitizeForLog } from '@/lib/security';
+import { sanitizeForLog, sanitizeText } from '@/lib/security';
 
 /**
  * GET /api/competencies
@@ -73,14 +73,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'A valid Tally form URL is required' }, { status: 400 });
     }
 
-    if (!criterion || criterion.length > 2000) {
+    if (!criterion || criterion.length > recruitment.characterLimits.competencyCriterion) {
       return NextResponse.json(
-        { error: 'Criterion is required (max 2000 characters)' },
+        { error: `Criterion is required (max ${recruitment.characterLimits.competencyCriterion} characters)` },
         { status: 400 }
       );
     }
 
-    const competency = await createCompetency({ name, category, tallyFormUrl, criterion });
+    const sanitizedCriterion = sanitizeText(criterion, recruitment.characterLimits.competencyCriterion)!;
+
+    const competency = await createCompetency({ name, category, tallyFormUrl, criterion: sanitizedCriterion });
 
     return NextResponse.json({ competency }, { status: 201 });
   } catch (error) {

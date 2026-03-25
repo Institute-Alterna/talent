@@ -19,6 +19,7 @@ import {
   pdfLabels,
   pdfSections,
 } from './config';
+import { FixedPageHeader } from './fixed-page-header';
 import type { SanitizedAuditLog } from './sanitize';
 import { branding } from '@/config/branding';
 
@@ -28,7 +29,7 @@ import { branding } from '@/config/branding';
 const styles = StyleSheet.create({
   // Page styles
   page: {
-    padding: pdfSpacing.pageMargin.top,
+    paddingTop: pdfSpacing.pageMargin.top + 26,
     paddingLeft: pdfSpacing.pageMargin.left,
     paddingRight: pdfSpacing.pageMargin.right,
     paddingBottom: pdfSpacing.pageMargin.bottom + 20,
@@ -39,6 +40,36 @@ const styles = StyleSheet.create({
   },
 
   // Header styles
+  pageHeader: {
+    position: 'absolute',
+    top: 16,
+    left: pdfSpacing.pageMargin.left,
+    right: pdfSpacing.pageMargin.right,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  logo: {
+    width: 118,
+    height: 26,
+  },
+  pageConfidentialBlock: {
+    maxWidth: 250,
+  },
+  pageConfidentialTitle: {
+    fontFamily: pdfFonts.heading,
+    fontSize: 7,
+    textAlign: 'right',
+    color: pdfColors.text,
+    marginBottom: 1,
+  },
+  pageConfidentialCopy: {
+    fontSize: 6,
+    lineHeight: 1.3,
+    textAlign: 'right',
+    color: pdfColors.textMuted,
+  },
+
   header: {
     marginBottom: pdfSpacing.sectionGap,
     borderBottomWidth: 2,
@@ -49,17 +80,6 @@ const styles = StyleSheet.create({
     fontFamily: pdfFonts.heading,
     fontSize: pdfFontSizes.title,
     color: pdfColors.primary,
-    marginBottom: 5,
-  },
-  headerSubtitle: {
-    fontSize: pdfFontSizes.small,
-    color: pdfColors.textMuted,
-  },
-  headerOrg: {
-    fontFamily: pdfFonts.heading,
-    fontSize: pdfFontSizes.subsectionHeader,
-    color: pdfColors.secondary,
-    marginBottom: 3,
   },
 
   // Summary section
@@ -80,7 +100,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   summaryLabel: {
-    width: 180,
+    width: 130,
     fontFamily: pdfFonts.heading,
     fontSize: pdfFontSizes.body,
     color: pdfColors.textMuted,
@@ -125,12 +145,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: pdfFonts.heading,
-    fontSize: pdfFontSizes.sectionHeader,
-    color: pdfColors.primary,
+    fontSize: 13,
+    color: pdfColors.text,
     marginBottom: 10,
     paddingBottom: 5,
     borderBottomWidth: 1,
     borderBottomColor: pdfColors.border,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
   },
 
   // Table styles
@@ -193,9 +215,11 @@ const styles = StyleSheet.create({
   },
   timelineDate: {
     fontFamily: pdfFonts.heading,
-    fontSize: pdfFontSizes.small,
-    color: pdfColors.primary,
+    fontSize: 8,
+    color: pdfColors.textMuted,
     marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   timelineAction: {
     fontSize: pdfFontSizes.body,
@@ -203,38 +227,10 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   timelineMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    fontSize: 8,
+    color: pdfColors.textMuted,
     marginTop: 2,
   },
-  timelineMetaItem: {
-    fontSize: pdfFontSizes.small,
-    color: pdfColors.textMuted,
-  },
-  timelineDetails: {
-    marginTop: 4,
-    padding: 6,
-    backgroundColor: pdfColors.backgroundAlt,
-    borderRadius: 2,
-    fontSize: pdfFontSizes.small,
-    color: pdfColors.textMuted,
-  },
-
-  // Action type badges
-  badge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 3,
-    fontSize: 7,
-  },
-  badgeCreate: { backgroundColor: '#D1FAE5', color: '#065F46' },
-  badgeUpdate: { backgroundColor: '#DBEAFE', color: '#1E40AF' },
-  badgeDelete: { backgroundColor: '#FEE2E2', color: '#991B1B' },
-  badgeView: { backgroundColor: '#F3F4F6', color: '#374151' },
-  badgeEmail: { backgroundColor: '#FEF3C7', color: '#92400E' },
-  badgeStage: { backgroundColor: '#E0E7FF', color: '#3730A3' },
-  badgeStatus: { backgroundColor: '#FCE7F3', color: '#9D174D' },
 
   // Footer styles
   footer: {
@@ -333,30 +329,6 @@ function calculateStats(auditLogs: SanitizedAuditLog[]): Record<string, number> 
 }
 
 /**
- * Get badge style for action type
- */
-function getActionTypeBadgeStyle(actionType: string) {
-  switch (actionType) {
-    case 'CREATE':
-      return styles.badgeCreate;
-    case 'UPDATE':
-      return styles.badgeUpdate;
-    case 'DELETE':
-      return styles.badgeDelete;
-    case 'VIEW':
-      return styles.badgeView;
-    case 'EMAIL_SENT':
-      return styles.badgeEmail;
-    case 'STAGE_CHANGE':
-      return styles.badgeStage;
-    case 'STATUS_CHANGE':
-      return styles.badgeStatus;
-    default:
-      return styles.badgeView;
-  }
-}
-
-/**
  * Header Component
  */
 function Header({
@@ -372,11 +344,8 @@ function Header({
 
   return (
     <View style={styles.header}>
-      <Text style={styles.headerOrg}>{branding.organisationName}</Text>
       <Text style={styles.headerTitle}>{pdfLabels.report.auditReport}</Text>
-      <Text style={styles.headerSubtitle}>
-        {subjectLabel}: {subject}
-      </Text>
+      <Text>{subjectLabel} {subject}</Text>
     </View>
   );
 }
@@ -403,7 +372,7 @@ function SummarySection({
 
       {dateRangeStart && dateRangeEnd && (
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Date Range:</Text>
+          <Text style={styles.summaryLabel}>Date range</Text>
           <Text style={styles.summaryValue}>
             {dateRangeStart} - {dateRangeEnd}
           </Text>
@@ -411,7 +380,7 @@ function SummarySection({
       )}
 
       <View style={styles.summaryRow}>
-        <Text style={styles.summaryLabel}>Total Events:</Text>
+        <Text style={styles.summaryLabel}>Total events</Text>
         <Text style={styles.summaryValue}>{stats.total}</Text>
       </View>
 
@@ -468,38 +437,27 @@ function AuditLogDetails({ auditLogs }: { auditLogs: SanitizedAuditLog[] }) {
       <Text style={styles.sectionTitle}>{pdfLabels.activity.sectionTitle}</Text>
 
       {auditLogs.length > 0 ? (
-        auditLogs.map((log, index) => (
-          <View key={index} style={styles.timelineItem}>
-            <View style={styles.timelineContent}>
-              <Text style={styles.timelineDate}>{log.createdAt}</Text>
-              <Text style={styles.timelineAction}>{log.action}</Text>
+        auditLogs.map((log, index) => {
+          const metaParts = [log.user || pdfLabels.common.system];
 
-              <View style={styles.timelineMeta}>
-                <View style={[styles.badge, getActionTypeBadgeStyle(log.actionType)]}>
-                  <Text>{log.actionType.replace('_', ' ')}</Text>
-                </View>
+          if (pdfSections.auditReport.showIpAddresses && log.ipAddress) {
+            metaParts.push(`${pdfLabels.activity.ipAddress}: ${log.ipAddress}`);
+          }
 
-                {log.user && (
-                  <Text style={styles.timelineMetaItem}>
-                    {pdfLabels.activity.user}: {log.user}
-                  </Text>
-                )}
+          if (pdfSections.auditReport.showUserAgents && log.userAgent) {
+            metaParts.push(log.userAgent);
+          }
 
-                {pdfSections.auditReport.showIpAddresses && log.ipAddress && (
-                  <Text style={styles.timelineMetaItem}>
-                    {pdfLabels.activity.ipAddress}: {log.ipAddress}
-                  </Text>
-                )}
+          return (
+            <View key={index} style={styles.timelineItem}>
+              <View style={styles.timelineContent}>
+                <Text style={styles.timelineDate}>{log.createdAt}</Text>
+                <Text style={styles.timelineAction}>{log.action}</Text>
+                <Text style={styles.timelineMeta}>{metaParts.join(' | ')}</Text>
               </View>
-
-              {log.details && (
-                <View style={styles.timelineDetails}>
-                  <Text>{log.details}</Text>
-                </View>
-              )}
             </View>
-          </View>
-        ))
+          );
+        })
       ) : (
         <Text style={styles.emptyMessage}>{pdfLabels.activity.noActivity}</Text>
       )}
@@ -510,20 +468,15 @@ function AuditLogDetails({ auditLogs }: { auditLogs: SanitizedAuditLog[] }) {
 /**
  * Footer Component
  */
-function Footer({ confidential, generatedAt }: { confidential: boolean; generatedAt: string }) {
+function Footer({ generatedAt }: { generatedAt: string }) {
   if (!pdfSections.auditReport.showFooter) return null;
 
   return (
     <View style={styles.footer} fixed>
-      <Text style={styles.footerText}>
-        {pdfLabels.report.generatedOn}: {generatedAt}
-        {confidential && ` | ${pdfLabels.report.confidential}`}
-      </Text>
+      <Text style={styles.footerText}>{pdfLabels.report.generatedOn} {generatedAt}</Text>
       <Text
         style={styles.pageNumber}
-        render={({ pageNumber, totalPages }) =>
-          `${pdfLabels.report.page} ${pageNumber} ${pdfLabels.report.of} ${totalPages}`
-        }
+        render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
       />
     </View>
   );
@@ -553,6 +506,17 @@ export function AuditReportDocument({
       producer="@react-pdf/renderer"
     >
       <Page size={pdfPageConfig.size} style={styles.page}>
+        <FixedPageHeader
+          confidential={confidential}
+          styles={{
+            container: styles.pageHeader,
+            logo: styles.logo,
+            confidentialBlock: styles.pageConfidentialBlock,
+            confidentialTitle: styles.pageConfidentialTitle,
+            confidentialCopy: styles.pageConfidentialCopy,
+          }}
+          hideConfidentialOnFirstPage
+        />
         <Header subject={subject} subjectType={subjectType} />
         <SummarySection
           auditLogs={auditLogs}
@@ -560,7 +524,7 @@ export function AuditReportDocument({
           dateRangeEnd={dateRangeEnd}
         />
         <AuditLogDetails auditLogs={auditLogs} />
-        <Footer confidential={confidential} generatedAt={generatedAt} />
+        <Footer generatedAt={generatedAt} />
       </Page>
     </Document>
   );

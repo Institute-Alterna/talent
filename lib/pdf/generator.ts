@@ -14,26 +14,32 @@ import { renderToBuffer } from '@react-pdf/renderer';
 import { CandidateReportDocument, type CandidateReportProps } from './candidate-report';
 import { AuditReportDocument, type AuditReportProps } from './audit-report';
 import {
-  sanitizeShortText,
-  sanitizeMediumText,
-  sanitizeLongText,
-  sanitizeEmail,
+  sanitizeShortTextForPdf,
+  sanitizeMediumTextForPdf,
+  sanitizeLongTextForPdf,
+  sanitizeEmailForPdf,
   sanitizeUrl,
   sanitizeNumber,
   sanitizeBoolean,
-  formatDate,
-  formatDateOnly,
+  formatDateUtc,
+  formatDateOnlyUtc,
   sanitizeIpAddress,
-  sanitizeJson,
   CONTENT_LIMITS,
   type SanitizedApplicationData,
   type SanitizedAuditLog,
 } from './sanitize';
-import { pdfLabels } from './config';
+import { ensurePdfFontsRegistered, pdfLabels } from './config';
 import { getApplicationDetail } from '@/lib/services/applications';
 import { getAuditLogsForApplication, getAuditLogsForPerson } from '@/lib/audit';
 import { ensureAbsoluteUrl, getCountryName } from '@/lib/utils';
 import type { ApplicationDetail } from '@/types/application';
+import { humaniseAuditAction } from '@/lib/audit-display';
+
+const OFFER_WITHDRAWAL_NOTE = 'Offer withdrawn at agreement stage';
+
+function isOfferWithdrawalNote(note: string | null | undefined): boolean {
+  return note === OFFER_WITHDRAWAL_NOTE;
+}
 
 /**
  * Options for PDF generation
@@ -108,23 +114,29 @@ function buildLocation(
  */
 export function sanitizeApplicationData(application: ApplicationDetail): SanitizedApplicationData {
   const { person, assessments, interviews, decisions, ...app } = application;
+  const generalCompetenciesStatus = !person.generalCompetenciesCompleted
+    ? 'Not completed'
+    : person.generalCompetenciesPassedAt
+      ? 'Passed'
+      : 'Not passed';
 
   // Sanitize person data (using PDF-specific functions - no HTML escaping)
   const sanitizedPerson = {
-    fullName: sanitizeShortText(`${person.firstName} ${person.lastName}`.trim()),
-    firstName: sanitizeShortText(person.firstName),
-    lastName: sanitizeShortText(person.lastName),
-    email: sanitizeEmail(person.email),
-    secondaryEmail: sanitizeEmail(person.secondaryEmail),
-    phoneNumber: sanitizeMediumText(person.phoneNumber),
-    location: sanitizeMediumText(buildLocation(person.city, person.state, person.country)),
+    fullName: sanitizeShortTextForPdf(`${person.firstName} ${person.lastName}`.trim()),
+    firstName: sanitizeShortTextForPdf(person.firstName),
+    lastName: sanitizeShortTextForPdf(person.lastName),
+    email: sanitizeEmailForPdf(person.email),
+    secondaryEmail: sanitizeEmailForPdf(person.secondaryEmail),
+    phoneNumber: sanitizeMediumTextForPdf(person.phoneNumber),
+    location: sanitizeMediumTextForPdf(buildLocation(person.city, person.state, person.country)),
     portfolioLink: sanitizeUrl(ensureAbsoluteUrl(person.portfolioLink || '')),
-    educationLevel: sanitizeShortText(person.educationLevel),
+    educationLevel: sanitizeShortTextForPdf(person.educationLevel),
     generalCompetenciesScore: person.generalCompetenciesScore
       ? sanitizeNumber(person.generalCompetenciesScore.toString(), 2)
       : pdfLabels.common.na,
     generalCompetenciesCompleted: sanitizeBoolean(person.generalCompetenciesCompleted),
-    generalCompetenciesPassedAt: formatDate(person.generalCompetenciesPassedAt),
+    generalCompetenciesPassedAt: formatDateUtc(person.generalCompetenciesPassedAt),
+    generalCompetenciesStatus,
   };
 
   // Calculate missing fields
@@ -137,49 +149,53 @@ export function sanitizeApplicationData(application: ApplicationDetail): Sanitiz
 
   // Sanitize application data (using PDF-specific functions - no HTML escaping)
   const sanitizedApplication = {
-    id: sanitizeShortText(app.id) || app.id,
-    position: sanitizeShortText(app.position),
+    id: sanitizeShortTextForPdf(app.id) || app.id,
+    position: sanitizeShortTextForPdf(app.position),
     currentStage: app.currentStage,
     status: app.status,
-    createdAt: formatDateOnly(app.createdAt),
-    updatedAt: formatDate(app.updatedAt),
+    createdAt: formatDateOnlyUtc(app.createdAt),
+    updatedAt: formatDateUtc(app.updatedAt),
+    agreementSignedAt: formatDateUtc(app.agreementSignedAt),
     resumeUrl: sanitizeUrl(app.resumeUrl),
-    academicBackground: sanitizeLongText(app.academicBackground),
-    previousExperience: sanitizeLongText(app.previousExperience),
+    academicBackground: sanitizeLongTextForPdf(app.academicBackground),
+    previousExperience: sanitizeLongTextForPdf(app.previousExperience),
     videoLink: sanitizeUrl(app.videoLink),
     otherFileUrl: sanitizeUrl(app.otherFileUrl),
-    missingFields: missingFields.map(sanitizeShortText),
+    missingFields: missingFields.map(sanitizeShortTextForPdf),
   };
 
-  // Sanitize assessments
-  const sanitizedAssessments = assessments.map((assessment) => ({
-    type:
-      assessment.assessmentType === 'GENERAL_COMPETENCIES'
-        ? pdfLabels.assessments.generalCompetencies
-        : pdfLabels.assessments.specializedCompetencies,
-    score: assessment.score != null ? sanitizeNumber(assessment.score.toString(), 2) : '—',
-    passed: assessment.passed != null ? sanitizeBoolean(assessment.passed) : '—',
-    threshold: assessment.threshold != null ? sanitizeNumber(assessment.threshold.toString(), 2) : '—',
-    completedAt: assessment.completedAt ? formatDate(assessment.completedAt) : '—',
-  }));
+  // Sanitize specialized competency assessments for report clarity.
+  const sanitizedAssessments = assessments
+    .filter((assessment) => assessment.assessmentType === 'SPECIALIZED_COMPETENCIES')
+    .map((assessment) => ({
+      type: pdfLabels.assessments.specializedCompetencies,
+      competencyName: sanitizeShortTextForPdf(assessment.specialisedCompetency?.name || '—'),
+      passed: assessment.passed != null ? sanitizeBoolean(assessment.passed) : '—',
+      completedAt: assessment.completedAt ? formatDateUtc(assessment.completedAt) : '—',
+      reviewedBy: sanitizeShortTextForPdf(
+        assessment.reviewer?.displayName || assessment.reviewedBy || ''
+      ),
+      reviewedAt: assessment.reviewedAt ? formatDateUtc(assessment.reviewedAt) : '—',
+    }));
 
   // Sanitize interviews (using PDF-specific functions - no HTML escaping)
   const sanitizedInterviews = interviews.map((interview) => ({
-    interviewer: sanitizeShortText(interview.interviewer.displayName),
-    schedulingLink: sanitizeUrl(interview.schedulingLink),
-    scheduledAt: interview.scheduledAt ? formatDate(interview.scheduledAt) : '',
-    completedAt: interview.completedAt ? formatDate(interview.completedAt) : '',
+    interviewer: sanitizeShortTextForPdf(interview.interviewer.displayName),
+    recordingUrl: sanitizeUrl(interview.recordingUrl),
+    invitedOn: interview.scheduledAt ? formatDateUtc(interview.scheduledAt) : '',
+    completedAt: interview.completedAt ? formatDateUtc(interview.completedAt) : '',
     outcome: interview.outcome,
-    notes: sanitizeLongText(interview.notes),
+    notes: sanitizeLongTextForPdf(interview.notes),
   }));
 
   // Sanitize decisions (using PDF-specific functions - no HTML escaping)
   const sanitizedDecisions = decisions.map((decision) => ({
     decision: decision.decision,
-    reason: sanitizeLongText(decision.reason),
-    notes: sanitizeLongText(decision.notes),
-    decidedBy: sanitizeShortText(decision.user.displayName),
-    decidedAt: formatDate(decision.decidedAt),
+    reason: sanitizeLongTextForPdf(decision.reason),
+    notes: sanitizeLongTextForPdf(decision.notes),
+    decidedBy: sanitizeShortTextForPdf(decision.user.displayName),
+    decidedAt: formatDateUtc(decision.decidedAt),
+    isOfferWithdrawal: isOfferWithdrawalNote(decision.notes),
   }));
 
   return {
@@ -188,7 +204,7 @@ export function sanitizeApplicationData(application: ApplicationDetail): Sanitiz
     assessments: sanitizedAssessments,
     interviews: sanitizedInterviews,
     decisions: sanitizedDecisions,
-    generatedAt: formatDate(new Date()),
+    generatedAt: formatDateUtc(new Date()),
   };
 }
 
@@ -203,15 +219,27 @@ export function sanitizeAuditLogs(
   logs: Awaited<ReturnType<typeof getAuditLogsForApplication>>,
   maxItems: number = CONTENT_LIMITS.LIST_ITEMS
 ): SanitizedAuditLog[] {
-  return logs.slice(0, maxItems).map((log) => ({
-    action: sanitizeMediumText(log.action),
-    actionType: log.actionType,
-    details: log.details ? sanitizeJson(log.details) : '',
-    user: log.user ? sanitizeShortText(log.user.displayName) : pdfLabels.common.system,
-    ipAddress: sanitizeIpAddress(log.ipAddress),
-    userAgent: sanitizeMediumText(log.userAgent),
-    createdAt: formatDate(log.createdAt),
-  }));
+  return logs.slice(0, maxItems).map((log) => {
+    const humanizeDetails =
+      log.details && typeof log.details === 'object' && !Array.isArray(log.details)
+        ? (log.details as Record<string, unknown>)
+        : undefined;
+
+    return {
+      action: sanitizeMediumTextForPdf(
+        humaniseAuditAction({
+          action: log.action,
+          actionType: log.actionType,
+          details: humanizeDetails,
+        })
+      ),
+      actionType: log.actionType,
+      user: log.user ? sanitizeShortTextForPdf(log.user.displayName) : pdfLabels.common.system,
+      ipAddress: sanitizeIpAddress(log.ipAddress),
+      userAgent: sanitizeMediumTextForPdf(log.userAgent),
+      createdAt: formatDateUtc(log.createdAt),
+    };
+  });
 }
 
 /**
@@ -229,12 +257,14 @@ export async function generateCandidateReportPdf(
   const { confidential = true, includeAuditLogs = true, maxAuditLogs = 50 } = options;
 
   // Validate application ID
-  const safeId = sanitizeShortText(applicationId);
+  const safeId = sanitizeShortTextForPdf(applicationId);
   if (!safeId) {
     throw new PdfGenerationError('Invalid application ID format');
   }
 
   try {
+    ensurePdfFontsRegistered();
+
     // Fetch application data
     const application = await getApplicationDetail(safeId);
     if (!application) {
@@ -299,12 +329,14 @@ export async function generateAuditReportPdf(
   const { confidential = true, maxAuditLogs = 100 } = options;
 
   // Validate subject ID
-  const safeId = sanitizeShortText(subjectId);
+  const safeId = sanitizeShortTextForPdf(subjectId);
   if (!safeId) {
     throw new PdfGenerationError('Invalid subject ID format');
   }
 
   try {
+    ensurePdfFontsRegistered();
+
     // Fetch audit logs based on subject type
     const rawLogs =
       subjectType === 'person'
@@ -325,12 +357,12 @@ export async function generateAuditReportPdf(
 
     // Generate PDF
     const props: AuditReportProps = {
-      subject: sanitizeShortText(subjectName),
+      subject: sanitizeShortTextForPdf(subjectName),
       subjectType,
       auditLogs,
       dateRangeStart,
       dateRangeEnd,
-      generatedAt: formatDate(new Date()),
+      generatedAt: formatDateUtc(new Date()),
       confidential,
     };
 
@@ -363,7 +395,7 @@ export async function generateAuditReportPdf(
  * @returns Boolean indicating if PDF can be generated
  */
 export async function canGeneratePdf(applicationId: string): Promise<boolean> {
-  const safeId = sanitizeShortText(applicationId);
+  const safeId = sanitizeShortTextForPdf(applicationId);
   if (!safeId) {
     return false;
   }

@@ -166,6 +166,11 @@ export const strings = {
     notesRequired: 'Interview notes are required',
     notesPlaceholder: 'Summarize the interview outcome, candidate strengths, areas of concern, and recommendations...',
     notesHelp: 'Document key points discussed, candidate performance, and your assessment.',
+    recordingLabel: 'Recording link',
+    recordingPlaceholder: 'https://www.loom.com/share/...',
+    recordingHelp: 'Optional. Add a recording URL if the interview was recorded through Loom or any other tool.',
+    recordingInvalidUrl: 'Enter a valid HTTPS recording URL (ex. https://www.loom.com/share/...)',
+    viewRecording: 'Open recording',
     rescheduleWarning: 'Interview will be rescheduled',
     contactCandidateWarning: 'Please inform the candidate about the change if needed.',
     noInterviewersAvailable: 'No interviewers with scheduling links available',
@@ -315,6 +320,19 @@ export const strings = {
     warning: 'This will reject the application and cannot be undone.',
     confirmAction: 'Withdraw Offer',
     menuItem: 'Withdraw Offer',
+  },
+
+  // GC Overdue Rejection (inline card action and detail dialog)
+  gcRejection: {
+    cardButtonTooltip: 'Reject inactive application',
+    dialogTitle: 'Reject inactive application',
+    dialogDescription: '{name} did not submit the GC assessment within 7 days of applying. You can reject the application and an email will be sent to the candidate.',
+    dialogWarning: 'This action cannot be undone.',
+    confirmAction: 'Reject',
+    detailStatusMessage: 'General Competencies assessment not submitted within 7 days of applying',
+    successTitle: 'Application rejected',
+    successDescription: 'The application has been closed and the candidate has been notified.',
+    reason: 'General competencies assessment not submitted within 7 days of applying.',
   },
 
   // Toast notifications

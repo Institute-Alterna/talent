@@ -17,12 +17,8 @@ import {
 } from '@/lib/integrations/okta';
 
 export async function GET() {
-  // Only allow in development
   if (process.env.NODE_ENV !== 'development') {
-    return NextResponse.json(
-      { error: 'This endpoint is only available in development mode' },
-      { status: 403 }
-    );
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
   const diagnostics: Record<string, unknown> = {

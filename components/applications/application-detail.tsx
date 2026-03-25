@@ -112,6 +112,7 @@ export interface ApplicationDetailData {
     generalCompetenciesCompleted: boolean;
     generalCompetenciesScore: string | null;
     generalCompetenciesPassedAt: string | null;
+    generalCompetenciesInvitedAt: string | null;
     assessments?: Array<{
       id: string;
       score: string;
@@ -147,6 +148,7 @@ export interface ApplicationDetailData {
     scheduledAt: string | null;
     completedAt: string | null;
     notes: string | null;
+    recordingUrl: string | null;
     outcome: string;
     emailSentAt: string | null;
     interviewer?: {
@@ -202,6 +204,7 @@ interface ApplicationDetailProps {
   onRescheduleInterview?: () => void;
   onCompleteInterview?: () => void;
   onMakeDecision?: (decision: 'ACCEPT' | 'REJECT') => void;
+  onRejectGcOverdue?: () => void;
   isAdmin?: boolean;
   isLoading?: boolean;
   sendingEmailTemplate?: string | null;
@@ -625,6 +628,7 @@ function RightPanel({
   onRescheduleInterview,
   onCompleteInterview,
   onMakeDecision,
+  onRejectGcOverdue,
   isAdmin,
   sendingEmailTemplate,
   isSchedulingInterview,
@@ -644,6 +648,7 @@ function RightPanel({
   onRescheduleInterview?: () => void;
   onCompleteInterview?: () => void;
   onMakeDecision?: (decision: 'ACCEPT' | 'REJECT') => void;
+  onRejectGcOverdue?: () => void;
   isAdmin?: boolean;
   sendingEmailTemplate?: string | null;
   isSchedulingInterview?: boolean;
@@ -681,6 +686,18 @@ function RightPanel({
   const gcNotCompleted = !person.generalCompetenciesCompleted;
   const gcScoreDisplay = formatScoreDisplay(person.generalCompetenciesScore, gcConfig.scale);
   const isActionable = application.status === 'ACTIVE';
+  const [clientNowMs, setClientNowMs] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    setClientNowMs(Date.now());
+  }, []);
+
+  // GC overdue: GC not completed, invitation sent more than 7 days ago
+  const isGcOverdue = React.useMemo(() => {
+    if (!gcNotCompleted || !isActionable || !person.generalCompetenciesInvitedAt || clientNowMs === null) return false;
+    const gcOverdueThresholdMs = recruitment.interview.gcOverdueThresholdDays * 24 * 60 * 60 * 1000;
+    return new Date(person.generalCompetenciesInvitedAt).getTime() < (clientNowMs - gcOverdueThresholdMs);
+  }, [gcNotCompleted, isActionable, person.generalCompetenciesInvitedAt, clientNowMs]);
 
   // Track if any operation is in progress
   const isAnyOperationInProgress = sendingEmailTemplate !== null ||
@@ -1088,6 +1105,20 @@ function RightPanel({
                       </p>
                     </div>
                   )}
+                  {latestInterview.recordingUrl && (
+                    <div className="mt-2 pt-2 border-t">
+                      <p className="text-xs text-muted-foreground mb-1">{strings.interview.recordingLabel}</p>
+                      <a
+                        href={latestInterview.recordingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        {strings.interview.viewRecording}
+                      </a>
+                    </div>
+                  )}
                   
                   {/* Actions for scheduled but not completed interview */}
                   {!isInterviewCompleted && isActionable && (
@@ -1223,7 +1254,30 @@ function RightPanel({
           </div>
         ) : (
           <div className="text-center py-2">
-            {isAdmin && onMakeDecision && application.status === 'ACTIVE' && (() => {
+            {isAdmin && application.status === 'ACTIVE' && (() => {
+              if (isGcOverdue && onRejectGcOverdue) {
+                // GC overdue — offer close-application action
+                return (
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="text-xs text-muted-foreground opacity-60">
+                      {strings.gcRejection.detailStatusMessage}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-7 border-destructive/40 text-destructive hover:bg-destructive/10"
+                      onClick={onRejectGcOverdue}
+                      disabled={isAnyOperationInProgress}
+                    >
+                      <XCircle className="h-3 w-3 mr-1" />
+                      {strings.gcRejection.confirmAction}
+                    </Button>
+                  </div>
+                );
+              }
+
+              if (!onMakeDecision) return null;
+
               if (gcNotCompleted) {
                 // GC not completed - show message, no buttons
                 return (
@@ -1494,6 +1548,7 @@ export function ApplicationDetail({
   onRescheduleInterview,
   onCompleteInterview,
   onMakeDecision,
+  onRejectGcOverdue,
   isAdmin = false,
   isLoading = false,
   sendingEmailTemplate,
@@ -1584,6 +1639,7 @@ export function ApplicationDetail({
                         onRescheduleInterview={onRescheduleInterview}
                         onCompleteInterview={onCompleteInterview}
                         onMakeDecision={onMakeDecision}
+                        onRejectGcOverdue={onRejectGcOverdue}
                         isAdmin={isAdmin}
                         sendingEmailTemplate={sendingEmailTemplate}
                         isSchedulingInterview={isSchedulingInterview}
@@ -1650,6 +1706,7 @@ export function ApplicationDetail({
                   onRescheduleInterview={onRescheduleInterview}
                   onCompleteInterview={onCompleteInterview}
                   onMakeDecision={onMakeDecision}
+                  onRejectGcOverdue={onRejectGcOverdue}
                   isAdmin={isAdmin}
                   sendingEmailTemplate={sendingEmailTemplate}
                   isSchedulingInterview={isSchedulingInterview}

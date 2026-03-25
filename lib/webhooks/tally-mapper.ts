@@ -30,6 +30,8 @@
 import type { CreatePersonData } from '@/types/person';
 import type { CreateApplicationData, AgreementData } from '@/types/application';
 import { ensureAbsoluteUrl } from '@/lib/utils';
+import { sanitizeText } from '@/lib/security';
+import { recruitment } from '@/config';
 
 /**
  * Tally webhook payload structure
@@ -421,8 +423,8 @@ export function extractApplicationData(
     personId,
     position,
     resumeUrl: getFileUrl(find('resumeFile')),
-    academicBackground: getStringValue(find('academicBackground')),
-    previousExperience: getStringValue(find('previousExperience')),
+    academicBackground: sanitizeText(getStringValue(find('academicBackground')), recruitment.characterLimits.academicBackground) ?? undefined,
+    previousExperience: sanitizeText(getStringValue(find('previousExperience')), recruitment.characterLimits.previousExperience) ?? undefined,
     videoLink: getStringValue(find('videoLink')),
     otherFileUrl: getFileUrl(find('otherFile')),
     hasResume: isCheckboxSelected(packageField, PACKAGE_CHECKBOX_IDS.resume),

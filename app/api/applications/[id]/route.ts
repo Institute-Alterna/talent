@@ -201,11 +201,11 @@ export async function PATCH(
 
     // Text fields - sanitize
     if (body.academicBackground !== undefined) {
-      updateData.academicBackground = sanitizeText(body.academicBackground as string | null);
+      updateData.academicBackground = sanitizeText(body.academicBackground as string | null, recruitment.characterLimits.academicBackground);
     }
 
     if (body.previousExperience !== undefined) {
-      updateData.previousExperience = sanitizeText(body.previousExperience as string | null);
+      updateData.previousExperience = sanitizeText(body.previousExperience as string | null, recruitment.characterLimits.previousExperience);
     }
 
     // Check if there's anything to update

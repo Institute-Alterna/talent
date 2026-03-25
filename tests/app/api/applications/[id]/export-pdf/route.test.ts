@@ -226,25 +226,25 @@ describe('GET /api/applications/[id]/export-pdf', () => {
       });
     });
 
-    it('should respect includeAuditLogs=false parameter', async () => {
-      const request = createRequest({ includeAuditLogs: 'false' });
+    it.each([
+      {
+        label: 'includeAuditLogs=false',
+        params: { includeAuditLogs: 'false' },
+        expected: { includeAuditLogs: false },
+      },
+      {
+        label: 'confidential=false',
+        params: { confidential: 'false' },
+        expected: { confidential: false },
+      },
+    ])('should respect $label parameter', async ({ params, expected }) => {
+      const request = createRequest(params);
 
       await GET(request, { params: Promise.resolve({ id: validUuid }) });
 
       expect(mockGenerateCandidateReportPdf).toHaveBeenCalledWith(
         validUuid,
-        expect.objectContaining({ includeAuditLogs: false })
-      );
-    });
-
-    it('should respect confidential=false parameter', async () => {
-      const request = createRequest({ confidential: 'false' });
-
-      await GET(request, { params: Promise.resolve({ id: validUuid }) });
-
-      expect(mockGenerateCandidateReportPdf).toHaveBeenCalledWith(
-        validUuid,
-        expect.objectContaining({ confidential: false })
+        expect.objectContaining(expected)
       );
     });
   });
@@ -303,26 +303,22 @@ describe('GET /api/applications/[id]/export-pdf', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle PdfGenerationError with "Application not found"', async () => {
-      mockGenerateCandidateReportPdf.mockRejectedValue(
-        new PdfGenerationError('Application not found')
-      );
+    it.each([
+      {
+        message: 'Application not found',
+        status: 404,
+      },
+      {
+        message: 'Invalid application ID format',
+        status: 400,
+      },
+    ])('should handle PdfGenerationError "$message"', async ({ message, status }) => {
+      mockGenerateCandidateReportPdf.mockRejectedValue(new PdfGenerationError(message));
 
       const request = createRequest();
       const response = await GET(request, { params: Promise.resolve({ id: validUuid }) });
 
-      expect(response.status).toBe(404);
-    });
-
-    it('should handle PdfGenerationError with "Invalid application ID format"', async () => {
-      mockGenerateCandidateReportPdf.mockRejectedValue(
-        new PdfGenerationError('Invalid application ID format')
-      );
-
-      const request = createRequest();
-      const response = await GET(request, { params: Promise.resolve({ id: validUuid }) });
-
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(status);
     });
 
     it('should handle generic PdfGenerationError', async () => {
@@ -351,33 +347,21 @@ describe('GET /api/applications/[id]/export-pdf', () => {
   });
 
   describe('Security', () => {
-    it('should reject SQL injection attempts in UUID', async () => {
-      const maliciousId = "'; DROP TABLE applications; --";
-      const request = new NextRequest(
-        `http://localhost/api/applications/${encodeURIComponent(maliciousId)}/export-pdf`
-      );
+    it.each(["'; DROP TABLE applications; --", '../../../etc/passwd'])(
+      'should reject malicious application id: %s',
+      async (maliciousId) => {
+        const request = new NextRequest(
+          `http://localhost/api/applications/${encodeURIComponent(maliciousId)}/export-pdf`
+        );
 
-      const response = await GET(request, {
-        params: Promise.resolve({ id: maliciousId }),
-      });
+        const response = await GET(request, {
+          params: Promise.resolve({ id: maliciousId }),
+        });
 
-      expect(response.status).toBe(400);
-      expect(mockGetApplicationDetail).not.toHaveBeenCalled();
-    });
-
-    it('should reject path traversal attempts', async () => {
-      const maliciousId = '../../../etc/passwd';
-      const request = new NextRequest(
-        `http://localhost/api/applications/${encodeURIComponent(maliciousId)}/export-pdf`
-      );
-
-      const response = await GET(request, {
-        params: Promise.resolve({ id: maliciousId }),
-      });
-
-      expect(response.status).toBe(400);
-      expect(mockGetApplicationDetail).not.toHaveBeenCalled();
-    });
+        expect(response.status).toBe(400);
+        expect(mockGetApplicationDetail).not.toHaveBeenCalled();
+      }
+    );
   });
 
   describe('Access Control', () => {

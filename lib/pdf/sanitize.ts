@@ -313,6 +313,35 @@ export function formatDate(
 }
 
 /**
+ * Format a date-time in UTC for PDF rendering.
+ *
+ * Output format: DD Month YYYY, HH:mm UTC
+ */
+export function formatDateUtc(date: Date | string | null | undefined): string {
+  const sanitized = sanitizeDate(date);
+  if (!sanitized) {
+    return 'N/A';
+  }
+
+  const parsed = new Date(sanitized);
+  const datePart = parsed.toLocaleDateString('en-GB', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+
+  const timePart = parsed.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'UTC',
+  });
+
+  return `${datePart}, ${timePart} UTC`;
+}
+
+/**
  * Format a date for display (date only, no time)
  *
  * Formats as DD MMMM YYYY (e.g., 21 January 2026)
@@ -325,6 +354,23 @@ export function formatDateOnly(date: Date | string | null | undefined): string {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+  });
+}
+
+/**
+ * Format a date (no time) using UTC date parts.
+ */
+export function formatDateOnlyUtc(date: Date | string | null | undefined): string {
+  const sanitized = sanitizeDate(date);
+  if (!sanitized) {
+    return 'N/A';
+  }
+
+  return new Date(sanitized).toLocaleDateString('en-GB', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
   });
 }
 
@@ -456,6 +502,7 @@ export interface SanitizedApplicationData {
     generalCompetenciesScore: string;
     generalCompetenciesCompleted: string;
     generalCompetenciesPassedAt: string;
+    generalCompetenciesStatus: string;
   };
   application: {
     id: string;
@@ -464,6 +511,7 @@ export interface SanitizedApplicationData {
     status: string;
     createdAt: string;
     updatedAt: string;
+    agreementSignedAt: string;
     resumeUrl: string;
     academicBackground: string;
     previousExperience: string;
@@ -473,15 +521,16 @@ export interface SanitizedApplicationData {
   };
   assessments: Array<{
     type: string;
-    score: string;
+    competencyName: string;
     passed: string;
-    threshold: string;
     completedAt: string;
+    reviewedBy: string;
+    reviewedAt: string;
   }>;
   interviews: Array<{
     interviewer: string;
-    schedulingLink: string;
-    scheduledAt: string;
+    recordingUrl: string;
+    invitedOn: string;
     completedAt: string;
     outcome: string;
     notes: string;
@@ -492,6 +541,7 @@ export interface SanitizedApplicationData {
     notes: string;
     decidedBy: string;
     decidedAt: string;
+    isOfferWithdrawal: boolean;
   }>;
   generatedAt: string;
 }
@@ -502,7 +552,6 @@ export interface SanitizedApplicationData {
 export interface SanitizedAuditLog {
   action: string;
   actionType: string;
-  details: string;
   user: string;
   ipAddress: string;
   userAgent: string;

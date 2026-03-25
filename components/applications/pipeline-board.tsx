@@ -31,6 +31,7 @@ interface PipelineBoardProps {
   onExportPdf?: (id: string) => void;
   onWithdraw?: (id: string) => void;
   onWithdrawOffer?: (id: string) => void;
+  onRejectGcOverdue?: (id: string) => void;
   exportingPdfId?: string | null;
   isAdmin?: boolean;
   isLoading?: boolean;
@@ -56,6 +57,7 @@ interface StageColumnProps {
   onExportPdf?: (id: string) => void;
   onWithdraw?: (id: string) => void;
   onWithdrawOffer?: (id: string) => void;
+  onRejectGcOverdue?: (id: string) => void;
   exportingPdfId?: string | null;
   isAdmin?: boolean;
 }
@@ -69,6 +71,7 @@ function StageColumn({
   onExportPdf,
   onWithdraw,
   onWithdrawOffer,
+  onRejectGcOverdue,
   exportingPdfId,
   isAdmin,
 }: StageColumnProps) {
@@ -106,6 +109,7 @@ function StageColumn({
                 onExportPdf={onExportPdf}
                 onWithdraw={onWithdraw}
                 onWithdrawOffer={onWithdrawOffer}
+                onRejectGcOverdue={onRejectGcOverdue}
                 isExportingPdf={exportingPdfId === app.id}
                 isAdmin={isAdmin}
               />
@@ -150,6 +154,7 @@ export function PipelineBoard({
   onExportPdf,
   onWithdraw,
   onWithdrawOffer,
+  onRejectGcOverdue,
   exportingPdfId,
   isAdmin = false,
   isLoading = false,
@@ -180,6 +185,7 @@ export function PipelineBoard({
               onExportPdf={onExportPdf}
               onWithdraw={onWithdraw}
               onWithdrawOffer={onWithdrawOffer}
+              onRejectGcOverdue={onRejectGcOverdue}
               exportingPdfId={exportingPdfId}
               isAdmin={isAdmin}
             />

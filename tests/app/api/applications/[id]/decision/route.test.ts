@@ -40,6 +40,7 @@ jest.mock('@/lib/services/applications', () => ({
 jest.mock('@/lib/email', () => ({
   sendOfferLetter: jest.fn().mockResolvedValue({ success: true }),
   sendRejection: jest.fn().mockResolvedValue({ success: true }),
+  sendRejectionNoGc: jest.fn().mockResolvedValue({ success: true }),
 }));
 
 jest.mock('@/lib/email/templates', () => ({
@@ -59,7 +60,7 @@ jest.mock('@/lib/security', () => ({
 
 import { requireApplicationAccess, parseJsonBody } from '@/lib/api-helpers';
 import { updateApplicationStatus, advanceApplicationStage } from '@/lib/services/applications';
-import { sendOfferLetter } from '@/lib/email';
+import { sendOfferLetter, sendRejection, sendRejectionNoGc } from '@/lib/email';
 import { logStageChange } from '@/lib/audit';
 import { db } from '@/lib/db';
 
@@ -266,6 +267,73 @@ describe('POST /api/applications/[id]/decision', () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toContain('Reason is required');
+    });
+
+    describe('rejectionType: no-gc', () => {
+      const mockDecision = {
+        id: 'dec-123',
+        decision: 'REJECT',
+        reason: 'GC assessment not completed',
+        notes: null,
+        decidedAt: new Date(),
+        user: { id: 'user-123', displayName: 'Admin', email: 'admin@alterna.dev' },
+      };
+
+      beforeEach(() => {
+        (db.decision.create as jest.Mock).mockResolvedValue(mockDecision);
+      });
+
+      it('calls sendRejectionNoGc instead of sendRejection when rejectionType is no-gc', async () => {
+        (parseJsonBody as jest.Mock).mockResolvedValue({
+          ok: true,
+          body: {
+            decision: 'REJECT',
+            reason: 'GC assessment not submitted within the required timeframe.',
+            rejectionType: 'no-gc',
+            sendEmail: true,
+          },
+        });
+
+        const request = createRequest({
+          decision: 'REJECT',
+          reason: 'GC assessment not submitted within the required timeframe.',
+          rejectionType: 'no-gc',
+        });
+        const response = await POST(request, { params: mockParams });
+        const data = await response.json();
+
+        expect(response.status).toBe(200);
+        expect(data.success).toBe(true);
+        expect(sendRejectionNoGc).toHaveBeenCalledWith(
+          'person-123',
+          'app-123',
+          'test@example.com',
+          'Test',
+          'Software Developer',
+        );
+        expect(sendRejection).not.toHaveBeenCalled();
+      });
+
+      it('calls sendRejection for standard rejections (no rejectionType)', async () => {
+        (parseJsonBody as jest.Mock).mockResolvedValue({
+          ok: true,
+          body: {
+            decision: 'REJECT',
+            reason: 'Not a good fit at this time',
+            sendEmail: true,
+          },
+        });
+
+        const request = createRequest({
+          decision: 'REJECT',
+          reason: 'Not a good fit at this time',
+        });
+        const response = await POST(request, { params: mockParams });
+
+        expect(response.status).toBe(200);
+        expect(sendRejection).toHaveBeenCalled();
+        expect(sendRejectionNoGc).not.toHaveBeenCalled();
+      });
     });
   });
 });

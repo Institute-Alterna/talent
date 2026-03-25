@@ -11,7 +11,7 @@ import { requireAccess, requireAdmin, parseJsonBody, type RouteParams } from '@/
 import { getCompetencyById, updateCompetency, deactivateCompetency, reactivateCompetency, hardDeleteCompetency } from '@/lib/services/competencies';
 import { isValidUUID, isValidURL } from '@/lib/utils';
 import { recruitment } from '@/config/recruitment';
-import { sanitizeForLog } from '@/lib/security';
+import { sanitizeForLog, sanitizeText } from '@/lib/security';
 import type { UpdateSpecialisedCompetencyData } from '@/types';
 
 /**
@@ -108,13 +108,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     if (body.criterion !== undefined) {
       const criterion = typeof body.criterion === 'string' ? body.criterion.trim() : '';
-      if (!criterion || criterion.length > 2000) {
+      if (!criterion || criterion.length > recruitment.characterLimits.competencyCriterion) {
         return NextResponse.json(
-          { error: 'Criterion is required (max 2000 characters)' },
+          { error: `Criterion is required (max ${recruitment.characterLimits.competencyCriterion} characters)` },
           { status: 400 }
         );
       }
-      data.criterion = criterion;
+      data.criterion = sanitizeText(criterion, recruitment.characterLimits.competencyCriterion)!;
     }
 
     if (body.isActive !== undefined) {

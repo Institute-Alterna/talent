@@ -20,6 +20,7 @@ import { sendInterviewInvitation } from '@/lib/email';
 import { logInterviewScheduled } from '@/lib/audit';
 import { db } from '@/lib/db';
 import { sanitizeForLog, requireString, RequiredFieldError, sanitizeText } from '@/lib/security';
+import { recruitment } from '@/config';
 import { isValidUUID, isValidURL } from '@/lib/utils';
 
 /**
@@ -93,7 +94,7 @@ export async function POST(
     }
 
     // Optional notes
-    const notes = typeof body.notes === 'string' ? sanitizeText(body.notes, 2000) : null;
+    const notes = typeof body.notes === 'string' ? sanitizeText(body.notes, recruitment.characterLimits.interviewNotes) : null;
 
     // Whether to send email (default: true)
     const sendEmail = body.sendEmail !== false;

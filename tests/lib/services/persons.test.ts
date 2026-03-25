@@ -32,6 +32,7 @@ jest.mock('@/lib/db', () => ({
     person: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
@@ -168,17 +169,61 @@ describe('Person Service', () => {
   });
 
   describe('findOrCreatePerson', () => {
-    it('returns existing person if email matches', async () => {
+    it('updates existing person with new webhook data and returns created=false', async () => {
+      const existingWithNulls = {
+        ...mockPerson,
+        phoneNumber: null,
+        country: null,
+        portfolioLink: null,
+        educationLevel: null,
+      };
+      const updated = { ...mockPerson }; // fully populated after update
+      (db.person.findUnique as jest.Mock).mockResolvedValue(existingWithNulls);
+      (db.person.update as jest.Mock).mockResolvedValue(updated);
+
+      const result = await findOrCreatePerson({
+        email: 'test@example.com',
+        firstName: 'Test',
+        lastName: 'User',
+        phoneNumber: '+1-555-0100',
+        country: 'United States',
+        portfolioLink: 'https://example.com',
+        educationLevel: "Bachelor's Degree",
+      });
+
+      expect(result.created).toBe(false);
+      expect(result.person).toEqual(updated);
+      expect(db.person.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: existingWithNulls.id },
+          data: expect.objectContaining({
+            phoneNumber: '+1-555-0100',
+            country: 'United States',
+            portfolioLink: 'https://example.com',
+            educationLevel: "Bachelor's Degree",
+          }),
+        })
+      );
+      expect(db.person.create).not.toHaveBeenCalled();
+    });
+
+    it('skips update and returns existing person when no fields have changed', async () => {
+      // mockPerson already has all fields populated — incoming data matches exactly
       (db.person.findUnique as jest.Mock).mockResolvedValue(mockPerson);
 
       const result = await findOrCreatePerson({
-        email: 'TEST@example.com',
-        firstName: 'New',
-        lastName: 'User',
+        email: mockPerson.email,
+        firstName: mockPerson.firstName,
+        lastName: mockPerson.lastName,
+        phoneNumber: mockPerson.phoneNumber ?? undefined,
+        country: mockPerson.country ?? undefined,
+        portfolioLink: mockPerson.portfolioLink ?? undefined,
+        educationLevel: mockPerson.educationLevel ?? undefined,
       });
 
-      expect(result.person).toEqual(mockPerson);
       expect(result.created).toBe(false);
+      expect(result.person).toEqual(mockPerson);
+      expect(db.person.update).not.toHaveBeenCalled();
       expect(db.person.create).not.toHaveBeenCalled();
     });
 
@@ -208,6 +253,41 @@ describe('Person Service', () => {
           lastName: 'User',
         }),
       });
+    });
+
+    it('handles concurrent creation: retries on unique constraint violation', async () => {
+      const concurrentPerson = { ...mockPerson, phoneNumber: null };
+      const mergedPerson = { ...mockPerson };
+
+      const uniqueConstraintError = Object.assign(new Error('Unique constraint'), { code: 'P2002' });
+
+      (db.person.findUnique as jest.Mock).mockResolvedValue(null); // not found initially
+      (db.person.create as jest.Mock).mockRejectedValue(uniqueConstraintError); // concurrent insert
+      (db.person.findUniqueOrThrow as jest.Mock).mockResolvedValue(concurrentPerson); // re-fetch
+      (db.person.update as jest.Mock).mockResolvedValue(mergedPerson); // merge update
+
+      const result = await findOrCreatePerson({
+        email: 'test@example.com',
+        firstName: 'Test',
+        lastName: 'User',
+        phoneNumber: '+1-555-0100',
+      });
+
+      expect(result.created).toBe(false);
+      expect(result.person).toEqual(mergedPerson);
+      expect(db.person.findUniqueOrThrow).toHaveBeenCalledWith({
+        where: { email: 'test@example.com' },
+      });
+    });
+
+    it('rethrows non-unique-constraint errors from create', async () => {
+      const unexpectedError = new Error('Database connection lost');
+      (db.person.findUnique as jest.Mock).mockResolvedValue(null);
+      (db.person.create as jest.Mock).mockRejectedValue(unexpectedError);
+
+      await expect(
+        findOrCreatePerson({ email: 'new@example.com', firstName: 'New', lastName: 'User' })
+      ).rejects.toThrow('Database connection lost');
     });
   });
 

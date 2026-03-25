@@ -308,7 +308,7 @@ export function SettingsClient({ initialUser }: SettingsClientProps) {
                   <div className="space-y-4">
                     <div className="rounded-md border border-dashed p-4">
                       <p className="text-center text-sm text-muted-foreground">
-                        No scheduling link configured
+                        No scheduling link set
                       </p>
                     </div>
                     <Button className="w-full" onClick={() => setIsEditing(true)}>

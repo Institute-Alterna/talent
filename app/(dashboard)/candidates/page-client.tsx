@@ -32,6 +32,7 @@ import { Search, RefreshCw, Maximize2, Minimize2, AlertTriangle } from 'lucide-r
 import { useToast } from '@/hooks/use-toast';
 import { useMediaQuery } from '@/hooks';
 import { cn } from '@/lib/utils';
+import { REJECTION_TYPE_NO_GC } from '@/lib/constants';
 import { strings } from '@/config/strings';
 
 // Lazy-load heavy dialog components — only needed on user interaction
@@ -41,6 +42,7 @@ const CompleteInterviewDialog = React.lazy(() => import('@/components/applicatio
 const WithdrawDialog = React.lazy(() => import('@/components/applications/withdraw-dialog').then(m => ({ default: m.WithdrawDialog })));
 const DecisionDialog = React.lazy(() => import('@/components/applications/decision-dialog').then(m => ({ default: m.DecisionDialog })));
 const WithdrawOfferDialog = React.lazy(() => import('@/components/applications/withdraw-offer-dialog').then(m => ({ default: m.WithdrawOfferDialog })));
+const GcRejectionDialog = React.lazy(() => import('@/components/applications/gc-rejection-dialog').then(m => ({ default: m.GcRejectionDialog })));
 
 interface CandidatesPageClientProps {
   isAdmin: boolean;
@@ -125,6 +127,10 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
   const [withdrawOfferApplicationId, setWithdrawOfferApplicationId] = React.useState<string | null>(null);
   const [withdrawOfferApplicationName, setWithdrawOfferApplicationName] = React.useState<string>('');
   const [isWithdrawOfferProcessing, setIsWithdrawOfferProcessing] = React.useState(false);
+
+  // GC overdue rejection dialog
+  const [gcRejectApplicationId, setGcRejectApplicationId] = React.useState<string | null>(null);
+  const [gcRejectApplicationName, setGcRejectApplicationName] = React.useState<string>('');
 
   // Decision dialog
   const [isDecisionDialogOpen, setIsDecisionDialogOpen] = React.useState(false);
@@ -251,6 +257,11 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       setIsLoading(false);
     }
   }, [statusFilter, positionFilter, listPage, showOlderApplications, toast]);
+
+  const handleRefresh = React.useCallback(() => {
+    if (isLoading) return;
+    fetchPipelineData(true);
+  }, [isLoading, fetchPipelineData]);
 
   // Fetch application detail
   const fetchApplicationDetail = React.useCallback(async (id: string, force?: boolean) => {
@@ -609,6 +620,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
   const handleCompleteInterviewConfirm = async (data: {
     notes: string;
+    recordingUrl?: string;
   }) => {
     if (!selectedApplicationId) return;
 
@@ -837,6 +849,14 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     );
   }, [selectedApplication, selectedApplicationId]);
 
+  const handleGcRejectFromDetail = React.useCallback(() => {
+    if (!selectedApplication || !selectedApplicationId) return;
+    setGcRejectApplicationId(selectedApplicationId);
+    setGcRejectApplicationName(
+      `${selectedApplication.person.firstName} ${selectedApplication.person.lastName}`
+    );
+  }, [selectedApplication, selectedApplicationId]);
+
   const handleWithdrawOfferConfirm = React.useCallback(async (data: { reason: string; sendEmail: boolean }) => {
     if (!withdrawOfferApplicationId) return;
 
@@ -875,6 +895,54 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
       setIsWithdrawOfferProcessing(false);
     }
   }, [withdrawOfferApplicationId, selectedApplicationId, toast, fetchApplicationDetail, fetchPipelineData]);
+
+  // GC overdue rejection handlers
+  const handleGcRejectClick = React.useCallback((applicationId: string) => {
+    if (pipelineData) {
+      for (const stage of Object.keys(pipelineData) as (keyof PipelineBoardData)[]) {
+        const apps = pipelineData[stage];
+        const app = apps?.find(a => a.id === applicationId);
+        if (app) {
+          setGcRejectApplicationId(applicationId);
+          setGcRejectApplicationName(`${app.person.firstName} ${app.person.lastName}`);
+          return;
+        }
+      }
+    }
+  }, [pipelineData]);
+
+  const handleGcRejectClose = React.useCallback(() => {
+    setGcRejectApplicationId(null);
+    setGcRejectApplicationName('');
+  }, []);
+
+  const handleGcRejectConfirm = React.useCallback(async () => {
+    if (!gcRejectApplicationId) return;
+    const response = await fetch(`/api/applications/${gcRejectApplicationId}/decision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        decision: 'REJECT',
+        reason: strings.gcRejection.reason,
+          rejectionType: REJECTION_TYPE_NO_GC,
+        sendEmail: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to reject application');
+    }
+
+    toast({
+      title: strings.gcRejection.successTitle,
+      description: strings.gcRejection.successDescription,
+    });
+
+    setGcRejectApplicationId(null);
+    setGcRejectApplicationName('');
+    fetchPipelineData(true);
+  }, [gcRejectApplicationId, toast, fetchPipelineData]);
 
   // Get unique positions for filter
   const positions = React.useMemo(() => {
@@ -1031,7 +1099,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
             )}
 
             {/* Refresh */}
-            <Button variant="outline" className="h-9" onClick={() => fetchPipelineData(true)} disabled={isLoading}>
+            <Button variant="outline" className="h-9" onClick={handleRefresh} aria-label="Refresh pipeline" title="Refresh pipeline">
               <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
 
@@ -1071,6 +1139,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
             onExportPdf={handleExportPdf}
             onWithdraw={handleWithdrawClick}
             onWithdrawOffer={handleWithdrawOfferClick}
+            onRejectGcOverdue={handleGcRejectClick}
             exportingPdfId={exportingPdfId}
             isAdmin={isAdmin}
             isLoading={isLoading}
@@ -1142,7 +1211,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
             <div className="flex items-center justify-between px-4 py-2 border-b shrink-0">
               <span className="text-sm font-medium text-muted-foreground">Recruitment Pipeline</span>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-8" onClick={() => fetchPipelineData(true)} disabled={isLoading}>
+                <Button variant="outline" size="sm" className="h-8" onClick={handleRefresh} aria-label="Refresh pipeline" title="Refresh pipeline">
                   <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
                 </Button>
                 <Button variant="outline" size="sm" className="h-8" onClick={() => setIsFullscreen(false)}>
@@ -1168,6 +1237,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
                 onExportPdf={handleExportPdf}
                 onWithdraw={handleWithdrawClick}
                 onWithdrawOffer={handleWithdrawOfferClick}
+                onRejectGcOverdue={handleGcRejectClick}
                 exportingPdfId={exportingPdfId}
                 isAdmin={isAdmin}
                 isLoading={isLoading}
@@ -1189,6 +1259,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
               onRescheduleInterview={handleRescheduleInterview}
               onCompleteInterview={handleCompleteInterview}
               onMakeDecision={handleMakeDecision}
+              onRejectGcOverdue={handleGcRejectFromDetail}
               isAdmin={isAdmin}
               isLoading={isDetailLoading}
               sendingEmailTemplate={sendingEmailTemplate}
@@ -1229,6 +1300,17 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
               onConfirm={handleWithdrawOfferConfirm}
               applicationName={withdrawOfferApplicationName}
               isProcessing={isWithdrawOfferProcessing}
+            />
+          )}
+        </React.Suspense>
+
+        <React.Suspense fallback={null}>
+          {!!gcRejectApplicationId && (
+            <GcRejectionDialog
+              isOpen={!!gcRejectApplicationId}
+              onClose={handleGcRejectClose}
+              onConfirm={handleGcRejectConfirm}
+              applicationName={gcRejectApplicationName}
             />
           )}
         </React.Suspense>

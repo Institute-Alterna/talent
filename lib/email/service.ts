@@ -290,7 +290,7 @@ export async function sendGCInvitation(
     ? buildAssessmentLink(appUrls.tallyGCForm, personId)
     : '';
 
-  return sendEmail({
+  const result = await sendEmail({
     to,
     template: EMAIL_TEMPLATES.GC_INVITATION,
     variables: {
@@ -302,6 +302,16 @@ export async function sendGCInvitation(
     applicationId: applicationId || undefined,
     priority: 'high',
   });
+
+  // Record when the invitation was sent so staleness can be detected after 7 days
+  if (result.success) {
+    await db.person.update({
+      where: { id: personId },
+      data: { generalCompetenciesInvitedAt: new Date() },
+    });
+  }
+
+  return result;
 }
 
 /**
@@ -434,6 +444,29 @@ export async function sendRejection(
       PERSON_FIRST_NAME: escapeHtml(firstName),
       POSITION: escapeHtml(position),
       REJECTION_REASON: reason ? escapeHtml(reason) : '',
+    },
+    personId,
+    applicationId,
+    priority: 'normal',
+  });
+}
+
+/**
+ * Send rejection notification for applications closed due to missing GC assessment
+ */
+export async function sendRejectionNoGc(
+  personId: string,
+  applicationId: string,
+  to: string,
+  firstName: string,
+  position: string,
+): Promise<SendResult> {
+  return sendEmail({
+    to,
+    template: EMAIL_TEMPLATES.REJECTION_NO_GC,
+    variables: {
+      PERSON_FIRST_NAME: escapeHtml(firstName),
+      POSITION: escapeHtml(position),
     },
     personId,
     applicationId,

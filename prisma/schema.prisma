@@ -96,6 +96,10 @@ model Person {
   /// When general competencies assessment was passed (null if not passed)
   generalCompetenciesPassedAt DateTime?
 
+  /// When the GC invitation email was last sent (null if never sent)
+  /// Used to detect applications overdue for assessment (> 7 days without submission)
+  generalCompetenciesInvitedAt DateTime?
+
   // =========================================================================
   // Tally Integration
   // =========================================================================
@@ -470,6 +474,9 @@ model Interview {
 
   /// Interviewer's notes
   notes String? @db.Text
+
+  /// Optional interview recording link
+  recordingUrl String? @db.VarChar(512)
 
   /// Interview outcome
   outcome InterviewOutcome @default(PENDING)

@@ -152,8 +152,13 @@ export async function getPersonWithApplications(id: string): Promise<PersonWithA
  * Find or create a person by email
  *
  * This is the primary method used when processing webhook data.
- * If a person with the email exists, returns them.
+ * If a person with the email exists, their mutable fields are updated
+ * with the latest webhook values so stale data never persists.
  * Otherwise, creates a new person record.
+ *
+ * Race-condition safety: if a concurrent webhook creates the same person
+ * between our read and write, the unique-constraint error is caught and
+ * we fall back to a fresh lookup + update.
  *
  * @param data - Person data from webhook
  * @returns Object containing the person and whether they were newly created
@@ -163,35 +168,106 @@ export async function findOrCreatePerson(
 ): Promise<{ person: Person; created: boolean }> {
   const normalizedEmail = data.email.toLowerCase();
 
-  // Check if person exists
   const existing = await db.person.findUnique({
     where: { email: normalizedEmail },
   });
 
   if (existing) {
-    return { person: existing, created: false };
+    return { person: await mergePerson(existing, data), created: false };
   }
 
-  // Create new person
-  const person = await db.person.create({
-    data: {
-      email: normalizedEmail,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      middleName: data.middleName,
-      secondaryEmail: data.secondaryEmail,
-      phoneNumber: data.phoneNumber,
-      country: data.country,
-      city: data.city,
-      state: data.state,
-      countryCode: data.countryCode,
-      portfolioLink: data.portfolioLink,
-      educationLevel: data.educationLevel,
-      tallyRespondentId: data.tallyRespondentId,
-    },
-  });
+  // Create new person — guarded against concurrent inserts for the same email
+  try {
+    const person = await db.person.create({
+      data: {
+        email: normalizedEmail,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        middleName: data.middleName ?? null,
+        secondaryEmail: data.secondaryEmail ?? null,
+        phoneNumber: data.phoneNumber ?? null,
+        country: data.country ?? null,
+        city: data.city ?? null,
+        state: data.state ?? null,
+        countryCode: data.countryCode ?? null,
+        portfolioLink: data.portfolioLink ?? null,
+        educationLevel: data.educationLevel ?? null,
+        tallyRespondentId: data.tallyRespondentId ?? null,
+      },
+    });
 
-  return { person, created: true };
+    return { person, created: true };
+  } catch (err) {
+    // Unique constraint violation — another request created the person concurrently.
+    // Re-fetch and merge so we don't drop the incoming data.
+    if (isUniqueConstraintError(err)) {
+      const concurrent = await db.person.findUniqueOrThrow({
+        where: { email: normalizedEmail },
+      });
+      return { person: await mergePerson(concurrent, data), created: false };
+    }
+    throw err;
+  }
+}
+
+/**
+ * Merge the latest webhook data into an existing person record.
+ *
+ * Fields that were explicitly provided by the webhook (i.e. not `undefined`)
+ * are written to the database so corrections made in the Tally form are
+ * immediately reflected.  Fields absent from the webhook payload (undefined)
+ * are left untouched — this prevents a later, richer record (e.g. city/state
+ * from the Agreement form) from being silently wiped by an earlier webhook
+ * that never collected those fields.
+ *
+ * Only performs a DB write when at least one field has changed.
+ */
+async function mergePerson(existing: Person, data: CreatePersonData): Promise<Person> {
+  // Build a map of only the fields the caller explicitly provided.
+  // Absent optional fields remain `undefined` and are excluded from the update.
+  const candidates: Record<string, string | null | undefined> = {
+    firstName:     data.firstName,
+    lastName:      data.lastName,
+    middleName:    data.middleName,
+    secondaryEmail: data.secondaryEmail,
+    phoneNumber:   data.phoneNumber,
+    country:       data.country,
+    city:          data.city,
+    state:         data.state,
+    countryCode:   data.countryCode,
+    portfolioLink: data.portfolioLink,
+    educationLevel: data.educationLevel,
+  };
+
+  const changed: Record<string, string | null> = {};
+  for (const [key, value] of Object.entries(candidates)) {
+    if (value === undefined) continue; // field not sent — never overwrite
+    const newValue = value ?? null;
+    if ((existing as unknown as Record<string, unknown>)[key] !== newValue) {
+      changed[key] = newValue;
+    }
+  }
+
+  if (Object.keys(changed).length === 0) {
+    return existing;
+  }
+
+  return db.person.update({
+    where: { id: existing.id },
+    data: { ...changed, updatedAt: new Date() },
+  });
+}
+
+/**
+ * Check whether a Prisma error is a unique constraint violation (P2002).
+ */
+function isUniqueConstraintError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code: unknown }).code === 'P2002'
+  );
 }
 
 /**

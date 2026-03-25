@@ -23,6 +23,7 @@
     "db:generate": "prisma generate"
   },
   "dependencies": {
+    "@fontsource/dm-sans": "^5.2.8",
     "@institute-alterna/footer-quotes": "^1.0.0",
     "@prisma/adapter-mariadb": "7.5.0",
     "@prisma/client": "7.5.0",

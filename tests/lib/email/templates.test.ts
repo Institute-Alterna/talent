@@ -377,4 +377,50 @@ describe('Email Template Files', () => {
     expect(template).toContain('Duration & Format');
     expect(template).toContain('25-minute video call');
   });
+
+  describe('rejection-no-gc template', () => {
+    it('loads HTML template successfully', () => {
+      const template = loadTemplate('decision/rejection-no-gc', 'html');
+      expect(template).not.toBeNull();
+      expect(template).toContain('{{PERSON_FIRST_NAME}}');
+      expect(template).toContain('{{POSITION}}');
+      expect(template).toContain('{{ORGANIZATION_SHORT_NAME}}');
+    });
+
+    it('loads plain-text template successfully', () => {
+      const template = loadTemplate('decision/rejection-no-gc', 'txt');
+      expect(template).not.toBeNull();
+      expect(template).toContain('{{PERSON_FIRST_NAME}}');
+      expect(template).toContain('{{POSITION}}');
+    });
+
+    it('HTML template references GC questionnaire reason', () => {
+      const template = loadTemplate('decision/rejection-no-gc', 'html');
+      expect(template).toContain('questionnaire');
+    });
+
+    it('HTML template includes reapply invitation', () => {
+      const template = loadTemplate('decision/rejection-no-gc', 'html');
+      expect(template).toContain('reapply');
+    });
+
+    it('replaces variables correctly', () => {
+      const template = loadTemplate('decision/rejection-no-gc', 'html');
+      expect(template).not.toBeNull();
+      const rendered = replaceVariables(template!, {
+        PERSON_FIRST_NAME: 'Alice',
+        POSITION: 'Programme Associate',
+        ORGANIZATION_SHORT_NAME: 'Alterna',
+        PRIMARY_COLOR: '#2E5090',
+        LOGO_URL: 'https://example.com/logo.png',
+        PERSON_EMAIL: 'alice@example.com',
+        SENT_TIME: '24 March 2026 12:00:00',
+      });
+      expect(rendered).toContain('Alice');
+      expect(rendered).toContain('Programme Associate');
+      expect(rendered).toContain('Alterna');
+      expect(rendered).not.toContain('{{PERSON_FIRST_NAME}}');
+      expect(rendered).not.toContain('{{POSITION}}');
+    });
+  });
 });

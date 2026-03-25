@@ -6,7 +6,7 @@
  * Mark an existing interview as completed with notes.
  *
  * Body:
- * - notes: Required interview notes (max 2000 chars)
+ * - notes: Required interview notes (max 2,000 chars)
  *
  * Required: Authenticated user with app access
  */
@@ -16,6 +16,8 @@ import { requireApplicationAccess, type RouteParams } from '@/lib/api-helpers';
 import { logInterviewCompleted } from '@/lib/audit';
 import { db } from '@/lib/db';
 import { sanitizeForLog, requireString, RequiredFieldError, sanitizeText } from '@/lib/security';
+import { isValidHttpsURL } from '@/lib/utils';
+import { recruitment } from '@/config';
 
 /**
  * POST /api/applications/[id]/complete-interview
@@ -66,8 +68,8 @@ export async function POST(
       throw e;
     }
 
-    // Sanitize notes (max 2000 chars)
-    const sanitizedNotes = sanitizeText(notes.trim(), 2000);
+    // Sanitize notes
+    const sanitizedNotes = sanitizeText(notes.trim(), recruitment.characterLimits.interviewNotes);
     if (!sanitizedNotes) {
       return NextResponse.json(
         { error: 'Interview notes are required' },
@@ -75,22 +77,70 @@ export async function POST(
       );
     }
 
+    let recordingUrl: string | null = null;
+    if (body.recordingUrl !== undefined) {
+      if (body.recordingUrl !== null && typeof body.recordingUrl !== 'string') {
+        return NextResponse.json(
+          { error: 'Recording URL must be a string' },
+          { status: 400 }
+        );
+      }
+
+      const trimmedRecordingUrl = typeof body.recordingUrl === 'string' ? body.recordingUrl.trim() : '';
+      if (trimmedRecordingUrl) {
+        if (trimmedRecordingUrl.length > recruitment.characterLimits.recordingUrl) {
+          return NextResponse.json(
+            { error: `Recording URL cannot exceed ${recruitment.characterLimits.recordingUrl} characters` },
+            { status: 400 }
+          );
+        }
+
+        if (!isValidHttpsURL(trimmedRecordingUrl)) {
+          return NextResponse.json(
+            { error: 'Recording URL must be a valid HTTPS URL' },
+            { status: 400 }
+          );
+        }
+
+        recordingUrl = trimmedRecordingUrl;
+      }
+    }
+
+    const updateData: {
+      completedAt: Date;
+      notes: string;
+      updatedAt: Date;
+      recordingUrl?: string | null;
+    } = {
+      completedAt: new Date(),
+      notes: sanitizedNotes,
+      updatedAt: new Date(),
+    };
+
+    if (body.recordingUrl !== undefined) {
+      updateData.recordingUrl = recordingUrl;
+    }
+
     // Update interview record
     const completedInterview = await db.interview.update({
       where: { id: existingInterview.id },
-      data: {
-        completedAt: new Date(),
-        notes: sanitizedNotes,
-        updatedAt: new Date(),
-      },
+      data: updateData,
     });
+
+    const recordingDetails = recordingUrl
+      ? {
+          hasRecordingUrl: true,
+          recordingHostname: new URL(recordingUrl).hostname,
+        }
+      : { hasRecordingUrl: false };
 
     // Log the interview completion
     await logInterviewCompleted(
       application.id,
       application.personId,
       existingInterview.interviewerId,
-      session.user.dbUserId
+      session.user.dbUserId,
+      recordingDetails
     );
 
     console.log('[Complete Interview] Success:', {
@@ -106,6 +156,7 @@ export async function POST(
         id: completedInterview.id,
         completedAt: completedInterview.completedAt,
         notes: completedInterview.notes,
+        recordingUrl: completedInterview.recordingUrl,
       },
     });
   } catch (error) {

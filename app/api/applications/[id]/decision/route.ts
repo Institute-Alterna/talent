@@ -8,7 +8,7 @@
  *
  * Body:
  * - decision: "ACCEPT" or "REJECT"
- * - reason: Required for rejections (GDPR compliance)
+ * - reason: Required for all decisions (GDPR compliance)
  * - notes: Optional additional notes
  * - sendEmail: Whether to send notification email (default: true)
  *
@@ -21,11 +21,13 @@ import {
   updateApplicationStatus,
   advanceApplicationStage,
 } from '@/lib/services/applications';
-import { sendRejection, sendOfferLetter } from '@/lib/email';
+import { sendRejection, sendRejectionNoGc, sendOfferLetter } from '@/lib/email';
 import { logDecisionMade, logStatusChange, logStageChange } from '@/lib/audit';
 import { db } from '@/lib/db';
 import { DecisionType, Status } from '@/lib/generated/prisma/client';
+import { REJECTION_TYPE_NO_GC } from '@/lib/constants';
 import { sanitizeForLog, sanitizeText } from '@/lib/security';
+import { recruitment } from '@/config';
 import { escapeHtml } from '@/lib/email/templates';
 
 /**
@@ -79,7 +81,7 @@ export async function POST(
     }
 
     // Validate reason (required for rejections per GDPR)
-    const reason = typeof body.reason === 'string' ? sanitizeText(body.reason, 2000) : null;
+    const reason = typeof body.reason === 'string' ? sanitizeText(body.reason, recruitment.characterLimits.decisionReason) : null;
     if (decision === 'REJECT' && (!reason || !reason.trim())) {
       return NextResponse.json(
         { error: 'Reason is required for rejection decisions (GDPR compliance)' },
@@ -97,7 +99,10 @@ export async function POST(
     }
 
     // Optional notes
-    const notes = typeof body.notes === 'string' ? sanitizeText(body.notes, 5000) : null;
+    const notes = typeof body.notes === 'string' ? sanitizeText(body.notes, recruitment.characterLimits.decisionNotes) : null;
+
+    // Optional rejection type — determines which rejection email template is used
+    const rejectionType = typeof body.rejectionType === 'string' ? body.rejectionType : undefined;
 
     // Whether to send email
     // ACCEPT always sends the offer letter (agreement link is in the email)
@@ -187,8 +192,17 @@ export async function POST(
           startDate || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // Default: 2 weeks from now
           undefined // Never pass internal notes to candidate emails
         );
+      } else if (rejectionType === REJECTION_TYPE_NO_GC) {
+        // Send GC-specific rejection (application closed — assessment not submitted)
+        emailResult = await sendRejectionNoGc(
+          application.personId,
+          application.id,
+          application.person.email,
+          application.person.firstName,
+          application.position,
+        );
       } else {
-        // Send rejection
+        // Send standard rejection
         emailResult = await sendRejection(
           application.personId,
           application.id,

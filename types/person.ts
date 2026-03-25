@@ -28,6 +28,7 @@ export interface Person {
   generalCompetenciesCompleted: boolean;
   generalCompetenciesScore: Decimal | null;
   generalCompetenciesPassedAt: Date | null;
+  generalCompetenciesInvitedAt: Date | null;
   tallyRespondentId: string | null;
   oktaUserId: string | null;
   createdAt: Date;

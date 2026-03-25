@@ -199,6 +199,7 @@ describe('POST /api/applications/[id]/complete-interview', () => {
       ...mockInterview,
       completedAt: new Date(),
       notes: 'Interview went well. Strong technical skills.',
+      recordingUrl: null,
     });
 
     const request = new NextRequest('http://localhost:3000/api/applications/550e8400-e29b-41d4-a716-446655440000/complete-interview', {
@@ -217,6 +218,123 @@ describe('POST /api/applications/[id]/complete-interview', () => {
     expect(data.interview.completedAt).toBeDefined();
   });
 
+  it('successfully completes interview with valid HTTPS recording URL', async () => {
+    (getApplicationDetail as jest.Mock).mockResolvedValue(mockApplication);
+    (db.interview.findFirst as jest.Mock).mockResolvedValue(mockInterview);
+    (db.interview.update as jest.Mock).mockResolvedValue({
+      ...mockInterview,
+      completedAt: new Date(),
+      notes: 'Interview completed with recording.',
+      recordingUrl: 'https://www.loom.com/share/abc123',
+    });
+
+    const request = new NextRequest('http://localhost:3000/api/applications/550e8400-e29b-41d4-a716-446655440000/complete-interview', {
+      method: 'POST',
+      body: JSON.stringify({
+        notes: 'Interview completed with recording.',
+        recordingUrl: 'https://www.loom.com/share/abc123',
+      }),
+    });
+    const params = Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' });
+
+    const response = await POST(request, { params });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.interview.recordingUrl).toBe('https://www.loom.com/share/abc123');
+    expect(db.interview.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          recordingUrl: 'https://www.loom.com/share/abc123',
+        }),
+      })
+    );
+  });
+
+  it('does not update recording URL when field is omitted', async () => {
+    (getApplicationDetail as jest.Mock).mockResolvedValue(mockApplication);
+    (db.interview.findFirst as jest.Mock).mockResolvedValue(mockInterview);
+    (db.interview.update as jest.Mock).mockResolvedValue({
+      ...mockInterview,
+      completedAt: new Date(),
+      notes: 'Interview completed without recording URL.',
+      recordingUrl: null,
+    });
+
+    const request = new NextRequest('http://localhost:3000/api/applications/550e8400-e29b-41d4-a716-446655440000/complete-interview', {
+      method: 'POST',
+      body: JSON.stringify({ notes: 'Interview completed without recording URL.' }),
+    });
+    const params = Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' });
+
+    const response = await POST(request, { params });
+
+    expect(response.status).toBe(200);
+    const updateCall = (db.interview.update as jest.Mock).mock.calls[0][0];
+    expect(updateCall.data).not.toHaveProperty('recordingUrl');
+  });
+
+  it('returns 400 when recording URL is not HTTPS', async () => {
+    (getApplicationDetail as jest.Mock).mockResolvedValue(mockApplication);
+    (db.interview.findFirst as jest.Mock).mockResolvedValue(mockInterview);
+
+    const request = new NextRequest('http://localhost:3000/api/applications/550e8400-e29b-41d4-a716-446655440000/complete-interview', {
+      method: 'POST',
+      body: JSON.stringify({
+        notes: 'Interview notes',
+        recordingUrl: 'http://www.loom.com/share/abc123',
+      }),
+    });
+    const params = Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' });
+
+    const response = await POST(request, { params });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe('Recording URL must be a valid HTTPS URL');
+  });
+
+  it('returns 400 when recording URL is not a string', async () => {
+    (getApplicationDetail as jest.Mock).mockResolvedValue(mockApplication);
+    (db.interview.findFirst as jest.Mock).mockResolvedValue(mockInterview);
+
+    const request = new NextRequest('http://localhost:3000/api/applications/550e8400-e29b-41d4-a716-446655440000/complete-interview', {
+      method: 'POST',
+      body: JSON.stringify({
+        notes: 'Interview notes',
+        recordingUrl: 123,
+      }),
+    });
+    const params = Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' });
+
+    const response = await POST(request, { params });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe('Recording URL must be a string');
+  });
+
+  it('returns 400 when recording URL exceeds max length', async () => {
+    (getApplicationDetail as jest.Mock).mockResolvedValue(mockApplication);
+    (db.interview.findFirst as jest.Mock).mockResolvedValue(mockInterview);
+
+    const tooLongUrl = `https://www.loom.com/share/${'a'.repeat(600)}`;
+    const request = new NextRequest('http://localhost:3000/api/applications/550e8400-e29b-41d4-a716-446655440000/complete-interview', {
+      method: 'POST',
+      body: JSON.stringify({
+        notes: 'Interview notes',
+        recordingUrl: tooLongUrl,
+      }),
+    });
+    const params = Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' });
+
+    const response = await POST(request, { params });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain('Recording URL cannot exceed');
+  });
+
   it('sanitizes notes to prevent injection attacks', async () => {
     (getApplicationDetail as jest.Mock).mockResolvedValue(mockApplication);
     (db.interview.findFirst as jest.Mock).mockResolvedValue(mockInterview);
@@ -224,6 +342,7 @@ describe('POST /api/applications/[id]/complete-interview', () => {
       ...mockInterview,
       completedAt: new Date(),
       notes: 'Test notes without null bytes',
+      recordingUrl: null,
     });
 
     const request = new NextRequest('http://localhost:3000/api/applications/550e8400-e29b-41d4-a716-446655440000/complete-interview', {
@@ -252,6 +371,7 @@ describe('POST /api/applications/[id]/complete-interview', () => {
       ...mockInterview,
       completedAt: new Date(),
       notes: 'a'.repeat(2000),
+      recordingUrl: null,
     });
 
     const veryLongNotes = 'a'.repeat(3000); // Exceeds 2000 char limit

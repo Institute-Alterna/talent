@@ -41,6 +41,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { CharacterCounter } from '@/components/shared/character-counter';
 import {
   Select,
   SelectContent,
@@ -365,7 +366,11 @@ export function CompetenciesPageClient({ isAdmin }: CompetenciesPageClientProps)
   };
 
   const isFormValid =
-    formName.trim() && formCategory && formUrl.trim() && formCriterion.trim();
+    formName.trim() &&
+    formCategory &&
+    formUrl.trim() &&
+    formCriterion.trim() &&
+    formCriterion.length <= recruitment.characterLimits.competencyCriterion;
 
   const noResultsMessage =
     statusFilter === 'inactive'
@@ -614,10 +619,11 @@ export function CompetenciesPageClient({ isAdmin }: CompetenciesPageClientProps)
                 id="sc-criterion"
                 value={formCriterion}
                 onChange={(e) => setFormCriterion(e.target.value)}
-                maxLength={2000}
+                maxLength={recruitment.characterLimits.competencyCriterion}
                 placeholder={strings.competencies.criterionPlaceholder}
                 rows={3}
               />
+              <CharacterCounter value={formCriterion} maxLength={recruitment.characterLimits.competencyCriterion} />
             </div>
           </div>
           <DialogFooter>

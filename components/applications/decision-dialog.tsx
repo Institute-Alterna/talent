@@ -28,9 +28,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { strings } from '@/config';
+import { strings, recruitment } from '@/config';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { InlineError } from '@/components/shared/inline-error';
+import { CharacterCounter } from '@/components/shared/character-counter';
 import { useDialogSubmit } from '@/hooks';
 
 export interface DecisionDialogProps {
@@ -68,6 +69,16 @@ export function DecisionDialog({
   const isReject = decision === 'REJECT';
   // ACCEPT always sends the offer letter (contains agreement link)
   const isAccept = decision === 'ACCEPT';
+  const reasonError = React.useMemo(() => {
+    if (!reason.trim()) return isReject ? strings.decision.reasonGdprNote : 'A reason is required';
+    if (reason.length > recruitment.characterLimits.decisionReason) return 'Reason exceeds the character limit';
+    return null;
+  }, [reason, isReject]);
+
+  const notesError = React.useMemo(() => {
+    if (notes.length > recruitment.characterLimits.decisionNotes) return 'Notes exceed the character limit';
+    return null;
+  }, [notes]);
 
   const { isSubmitting, isDisabled, error, handleOpenChange, handleConfirm } =
     useDialogSubmit({
@@ -81,10 +92,7 @@ export function DecisionDialog({
         }),
       onClose,
       isProcessing,
-      validate: () =>
-        !reason.trim()
-          ? (isReject ? strings.decision.reasonGdprNote : 'A reason is required')
-          : null,
+      validate: () => reasonError ?? notesError,
     });
 
   // Reset form and countdown when dialog opens
@@ -155,12 +163,25 @@ export function DecisionDialog({
               onChange={(e) => setReason(e.target.value)}
               disabled={isDisabled}
               rows={3}
-              className={!reason.trim() && error ? 'border-destructive' : ''}
+              maxLength={recruitment.characterLimits.decisionReason}
+              className={reasonError ? 'border-destructive' : ''}
+              aria-invalid={!!reasonError}
+              aria-describedby={reasonError
+                ? `decision-reason-error${isReject ? ' decision-reason-help' : ''}`
+                : isReject ? 'decision-reason-help' : undefined}
             />
-            {isReject && (
-              <p className="text-xs text-muted-foreground">
-                {strings.decision.reasonGdprNote}
-              </p>
+            <div className="flex items-start justify-between gap-2">
+              {isReject ? (
+                <p id="decision-reason-help" className="text-xs text-muted-foreground">
+                  {strings.decision.reasonGdprNote}
+                </p>
+              ) : (
+                <span />
+              )}
+              <CharacterCounter value={reason} maxLength={recruitment.characterLimits.decisionReason} />
+            </div>
+            {reasonError && (
+              <p id="decision-reason-error" className="sr-only">{reasonError}</p>
             )}
           </div>
 
@@ -174,7 +195,15 @@ export function DecisionDialog({
               onChange={(e) => setNotes(e.target.value)}
               disabled={isDisabled}
               rows={2}
+              maxLength={recruitment.characterLimits.decisionNotes}
+              className={notesError ? 'border-destructive' : ''}
+              aria-invalid={!!notesError}
+              aria-describedby={notesError ? 'decision-notes-error' : undefined}
             />
+            <CharacterCounter value={notes} maxLength={recruitment.characterLimits.decisionNotes} />
+            {notesError && (
+              <p id="decision-notes-error" className="sr-only">{notesError}</p>
+            )}
           </div>
 
           {/* Start date — ACCEPT only */}

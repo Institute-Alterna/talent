@@ -232,12 +232,18 @@ describe('POST /api/competencies', () => {
     expect(data.error).toContain('Criterion is required');
   });
 
-  it('returns 400 when criterion exceeds 2000 characters', async () => {
+  it('returns 400 when criterion exceeds 1,000 characters', async () => {
     (auth as jest.Mock).mockResolvedValue(mockAdmin);
-    const res = await POST(makePostRequest({ ...validBody, criterion: 'C'.repeat(2001) }));
+    const res = await POST(makePostRequest({ ...validBody, criterion: 'C'.repeat(1001) }));
     const data = await res.json();
     expect(res.status).toBe(400);
     expect(data.error).toContain('Criterion is required');
+  });
+
+  it('accepts criterion at exactly 1,000 characters', async () => {
+    (auth as jest.Mock).mockResolvedValue(mockAdmin);
+    const res = await POST(makePostRequest({ ...validBody, criterion: 'C'.repeat(1000) }));
+    expect(res.status).toBe(201);
   });
 
   it('returns 400 for malformed JSON body', async () => {

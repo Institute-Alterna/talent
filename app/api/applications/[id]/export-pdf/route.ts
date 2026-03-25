@@ -19,13 +19,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApplicationAccess, type RouteParams } from '@/lib/api-helpers';
-import {
-  generateCandidateReportPdf,
-  generateAuditReportPdf,
-  PdfGenerationError,
-} from '@/lib/pdf';
 import { createAuditLog } from '@/lib/audit';
 import { sanitizeForLog } from '@/lib/security';
+
+// PDF generation is lazy-loaded to keep the cold-start bundle small for all
+// other routes. The heavy @react-pdf/renderer dependency is only pulled in when
+// this endpoint is actually called.
+async function loadPdf() {
+  const { generateCandidateReportPdf, generateAuditReportPdf, PdfGenerationError } =
+    await import('@/lib/pdf');
+  return { generateCandidateReportPdf, generateAuditReportPdf, PdfGenerationError };
+}
 
 /**
  * Parse boolean query parameter
@@ -64,7 +68,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Generate the PDF based on type
+    // Generate the PDF based on type (lazy-loaded to minimise cold-start time)
+    const { generateCandidateReportPdf, generateAuditReportPdf } = await loadPdf();
     let result;
 
     if (reportType === 'candidate') {
@@ -114,8 +119,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    // Handle specific PDF generation errors
-    if (error instanceof PdfGenerationError) {
+    // Handle specific PDF generation errors (checked by name to avoid a static import)
+    if (error instanceof Error && error.name === 'PdfGenerationError') {
       console.error(
         'PDF generation error:',
         sanitizeForLog(error.message),

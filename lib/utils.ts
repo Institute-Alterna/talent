@@ -32,6 +32,23 @@ export function isValidURL(url: string): boolean {
 }
 
 /**
+ * Validate if a string is a valid HTTPS URL
+ *
+ * @param url - String to validate
+ * @returns true if valid URL with https protocol
+ */
+export function isValidHttpsURL(url: string): boolean {
+  if (!isValidURL(url)) return false;
+
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Format a date for display
  *
  * @param date - Date to format
