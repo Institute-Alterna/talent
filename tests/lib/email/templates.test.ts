@@ -42,9 +42,7 @@ describe('Email Templates', () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       const template = loadTemplate('non-existent-template', 'html');
       expect(template).toBeNull();
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[Email] Template not found')
-      );
+      expect(warnSpy).toHaveBeenCalledWith('[Email] Template not found:', 'non-existent-template');
       warnSpy.mockRestore();
     });
 

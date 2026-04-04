@@ -206,6 +206,7 @@ interface ApplicationDetailProps {
   onMakeDecision?: (decision: 'ACCEPT' | 'REJECT') => void;
   onRejectGcOverdue?: () => void;
   isAdmin?: boolean;
+  currentUserId?: string;
   isLoading?: boolean;
   sendingEmailTemplate?: string | null;
   isSchedulingInterview?: boolean;
@@ -630,6 +631,7 @@ function RightPanel({
   onMakeDecision,
   onRejectGcOverdue,
   isAdmin,
+  currentUserId,
   sendingEmailTemplate,
   isSchedulingInterview,
   isReschedulingInterview,
@@ -650,6 +652,7 @@ function RightPanel({
   onMakeDecision?: (decision: 'ACCEPT' | 'REJECT') => void;
   onRejectGcOverdue?: () => void;
   isAdmin?: boolean;
+  currentUserId?: string;
   sendingEmailTemplate?: string | null;
   isSchedulingInterview?: boolean;
   isReschedulingInterview?: boolean;
@@ -668,11 +671,14 @@ function RightPanel({
   const alreadyAssignedScIds = scAssessments
     .map(a => a.specialisedCompetencyId)
     .filter((id): id is string => id !== null);
-  const latestInterview = interviews[0];
+  const latestInterview = interviews[0]; // interviews returned newest-first by API
   // Withdrawal decisions are shown in the Agreement section, not the Decision section
   const withdrawalDecision = decisions.find(d => d.notes === 'Offer withdrawn at agreement stage');
   const latestDecision = decisions.find(d => d !== withdrawalDecision) ?? null;
   const isOfferWithdrawn = application.status === 'REJECTED' && application.currentStage === 'AGREEMENT' && !!withdrawalDecision;
+  const canCompleteInterview = Boolean(
+    isAdmin || (currentUserId && latestInterview?.interviewerId === currentUserId)
+  );
 
   // --- Compute GC status once (used by all four cards) ---
   const gcConfig = recruitment.assessmentThresholds.generalCompetencies;
@@ -1145,7 +1151,7 @@ function RightPanel({
                           variant="default"
                           className="text-xs h-7 flex-1"
                           onClick={onCompleteInterview}
-                          disabled={isAnyOperationInProgress}
+                          disabled={isAnyOperationInProgress || !canCompleteInterview}
                         >
                           {isCompletingInterview ? (
                             <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -1550,6 +1556,7 @@ export function ApplicationDetail({
   onMakeDecision,
   onRejectGcOverdue,
   isAdmin = false,
+  currentUserId,
   isLoading = false,
   sendingEmailTemplate,
   isSchedulingInterview,
@@ -1641,6 +1648,7 @@ export function ApplicationDetail({
                         onMakeDecision={onMakeDecision}
                         onRejectGcOverdue={onRejectGcOverdue}
                         isAdmin={isAdmin}
+                        currentUserId={currentUserId}
                         sendingEmailTemplate={sendingEmailTemplate}
                         isSchedulingInterview={isSchedulingInterview}
                         isReschedulingInterview={isReschedulingInterview}
@@ -1708,6 +1716,7 @@ export function ApplicationDetail({
                   onMakeDecision={onMakeDecision}
                   onRejectGcOverdue={onRejectGcOverdue}
                   isAdmin={isAdmin}
+                  currentUserId={currentUserId}
                   sendingEmailTemplate={sendingEmailTemplate}
                   isSchedulingInterview={isSchedulingInterview}
                   isReschedulingInterview={isReschedulingInterview}

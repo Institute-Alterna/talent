@@ -2,7 +2,7 @@ Interview Invitation
 
 Hey {{PERSON_FIRST_NAME}},
 
-Great news! We're pleased to invite you to an interview for the {{POSITION}} position at {{ORGANIZATION_SHORT_NAME}}.
+Great news! We are pleased to invite you to an interview for the {{POSITION}} position at {{ORGANIZATION_SHORT_NAME}}.
 
 Your Interviewer: {{INTERVIEWER_NAME}}
 Duration & Format: 25-minute video call
@@ -13,11 +13,9 @@ Please consider the following:
 - Feel free to ask questions at any point
 - Please join on time; contact us in advance if you need to reschedule
 
-Please use the link below to schedule a time that works best for you:
-
 Schedule Interview: {{SCHEDULING_LINK}}
 
-If you need to reschedule, need any accommodations, or have any questions, or have any questions, please contact us at https://alterna.dev/contact/.
+If you need to reschedule, need any accommodations, or have any questions, please contact us at https://alterna.dev/contact/.
 
 ---
 

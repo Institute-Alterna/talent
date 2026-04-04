@@ -13,7 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireApplicationAccess, type RouteParams } from '@/lib/api-helpers';
+import { requireApplicationAccess, parseJsonBody, type RouteParams } from '@/lib/api-helpers';
 import { getUserById } from '@/lib/services/users';
 import { sendInterviewInvitation } from '@/lib/email';
 import { logInterviewRescheduled } from '@/lib/audit';
@@ -46,7 +46,7 @@ export async function POST(
     });
 
     if (!existingInterview) {
-      console.error('[Reschedule Interview] No active interview found for application:', sanitizeForLog(application.id));
+      console.error('[Reschedule Interview] No active interview found for application');
       return NextResponse.json(
         { error: 'No active interview found to reschedule' },
         { status: 404 }
@@ -54,8 +54,10 @@ export async function POST(
     }
 
     // Parse request body
-    const body = await request.json();
-    const { resendEmail = true } = body;
+    const parsed = await parseJsonBody(request);
+    if (!parsed.ok) return parsed.error;
+    const body = parsed.body;
+    const resendEmail = body.resendEmail !== false;
 
     // Validate required fields — requireString prevents non-string truthy bypass
     let interviewerId: string;
@@ -69,7 +71,7 @@ export async function POST(
     }
 
     if (!isValidUUID(interviewerId)) {
-      console.error('[Reschedule Interview] Invalid interviewer UUID:', sanitizeForLog(interviewerId));
+      console.error('[Reschedule Interview] Invalid interviewer ID format');
       return NextResponse.json(
         { error: 'Invalid interviewer ID format' },
         { status: 400 }
@@ -79,7 +81,7 @@ export async function POST(
     // Get interviewer details
     const interviewer = await getUserById(interviewerId);
     if (!interviewer) {
-      console.error('[Reschedule Interview] Interviewer not found:', sanitizeForLog(interviewerId));
+      console.error('[Reschedule Interview] Interviewer not found');
       return NextResponse.json(
         { error: 'Interviewer not found' },
         { status: 404 }
@@ -88,7 +90,7 @@ export async function POST(
 
     // Validate interviewer has scheduling link
     if (!interviewer.schedulingLink) {
-      console.error('[Reschedule Interview] Interviewer has no scheduling link:', sanitizeForLog(interviewerId));
+      console.error('[Reschedule Interview] Interviewer has no scheduling link');
       return NextResponse.json(
         { error: 'Selected interviewer does not have a scheduling link configured' },
         { status: 400 }
@@ -97,7 +99,7 @@ export async function POST(
 
     // Validate scheduling link URL
     if (!isValidURL(interviewer.schedulingLink)) {
-      console.error('[Reschedule Interview] Invalid scheduling link URL:', sanitizeForLog(interviewer.schedulingLink));
+      console.error('[Reschedule Interview] Interviewer has invalid scheduling link');
       return NextResponse.json(
         { error: 'Interviewer has an invalid scheduling link' },
         { status: 400 }
@@ -139,17 +141,12 @@ export async function POST(
       );
 
       if (!emailResult.success) {
-        console.error('[Reschedule Interview] Email send failed:', emailResult.error);
+        console.error('[Reschedule Interview] Email send failed');
         // Don't fail the request if email fails, but log it
       }
     }
 
-    console.log('[Reschedule Interview] Success:', {
-      applicationId: sanitizeForLog(application.id),
-      oldInterviewerId: sanitizeForLog(existingInterview.interviewerId),
-      newInterviewerId: sanitizeForLog(interviewerId),
-      emailResent: resendEmail,
-    });
+    console.log('[Reschedule Interview] Interview rescheduled successfully');
 
     return NextResponse.json({
       success: true,
@@ -165,7 +162,7 @@ export async function POST(
       emailSent: resendEmail && emailResult?.success,
     });
   } catch (error) {
-    console.error('[Reschedule Interview] Error:', sanitizeForLog(error instanceof Error ? error.message : 'Unknown error'));
+    console.error('[Reschedule Interview] Error during reschedule:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
       {
         error: 'Failed to reschedule interview',

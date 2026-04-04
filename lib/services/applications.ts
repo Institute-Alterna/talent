@@ -78,9 +78,19 @@ export async function getApplications(filters?: ApplicationFilters): Promise<App
 
   const validatedSortBy = validateSortField(sortBy);
   const validatedSortOrder = validateSortOrder(sortOrder);
-  const orderBy: Prisma.ApplicationOrderByWithRelationInput = {
-    [validatedSortBy]: validatedSortOrder,
-  };
+  let orderBy: Prisma.ApplicationOrderByWithRelationInput;
+  switch (validatedSortBy) {
+    case 'updatedAt':
+      orderBy = { updatedAt: validatedSortOrder };
+      break;
+    case 'position':
+      orderBy = { position: validatedSortOrder };
+      break;
+    case 'createdAt':
+    default:
+      orderBy = { createdAt: validatedSortOrder };
+      break;
+  }
 
   const [applications, total] = await Promise.all([
     db.application.findMany({

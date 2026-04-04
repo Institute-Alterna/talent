@@ -12,8 +12,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireApplicationAccess, type RouteParams } from '@/lib/api-helpers';
-import { logInterviewCompleted } from '@/lib/audit';
+import { requireApplicationAccess, parseJsonBody, type RouteParams } from '@/lib/api-helpers';
+import { createAuditLog, logInterviewCompleted } from '@/lib/audit';
 import { db } from '@/lib/db';
 import { sanitizeForLog, requireString, RequiredFieldError, sanitizeText } from '@/lib/security';
 import { isValidHttpsURL } from '@/lib/utils';
@@ -51,8 +51,29 @@ export async function POST(
       );
     }
 
+    const isAssignedInterviewer =
+      typeof session.user.dbUserId === 'string' &&
+      session.user.dbUserId === existingInterview.interviewerId;
+
+    if (!session.user.isAdmin && !isAssignedInterviewer) {
+      await createAuditLog({
+        applicationId: application.id,
+        personId: application.personId,
+        userId: typeof session.user.dbUserId === 'string' ? session.user.dbUserId : undefined,
+        action: 'Unauthorised attempt to complete interview',
+        actionType: 'UPDATE',
+        details: { reason: 'Not assigned interviewer or admin' },
+      });
+      return NextResponse.json(
+        { error: 'Forbidden - Only the assigned interviewer or an admin can complete this interview' },
+        { status: 403 }
+      );
+    }
+
     // Parse request body
-    const body = await request.json();
+    const parsed = await parseJsonBody(request);
+    if (!parsed.ok) return parsed.error;
+    const body = parsed.body;
 
     // Validate required fields — requireString prevents non-string truthy bypass
     let notes: string;

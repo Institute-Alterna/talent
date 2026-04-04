@@ -182,6 +182,10 @@ export function calcMissingFields(app: {
  */
 export type PortfolioLinkPlatform = 'linkedin' | 'github' | 'onedrive' | 'google-drive' | 'generic';
 
+function hostMatchesDomain(hostname: string, domain: string): boolean {
+  return hostname === domain || hostname.endsWith(`.${domain}`);
+}
+
 /**
  * Determine the platform from a portfolio link URL.
  *
@@ -191,10 +195,10 @@ export type PortfolioLinkPlatform = 'linkedin' | 'github' | 'onedrive' | 'google
 export function getPortfolioLinkPlatform(url: string): PortfolioLinkPlatform {
   try {
     const hostname = new URL(ensureAbsoluteUrl(url)).hostname.toLowerCase();
-    if (hostname.endsWith('linkedin.com')) return 'linkedin';
-    if (hostname.endsWith('github.com')) return 'github';
-    if (hostname.endsWith('onedrive.live.com') || hostname.endsWith('1drv.ms')) return 'onedrive';
-    if (hostname.endsWith('drive.google.com') || hostname.endsWith('docs.google.com'))
+    if (hostMatchesDomain(hostname, 'linkedin.com')) return 'linkedin';
+    if (hostMatchesDomain(hostname, 'github.com')) return 'github';
+    if (hostMatchesDomain(hostname, 'onedrive.live.com') || hostMatchesDomain(hostname, '1drv.ms')) return 'onedrive';
+    if (hostMatchesDomain(hostname, 'drive.google.com') || hostMatchesDomain(hostname, 'docs.google.com'))
       return 'google-drive';
     return 'generic';
   } catch {

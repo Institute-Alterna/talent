@@ -24,5 +24,10 @@ export default async function CandidatesPage() {
     redirect('/auth/error?error=AccessDenied');
   }
 
-  return <CandidatesPageClient isAdmin={session.user.isAdmin} />;
+  return (
+    <CandidatesPageClient
+      isAdmin={session.user.isAdmin}
+      currentUserId={session.user.dbUserId ?? undefined}
+    />
+  );
 }

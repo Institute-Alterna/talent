@@ -345,9 +345,6 @@ describe('GET /api/applications', () => {
 
     expect(response.status).toBe(500);
     expect(data.error).toBe('Internal server error');
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Error fetching applications:',
-      expect.stringContaining('Database error')
-    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error fetching applications:', 'Database error');
   });
 });

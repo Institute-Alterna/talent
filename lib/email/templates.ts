@@ -12,7 +12,6 @@ import {
   EMAIL_TEMPLATE_META,
   type EmailTemplateName,
 } from './config';
-import { sanitizeForLog } from '@/lib/security';
 import { formatDate } from '@/lib/utils';
 import { branding } from '@/config';
 
@@ -46,7 +45,7 @@ export function loadTemplate(templateName: string, format: 'html' | 'txt' = 'htm
   const templatePath = join(getTemplatesDir(), `${templateName}.${format}`);
 
   if (!existsSync(templatePath)) {
-    console.warn(`[Email] Template not found: ${sanitizeForLog(templatePath)}`);
+    console.warn('[Email] Template not found:', templateName);
     return null;
   }
 
@@ -55,7 +54,7 @@ export function loadTemplate(templateName: string, format: 'html' | 'txt' = 'htm
     templateCache.set(cacheKey, content);
     return content;
   } catch (error) {
-    console.error(`[Email] Failed to load template ${sanitizeForLog(templatePath)}: ${sanitizeForLog(error instanceof Error ? error.message : String(error))}`);
+    console.error('[Email] Failed to load template:', templateName, error instanceof Error ? error.message : 'Unknown error');
     return null;
   }
 }
@@ -129,9 +128,7 @@ export function renderTemplate(
     const contentToCheck = [html, text, subject].filter(Boolean).join('\n');
     const missing = findMissingVariables(contentToCheck, allVariables);
     if (missing.length > 0) {
-      console.warn(
-        `[Email] Template "${sanitizeForLog(templateName)}" has unreplaced variables: ${sanitizeForLog(missing.join(', '))}`
-      );
+      console.warn('[Email] Template has unreplaced variables:', missing.join(', '));
     }
   }
 

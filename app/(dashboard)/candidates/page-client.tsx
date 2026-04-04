@@ -46,6 +46,7 @@ const GcRejectionDialog = React.lazy(() => import('@/components/applications/gc-
 
 interface CandidatesPageClientProps {
   isAdmin: boolean;
+  currentUserId?: string;
 }
 
 interface PipelineResponse {
@@ -85,7 +86,7 @@ interface AuditLogResponse {
   }>;
 }
 
-export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
+export function CandidatesPageClient({ isAdmin, currentUserId: initialCurrentUserId }: CandidatesPageClientProps) {
   const { toast } = useToast();
 
   // State
@@ -154,7 +155,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     email: string;
     schedulingLink: string | null;
   }>>([]);
-  const [currentUserId, setCurrentUserId] = React.useState<string | undefined>(undefined);
+  const currentUserId = initialCurrentUserId;
   const [isLoadingInterviewers, setIsLoadingInterviewers] = React.useState(false);
 
   // Email loading state
@@ -469,19 +470,11 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
     if (interviewers.length === 0) {
       setIsLoadingInterviewers(true);
       try {
-        const [usersResponse, sessionResponse] = await Promise.all([
-          fetch('/api/users'),
-          fetch('/api/auth/session'),
-        ]);
+        const usersResponse = await fetch('/api/users');
 
         if (usersResponse.ok) {
           const data = await usersResponse.json();
           setInterviewers(data.users || []);
-        }
-
-        if (sessionResponse.ok) {
-          const sessionData = await sessionResponse.json();
-          setCurrentUserId(sessionData.user?.dbUserId);
         }
       } catch (err) {
         console.error('Failed to fetch interviewers:', err);
@@ -529,6 +522,20 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
 
   const handleCompleteInterview = () => {
     if (!selectedApplication) return;
+
+    const latestInterview = selectedApplication.interviews[0]; // interviews returned newest-first by API
+    const canComplete = Boolean(
+      isAdmin || (currentUserId && latestInterview?.interviewerId === currentUserId)
+    );
+
+    if (!canComplete) {
+      toast({
+        title: 'Access denied',
+        description: 'Only the assigned interviewer or an admin can complete this interview.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setInterviewApplicationName(
       `${selectedApplication.person.firstName} ${selectedApplication.person.lastName}`
@@ -1261,6 +1268,7 @@ export function CandidatesPageClient({ isAdmin }: CandidatesPageClientProps) {
               onMakeDecision={handleMakeDecision}
               onRejectGcOverdue={handleGcRejectFromDetail}
               isAdmin={isAdmin}
+              currentUserId={currentUserId}
               isLoading={isDetailLoading}
               sendingEmailTemplate={sendingEmailTemplate}
               isSchedulingInterview={isSchedulingInterview}

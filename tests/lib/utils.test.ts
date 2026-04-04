@@ -13,7 +13,17 @@
  * (for resolving conflicting Tailwind classes).
  */
 
-import { cn, ensureAbsoluteUrl, isValidUUID, isValidURL, isValidHttpsURL, formatDate, formatDateTime, formatDateShort } from '@/lib/utils';
+import {
+  cn,
+  ensureAbsoluteUrl,
+  getPortfolioLinkPlatform,
+  isValidUUID,
+  isValidURL,
+  isValidHttpsURL,
+  formatDate,
+  formatDateTime,
+  formatDateShort,
+} from '@/lib/utils';
 
 describe('cn (className utility)', () => {
   /**
@@ -354,5 +364,31 @@ describe('ensureAbsoluteUrl', () => {
   it('trims whitespace before processing', () => {
     expect(ensureAbsoluteUrl('  example.com  ')).toBe('https://example.com');
     expect(ensureAbsoluteUrl('  https://example.com  ')).toBe('https://example.com');
+  });
+});
+
+describe('getPortfolioLinkPlatform', () => {
+  it('detects expected platforms from valid hosts', () => {
+    expect(getPortfolioLinkPlatform('https://www.linkedin.com/in/test')).toBe('linkedin');
+    expect(getPortfolioLinkPlatform('https://github.com/test')).toBe('github');
+    expect(getPortfolioLinkPlatform('https://onedrive.live.com/?id=abc')).toBe('onedrive');
+    expect(getPortfolioLinkPlatform('https://docs.google.com/document/d/abc')).toBe('google-drive');
+  });
+
+  it('detects expected platforms from subdomains', () => {
+    expect(getPortfolioLinkPlatform('https://foo.linkedin.com/path')).toBe('linkedin');
+    expect(getPortfolioLinkPlatform('https://api.github.com/repos')).toBe('github');
+    expect(getPortfolioLinkPlatform('https://sub.drive.google.com/path')).toBe('google-drive');
+  });
+
+  it('rejects hostnames that only contain allowed hosts as suffix text', () => {
+    expect(getPortfolioLinkPlatform('https://evil-linkedin.com/profile')).toBe('generic');
+    expect(getPortfolioLinkPlatform('https://evilgithub.com/profile')).toBe('generic');
+    expect(getPortfolioLinkPlatform('https://notonedrive.live.com.evil.test/path')).toBe('generic');
+    expect(getPortfolioLinkPlatform('https://drive.google.com.evil.test/path')).toBe('generic');
+  });
+
+  it('returns generic for invalid URLs', () => {
+    expect(getPortfolioLinkPlatform('not a url')).toBe('generic');
   });
 });

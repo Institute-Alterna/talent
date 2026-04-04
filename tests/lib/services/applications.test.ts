@@ -166,6 +166,45 @@ describe('Application Service', () => {
         })
       );
     });
+
+    it('maps createdAt sort field explicitly', async () => {
+      (db.application.findMany as jest.Mock).mockResolvedValue([]);
+      (db.application.count as jest.Mock).mockResolvedValue(0);
+
+      await getApplications({ sortBy: 'createdAt', sortOrder: 'asc' });
+
+      expect(db.application.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { createdAt: 'asc' },
+        })
+      );
+    });
+
+    it('maps updatedAt sort field explicitly', async () => {
+      (db.application.findMany as jest.Mock).mockResolvedValue([]);
+      (db.application.count as jest.Mock).mockResolvedValue(0);
+
+      await getApplications({ sortBy: 'updatedAt', sortOrder: 'desc' });
+
+      expect(db.application.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { updatedAt: 'desc' },
+        })
+      );
+    });
+
+    it('maps position sort field explicitly', async () => {
+      (db.application.findMany as jest.Mock).mockResolvedValue([]);
+      (db.application.count as jest.Mock).mockResolvedValue(0);
+
+      await getApplications({ sortBy: 'position', sortOrder: 'asc' });
+
+      expect(db.application.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderBy: { position: 'asc' },
+        })
+      );
+    });
   });
 
   describe('getApplicationById', () => {

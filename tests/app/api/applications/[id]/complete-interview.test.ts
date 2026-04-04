@@ -28,6 +28,7 @@ jest.mock('@/lib/db', () => ({
 
 // Mock audit
 jest.mock('@/lib/audit', () => ({
+  createAuditLog: jest.fn(),
   logInterviewCompleted: jest.fn(),
 }));
 
@@ -44,6 +45,7 @@ import { POST } from '@/app/api/applications/[id]/complete-interview/route';
 import { auth } from '@/lib/auth';
 import { getApplicationDetail } from '@/lib/services/applications';
 import { db } from '@/lib/db';
+import { createAuditLog } from '@/lib/audit';
 
 const mockSession = {
   user: {
@@ -202,6 +204,70 @@ describe('POST /api/applications/[id]/complete-interview', () => {
       '[Complete Interview] No active interview found for application:',
       expect.any(String)
     );
+  });
+
+  it('returns 403 when user is neither admin nor assigned interviewer', async () => {
+    (auth as jest.Mock).mockResolvedValue({
+      ...mockSession,
+      user: {
+        ...mockSession.user,
+        isAdmin: false,
+        dbUserId: 'another-interviewer-id',
+      },
+    });
+    (getApplicationDetail as jest.Mock).mockResolvedValue(mockApplication);
+    (db.interview.findFirst as jest.Mock).mockResolvedValue(mockInterview);
+
+    const request = new NextRequest('http://localhost:3000/api/applications/550e8400-e29b-41d4-a716-446655440000/complete-interview', {
+      method: 'POST',
+      body: JSON.stringify({ notes: 'Interview went well.' }),
+    });
+    const params = Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' });
+
+    const response = await POST(request, { params });
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toBe('Forbidden - Only the assigned interviewer or an admin can complete this interview');
+    expect(createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        applicationId: mockApplication.id,
+        action: 'Unauthorised attempt to complete interview',
+        actionType: 'UPDATE',
+      })
+    );
+  });
+
+  it('allows assigned interviewer to complete interview without admin role', async () => {
+    (auth as jest.Mock).mockResolvedValue({
+      ...mockSession,
+      user: {
+        ...mockSession.user,
+        isAdmin: false,
+        dbUserId: mockInterview.interviewerId,
+      },
+    });
+    (getApplicationDetail as jest.Mock).mockResolvedValue(mockApplication);
+    (db.interview.findFirst as jest.Mock).mockResolvedValue(mockInterview);
+    (db.interview.update as jest.Mock).mockResolvedValue({
+      ...mockInterview,
+      completedAt: new Date(),
+      notes: 'Assigned interviewer completed interview.',
+      recordingUrl: null,
+    });
+
+    const request = new NextRequest('http://localhost:3000/api/applications/550e8400-e29b-41d4-a716-446655440000/complete-interview', {
+      method: 'POST',
+      body: JSON.stringify({ notes: 'Assigned interviewer completed interview.' }),
+    });
+    const params = Promise.resolve({ id: '550e8400-e29b-41d4-a716-446655440000' });
+
+    const response = await POST(request, { params });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(data.message).toBe('Interview marked as completed');
   });
 
   it('successfully completes interview with valid notes', async () => {

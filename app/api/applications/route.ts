@@ -20,7 +20,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getApplications, getApplicationStats, getApplicationsForPipeline } from '@/lib/services/applications';
 import { Stage, Status } from '@/lib/generated/prisma/client';
-import { sanitizeForLog, ALLOWED_SORT_FIELDS } from '@/lib/security';
+import { ALLOWED_SORT_FIELDS } from '@/lib/security';
 import { isValidUUID } from '@/lib/utils';
 import { requireAccess } from '@/lib/api-helpers';
 import { VALID_STAGES, VALID_STATUSES } from '@/lib/constants';
@@ -151,7 +151,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Error fetching applications:', sanitizeForLog(error instanceof Error ? error.message : 'Unknown error'));
+    console.error('Error fetching applications:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
