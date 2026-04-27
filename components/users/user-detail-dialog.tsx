@@ -31,6 +31,7 @@ interface UserDetailDialogProps {
   isCurrentUser?: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSaved?: (user: User) => void;
 }
 
 export function UserDetailDialog({
@@ -38,6 +39,7 @@ export function UserDetailDialog({
   isCurrentUser,
   open,
   onOpenChange,
+  onSaved,
 }: UserDetailDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(false);
@@ -78,7 +80,11 @@ export function UserDetailDialog({
         isAdmin: isCurrentUser ? undefined : formData.isAdmin,
       });
 
-      if (result.success) {
+      if (result.success && result.data?.user) {
+        onSaved?.(result.data.user);
+        setIsEditing(false);
+        onOpenChange(false);
+      } else if (result.success) {
         setIsEditing(false);
         onOpenChange(false);
       } else {
@@ -91,9 +97,6 @@ export function UserDetailDialog({
     setIsEditing(false);
     onOpenChange(false);
   };
-
-  // Use shared `formatDateTime` helper from '@/lib/utils' for consistent formatting
-
 
   if (!user) return null;
 

@@ -28,7 +28,7 @@ import { formatDateTime } from '@/lib/utils';
 import { UsersTable, UserDetailDialog } from '@/components/users';
 import { MetricCard } from '@/components/shared/metric-card';
 import { syncFromOktaAction, fetchUsers } from './actions';
-import type { UserListItem, UserStats } from '@/types/user';
+import type { User, UserListItem, UserStats } from '@/types/user';
 import type { OktaStatus } from '@/lib/generated/prisma/client';
 
 type StatusFilter = OktaStatus | 'ALL' | 'DISMISSED' | 'INACTIVE';
@@ -53,6 +53,7 @@ export function UsersPageClient({
   const [isPending, startTransition] = useTransition();
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
+  const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Compute role-filtered users client-side (team is small)
@@ -128,15 +129,58 @@ export function UsersPageClient({
 
   const handleViewUser = (user: UserListItem) => {
     setSelectedUser(user);
+    setEditingUser(user);
     setIsDialogOpen(true);
   };
 
   const handleDialogClose = (open: boolean) => {
     setIsDialogOpen(open);
     if (!open) {
-      // Refresh users when dialog closes in case of updates
-      startTransition(() => refreshUsers());
+      setEditingUser(null);
     }
+  };
+
+  const handleUserSaved = (updatedUser: User) => {
+    setUsers((currentUsers) =>
+      currentUsers.map((user) =>
+        user.id === updatedUser.id
+          ? {
+              ...user,
+              displayName: updatedUser.displayName,
+              title: updatedUser.title,
+              isAdmin: updatedUser.isAdmin,
+              hasAppAccess: updatedUser.hasAppAccess,
+              schedulingLink: updatedUser.schedulingLink,
+              lastSyncedAt: updatedUser.lastSyncedAt,
+            }
+          : user
+      )
+    );
+
+    setSelectedUser((currentUser) =>
+      currentUser?.id === updatedUser.id
+        ? {
+            ...currentUser,
+            displayName: updatedUser.displayName,
+            title: updatedUser.title,
+            isAdmin: updatedUser.isAdmin,
+            hasAppAccess: updatedUser.hasAppAccess,
+            schedulingLink: updatedUser.schedulingLink,
+            lastSyncedAt: updatedUser.lastSyncedAt,
+          }
+        : currentUser
+    );
+
+    setStats((currentStats) => {
+      if (!editingUser || editingUser.isAdmin === updatedUser.isAdmin) {
+        return currentStats;
+      }
+
+      return {
+        ...currentStats,
+        admins: currentStats.admins + (updatedUser.isAdmin ? 1 : -1),
+      };
+    });
   };
 
   return (
@@ -254,6 +298,7 @@ export function UsersPageClient({
         isCurrentUser={selectedUser?.id === currentUserId}
         open={isDialogOpen}
         onOpenChange={handleDialogClose}
+        onSaved={handleUserSaved}
       />
     </div>
   );

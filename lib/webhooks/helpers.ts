@@ -6,13 +6,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  verifyWebhook,
-  getClientIP,
-  webhookRateLimiter,
-  getRateLimitHeaders,
-  type TallyWebhookPayload,
-} from '@/lib/webhooks';
+import { verifyWebhook, getClientIP } from '@/lib/webhooks/verify';
+import { webhookRateLimiter, getRateLimitHeaders } from '@/lib/webhooks/rate-limiter';
+import { type TallyWebhookPayload } from '@/lib/webhooks/tally-mapper';
 
 /**
  * Standard webhook error response

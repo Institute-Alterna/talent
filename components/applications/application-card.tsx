@@ -73,15 +73,6 @@ interface ApplicationCardProps {
   className?: string;
 }
 
-// Use shared `formatDate` from '@/lib/utils' (D MMMM YYYY)
-
-
-/* 
-Uncomment if you wish to use avatar initials
-function getInitials(firstName: string, lastName: string): string {
-  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-} */
-
 export function ApplicationCard({
   application,
   onView,
@@ -114,11 +105,6 @@ export function ApplicationCard({
         {/* Header with name and status */}
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-center gap-2 min-w-0">
-            {/* Avatar, uncomment if you wish to use it */}
-            {/* <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-medium shrink-0">
-              {getInitials(person.firstName, person.lastName)}
-            </div> */}
-            {/* Name and email */}
             <div className="min-w-0 max-w-[160px]">
               <p className="font-medium text-sm truncate" title={`${person.firstName} ${person.lastName}`}>
                 {person.firstName} {person.lastName}
