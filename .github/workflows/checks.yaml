@@ -14,12 +14,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: latest
+          node-version: 26.x
           cache: 'npm'
 
       - name: Install dependencies
@@ -39,12 +39,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: latest
+          node-version: 26.x
           cache: 'npm'
 
       - name: Install dependencies
@@ -65,7 +65,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [22.x, 24.x, latest]
+        node-version: [24.x, 26.x]
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -88,10 +88,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
@@ -114,7 +114,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [22.x, 24.x, latest]
+        node-version: [24.x, 26.x]
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -137,10 +137,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'

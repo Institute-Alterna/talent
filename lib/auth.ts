@@ -18,6 +18,7 @@
  */
 
 import NextAuth from 'next-auth';
+import type {} from 'next-auth/jwt';
 import { authConfig } from './auth.config';
 import { db } from './db';
 import type { User as DbUser } from './generated/prisma/client';
@@ -52,7 +53,7 @@ declare module 'next-auth' {
   }
 }
 
-declare module '@auth/core/jwt' {
+declare module 'next-auth/jwt' {
   interface JWT {
     isAdmin?: boolean;
     hasAccess?: boolean;
@@ -366,12 +367,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
           } catch {
             // Fallback to token values if DB query fails
-            session.user.isAdmin = token.isAdmin || false;
-            session.user.hasAccess = token.hasAccess || false;
+            session.user.isAdmin = Boolean(token.isAdmin);
+            session.user.hasAccess = Boolean(token.hasAccess);
           }
         } else {
-          session.user.isAdmin = token.isAdmin || false;
-          session.user.hasAccess = token.hasAccess || false;
+          session.user.isAdmin = Boolean(token.isAdmin);
+          session.user.hasAccess = Boolean(token.hasAccess);
         }
       }
       return session;

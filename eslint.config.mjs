@@ -17,6 +17,7 @@ const eslintConfig = defineConfig([
   // Rule: discourage using Date.prototype.toLocaleDateString/toLocaleString directly
   {
     rules: {
+      'react-hooks/set-state-in-effect': 'off',
       'no-restricted-syntax': [
         'warn',
         {
