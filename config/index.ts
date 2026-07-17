@@ -8,6 +8,7 @@
 export { branding } from './branding';
 export { strings } from './strings';
 export { recruitment, formatScoreDisplay } from './recruitment';
+export { isPriorityProcessingEnabled, parseEnvFlag } from './features';
 
 export type { Branding } from './branding';
 export type { Strings } from './strings';

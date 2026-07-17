@@ -132,6 +132,13 @@ export const strings = {
     sortBy: 'Sort by',
   },
 
+  // Priority processing (GC incomplete bypass)
+  priorityProcessing: {
+    label: 'Priority processing enabled',
+    description:
+      'General Competencies are incomplete; specialised assessment, interview, and decisions remain available.',
+  },
+
   // Interview
   interview: {
     assignInterviewer: 'Assign Interviewer',
@@ -146,6 +153,7 @@ export const strings = {
     noInterviewScheduled: 'No interview has been scheduled yet',
     gcNotCompleted: 'General Competencies assessment must be completed first',
     gcFailed: 'General Competencies failed',
+
     // Dialog strings
     scheduleInterview: 'Schedule Interview',
     scheduleDescription: 'Send an interview invitation to the candidate for:',
