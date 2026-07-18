@@ -132,11 +132,11 @@ export const strings = {
     sortBy: 'Sort by',
   },
 
-  // Priority processing (GC incomplete bypass)
+  // Priority processing (GC incomplete / failed bypass)
   priorityProcessing: {
     label: 'Priority processing enabled',
     description:
-      'General Competencies are incomplete; specialised assessment, interview, and decisions remain available.',
+      'General Competencies are incomplete or failed; specialised assessment, interview, and decisions remain available.',
   },
 
   // Interview

@@ -466,15 +466,21 @@ export function CandidatesPageClient({ isAdmin, currentUserId: initialCurrentUse
     );
     setIsScheduleInterviewDialogOpen(true);
 
-    // Fetch interviewers list if not already loaded
+    // Fetch interviewers list if not already loaded (HM-safe endpoint)
     if (interviewers.length === 0) {
       setIsLoadingInterviewers(true);
       try {
-        const usersResponse = await fetch('/api/users');
+        const usersResponse = await fetch('/api/users/interviewers');
 
         if (usersResponse.ok) {
           const data = await usersResponse.json();
-          setInterviewers(data.users || []);
+          setInterviewers(data.interviewers || []);
+        } else {
+          toast({
+            title: 'Warning',
+            description: 'Failed to load interviewer list',
+            variant: 'destructive',
+          });
         }
       } catch (err) {
         console.error('Failed to fetch interviewers:', err);
@@ -498,14 +504,20 @@ export function CandidatesPageClient({ isAdmin, currentUserId: initialCurrentUse
     );
     setIsRescheduleInterviewDialogOpen(true);
 
-    // Fetch interviewers list if not already loaded
+    // Fetch interviewers list if not already loaded (HM-safe endpoint)
     if (interviewers.length === 0) {
       setIsLoadingInterviewers(true);
       try {
-        const response = await fetch('/api/users');
+        const response = await fetch('/api/users/interviewers');
         if (response.ok) {
           const data = await response.json();
-          setInterviewers(data.users || []);
+          setInterviewers(data.interviewers || []);
+        } else {
+          toast({
+            title: 'Warning',
+            description: 'Failed to load interviewer list',
+            variant: 'destructive',
+          });
         }
       } catch (err) {
         console.error('Failed to fetch interviewers:', err);

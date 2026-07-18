@@ -245,11 +245,23 @@ export async function getUserStats(): Promise<UserStats> {
 }
 
 /**
+ * Minimal interviewer shape for schedule/reschedule dialogs.
+ * Intentionally excludes role/admin and other personnel fields so this list
+ * is safe to expose to hiring managers (not only admins).
+ */
+export type InterviewerListItem = {
+  id: string;
+  email: string;
+  displayName: string;
+  schedulingLink: string;
+};
+
+/**
  * Get users who can conduct interviews (have scheduling link set and are active)
  *
- * @returns Array of users with scheduling links
+ * @returns Array of interviewers with non-empty scheduling links
  */
-export async function getInterviewers(): Promise<UserListItem[]> {
+export async function getInterviewers(): Promise<InterviewerListItem[]> {
   const users = await db.user.findMany({
     where: {
       schedulingLink: { not: null },
@@ -259,21 +271,23 @@ export async function getInterviewers(): Promise<UserListItem[]> {
     select: {
       id: true,
       email: true,
-      firstName: true,
-      lastName: true,
       displayName: true,
-      title: true,
-      isAdmin: true,
-      hasAppAccess: true,
       schedulingLink: true,
-      oktaStatus: true,
-      lastSyncedAt: true,
-      createdAt: true,
     },
     orderBy: { displayName: 'asc' },
   });
 
-  return users;
+  // Exclude empty/whitespace links (Prisma `not: null` still allows "").
+  return users
+    .filter((u): u is typeof u & { schedulingLink: string } =>
+      Boolean(u.schedulingLink && u.schedulingLink.trim())
+    )
+    .map((u) => ({
+      id: u.id,
+      email: u.email,
+      displayName: u.displayName,
+      schedulingLink: u.schedulingLink.trim(),
+    }));
 }
 
 /**

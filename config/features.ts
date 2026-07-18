@@ -17,9 +17,8 @@ export function parseEnvFlag(value: string | undefined | null): boolean {
 
 /**
  * When enabled, applications may progress through specialised competencies,
- * interview, and hiring decisions even if general competencies are incomplete.
- *
- * Does not bypass a completed-but-failed GC result.
+ * interview, and hiring decisions even if general competencies are incomplete
+ * or completed-but-failed.
  */
 export function isPriorityProcessingEnabled(): boolean {
   return parseEnvFlag(process.env.NEXT_PUBLIC_PRIORITY_PROCESSING_ENABLED);

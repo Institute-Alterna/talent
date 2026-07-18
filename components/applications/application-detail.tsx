@@ -690,11 +690,11 @@ function RightPanel({
   const gcPassed = person.generalCompetenciesCompleted && gcScore >= gcAssessmentThreshold;
   const gcFailed = person.generalCompetenciesCompleted && !gcPassed;
   const gcNotCompleted = !person.generalCompetenciesCompleted;
-  // Priority processing unlocks SC / interview / decision when GC is incomplete only
-  // (a completed-but-failed GC score remains gated as before).
+  // Priority processing unlocks SC / interview / decision when GC is incomplete or failed.
   const priorityProcessingEnabled = isPriorityProcessingEnabled();
-  const gcIncompleteBypassed = priorityProcessingEnabled && gcNotCompleted;
-  const canProgressWithoutGcPass = gcPassed || gcIncompleteBypassed;
+  const gcGateBypassed =
+    priorityProcessingEnabled && (gcNotCompleted || gcFailed);
+  const canProgressWithoutGcPass = gcPassed || gcGateBypassed;
   const gcScoreDisplay = formatScoreDisplay(person.generalCompetenciesScore, gcConfig.scale);
   const isActionable = application.status === 'ACTIVE';
   const [clientNowMs, setClientNowMs] = React.useState<number | null>(null);
@@ -734,7 +734,7 @@ function RightPanel({
 
   return (
     <div className="space-y-4">
-      {gcIncompleteBypassed && isActionable && (
+      {gcGateBypassed && isActionable && (
         <div className="rounded-lg border border-border bg-muted/40 px-3 py-2">
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs shrink-0">
@@ -995,11 +995,11 @@ function RightPanel({
                 <div className="text-center py-2">
                   {isActionable ? (
                     <>
-                      {gcNotCompleted && !gcIncompleteBypassed ? (
+                      {gcNotCompleted && !gcGateBypassed ? (
                         <p className="text-xs text-muted-foreground opacity-60">
                           {strings.interview.gcNotCompleted}
                         </p>
-                      ) : gcFailed ? (
+                      ) : gcFailed && !gcGateBypassed ? (
                         <p className="text-xs text-muted-foreground opacity-60">
                           {strings.interview.gcFailed}
                         </p>
@@ -1017,7 +1017,7 @@ function RightPanel({
                 </div>
               )}
 
-              {/* Send Assessment button (GC passed, or priority processing with incomplete GC) */}
+              {/* Send Assessment button (GC passed, or priority processing with incomplete/failed GC) */}
               {isActionable && canProgressWithoutGcPass && onSendSCInvitation && (
                 <div className="mt-2">
                   <Button
@@ -1186,11 +1186,11 @@ function RightPanel({
                 <div className="text-center py-2">
                   {isActionable ? (
                     <>
-                      {gcFailed ? (
+                      {gcFailed && !gcGateBypassed ? (
                         <p className="text-xs text-muted-foreground opacity-60">
                           {strings.interview.gcFailed}
                         </p>
-                      ) : gcNotCompleted && !gcIncompleteBypassed ? (
+                      ) : gcNotCompleted && !gcGateBypassed ? (
                         <p className="text-xs text-muted-foreground opacity-60">
                           {strings.interview.gcNotCompleted}
                         </p>
@@ -1302,7 +1302,7 @@ function RightPanel({
 
               if (!onMakeDecision) return null;
 
-              if (gcNotCompleted && !gcIncompleteBypassed) {
+              if (gcNotCompleted && !gcGateBypassed) {
                 // GC not completed - show message, no buttons
                 return (
                   <p className="text-xs text-muted-foreground opacity-60">
@@ -1311,7 +1311,7 @@ function RightPanel({
                 );
               }
 
-              if (gcFailed) {
+              if (gcFailed && !gcGateBypassed) {
                 // GC failed - only show Reject button
                 return (
                   <div className="flex flex-col items-center gap-2">
@@ -1332,7 +1332,7 @@ function RightPanel({
                 );
               }
 
-              // Normal flow (or priority processing with incomplete GC) - show both buttons
+              // Normal flow (or priority processing with incomplete/failed GC) - show both buttons
               return (
                 <>
                   <p className="text-xs text-muted-foreground mb-2">No decision has been made yet</p>

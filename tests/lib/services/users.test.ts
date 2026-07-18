@@ -318,9 +318,22 @@ describe('User Service', () => {
   });
 
   describe('getInterviewers', () => {
-    it('returns active users with scheduling links and app access', async () => {
-      const mockInterviewers = [{ ...mockUser, schedulingLink: 'https://cal.com/test', hasAppAccess: true }];
-      (db.user.findMany as jest.Mock).mockResolvedValue(mockInterviewers);
+    it('returns active users with non-empty scheduling links and app access', async () => {
+      const mockRows = [
+        {
+          id: 'user-1',
+          email: 'test@alterna.dev',
+          displayName: 'Test User',
+          schedulingLink: 'https://cal.com/test',
+        },
+        {
+          id: 'user-2',
+          email: 'empty@alterna.dev',
+          displayName: 'Empty Link',
+          schedulingLink: '   ',
+        },
+      ];
+      (db.user.findMany as jest.Mock).mockResolvedValue(mockRows);
 
       const result = await getInterviewers();
 
@@ -330,10 +343,22 @@ describe('User Service', () => {
           oktaStatus: 'ACTIVE',
           hasAppAccess: true,
         },
-        select: expect.any(Object),
+        select: {
+          id: true,
+          email: true,
+          displayName: true,
+          schedulingLink: true,
+        },
         orderBy: { displayName: 'asc' },
       });
-      expect(result).toEqual(mockInterviewers);
+      expect(result).toEqual([
+        {
+          id: 'user-1',
+          email: 'test@alterna.dev',
+          displayName: 'Test User',
+          schedulingLink: 'https://cal.com/test',
+        },
+      ]);
     });
   });
 
