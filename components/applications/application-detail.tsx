@@ -1278,9 +1278,9 @@ function RightPanel({
           </div>
         ) : (
           <div className="text-center py-2">
-            {isAdmin && application.status === 'ACTIVE' && (() => {
+            {application.status === 'ACTIVE' && (() => {
               // GC overdue close-application is suppressed under priority processing
-              // so admins can still Accept/Reject (hire path remains available).
+              // so hiring managers/admins can still Accept/Reject (hire path remains available).
               if (isGcOverdue && onRejectGcOverdue && !gcGateBypassed) {
                 // GC overdue — offer close-application action
                 return (

@@ -121,20 +121,19 @@ describe('ApplicationCard', () => {
   });
 
   describe('Inline GC rejection button', () => {
-    it('renders XCircle reject button when isGcOverdue, isAdmin, and callback are provided', () => {
+    it('renders XCircle reject button when isGcOverdue and callback are provided', () => {
       const onRejectGcOverdue = jest.fn();
       render(
         <ApplicationCard
           application={makeApplication({ isGcOverdue: true })}
           onView={onView}
           onRejectGcOverdue={onRejectGcOverdue}
-          isAdmin={true}
         />
       );
       expect(screen.getByRole('button', { name: /reject inactive application/i })).toBeInTheDocument();
     });
 
-    it('does not render reject button when isAdmin is false', () => {
+    it('renders reject button for non-admin users when callback is provided', () => {
       const onRejectGcOverdue = jest.fn();
       render(
         <ApplicationCard
@@ -144,7 +143,7 @@ describe('ApplicationCard', () => {
           isAdmin={false}
         />
       );
-      expect(screen.queryByRole('button', { name: /reject inactive application/i })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /reject inactive application/i })).toBeInTheDocument();
     });
 
     it('does not render reject button when isGcOverdue is false', () => {

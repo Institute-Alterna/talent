@@ -40,8 +40,8 @@ Persons are deduplicated by **email** (not Tally respondentId). A person can app
 
 ### Permission Levels
 
-1. **Administrators** (`isAdmin = true`) — full access, hiring decisions, user management
-2. **Hiring Managers** (`isAdmin = false`) — view candidates, interview notes, scheduling emails
+1. **Administrators** (`isAdmin = true`) — full access, user management, and all hiring-manager capabilities
+2. **Hiring Managers** (`isAdmin = false`) — view candidates, interview notes, scheduling emails, and accept/reject decisions
 
 Determined by Okta group membership: `talent-administration` (admins) and `talent-access` (hiring managers).
 

@@ -128,6 +128,9 @@ describe('POST /api/applications/[id]/decision', () => {
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
 
+      // Hiring managers and admins (app access) can record decisions
+      expect(requireApplicationAccess).toHaveBeenCalledWith(mockParams, { requireActive: true });
+
       // Should advance to AGREEMENT stage
       expect(advanceApplicationStage).toHaveBeenCalledWith('app-123', 'AGREEMENT');
 

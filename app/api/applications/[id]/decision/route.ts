@@ -4,7 +4,7 @@
  * POST /api/applications/[id]/decision
  *
  * Record a final hiring decision for the application.
- * Admin only.
+ * Requires app access (hiring manager or admin).
  *
  * Body:
  * - decision: "ACCEPT" or "REJECT"
@@ -12,7 +12,7 @@
  * - notes: Optional additional notes
  * - sendEmail: Whether to send notification email (default: true)
  *
- * Required: Admin access
+ * Required: Authenticated user with app access
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -39,14 +39,14 @@ const VALID_DECISIONS: DecisionType[] = ['ACCEPT', 'REJECT'];
  * POST /api/applications/[id]/decision
  *
  * Record a hiring decision.
- * Admin only.
+ * Requires authenticated user with app access (hiring manager or admin).
  */
 export async function POST(
   request: NextRequest,
   { params }: RouteParams
 ) {
   try {
-    const access = await requireApplicationAccess(params, { level: 'admin', requireActive: true });
+    const access = await requireApplicationAccess(params, { requireActive: true });
     if (!access.ok) return access.error;
     const { session, application } = access;
 

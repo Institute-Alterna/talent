@@ -142,7 +142,7 @@ export function ApplicationCard({
 
           {/* Quick actions */}
           <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            {application.isGcOverdue && isAdmin && onRejectGcOverdue && (
+            {application.isGcOverdue && onRejectGcOverdue && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
